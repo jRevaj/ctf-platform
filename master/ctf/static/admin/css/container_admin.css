@@ -1,0 +1,29 @@
+.status-actions {
+    margin-left: 10px;
+}
+
+.status-actions .button {
+    padding: 5px 10px;
+    margin: 0 2px;
+    background: #79aec8;
+    color: #fff;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.status-actions .button:hover {
+    background: #609ab6;
+}
+
+/* Style for disabled select */
+select[disabled] {
+    background-color: #eee;
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+/* Make the status field and buttons align nicely */
+.field-status .readonly {
+    display: flex !important;
+    align-items: center;
+} 

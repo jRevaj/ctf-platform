@@ -1,0 +1,9 @@
+services:
+  target:
+    build: .
+    ports:
+      - 2222:22
+    volumes:
+      - ./flags:/flags
+    environment:
+      - CTF_USER=ctf-user

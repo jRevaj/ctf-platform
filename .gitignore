@@ -62,3 +62,6 @@ out/
 .idea/**/usage.statistics.xml
 .idea/**/dictionaries
 .idea/**/shelf
+
+# VSCode
+.vscode/
