@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 from django.db import models
 
+from ctf.managers.flag_manager import FlagManager
 from .container import GameContainer
 from .team import Team
-from ctf.managers.flag_manager import FlagManager
 
 
 class Flag(models.Model):
@@ -33,7 +33,10 @@ class Flag(models.Model):
     objects = FlagManager()
 
     class Meta:
-        app_label = 'ctf'
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["value"]),
+        ]
 
     def __str__(self):
         return self.value

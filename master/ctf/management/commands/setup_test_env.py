@@ -99,12 +99,20 @@ class Command(BaseCommand):
         )
 
     def _create_container(self, template: ContainerTemplate, session: GameSession, blue_team: Team, red_team: Team) -> GameContainer:
-        return self.container_service.create_game_container(
-            template=template,
-            session=session,
-            blue_team=blue_team,
-            red_team=red_team,
-        )
+        try:
+            container = self.container_service.create_game_container(
+                template=template,
+                session=session,
+                blue_team=blue_team,
+                red_team=red_team,
+            )
+
+            self.flag_service.create_and_deploy_flag(container)
+
+            return container
+        except Exception as e:
+            logger.error(f"Error creating container: {e}")
+            raise e
 
     def _print_success_message(self, container: GameContainer) -> None:
         self.stdout.write(self.style.SUCCESS(f"Test environment created successfully!"))
