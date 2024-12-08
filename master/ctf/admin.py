@@ -234,10 +234,14 @@ class StatusWidgetWithButtons(Select):
         return mark_safe(f'<div style="display: flex; align-items: center;">{html}{buttons}</div>')
 
 
+class FlagAdmin(admin.ModelAdmin):
+    list_display = ("value", "container", "owner", "points", "is_captured", "captured_by")
+
+
 admin.site.register(ContainerTemplate, ContainerTemplateAdmin)
 admin.site.register(Team, TeamAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(GameContainer, GameContainerAdmin)
 admin.site.register(GameSession)
 admin.site.register(TeamAssignment)
-admin.site.register(Flag)
+admin.site.register(Flag, FlagAdmin)

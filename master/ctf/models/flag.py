@@ -41,6 +41,11 @@ class Flag(models.Model):
     def __str__(self):
         return self.value
 
+    def assign_owner(self, team: Team):
+        """Assign ownership of the flag to a team"""
+        self.owner = team
+        self.save()
+
     def capture(self, team: Team):
         """Mark the flag as captured"""
         self.is_captured = True

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class FlagManager(models.Manager):
     """Custom manager for Flag model"""
 
-    def generate_flag(self, prefix="FLAG"):
+    def generate_flag(self, prefix="flag"):
         """Generate a new random flag"""
         charset = string.ascii_letters + string.digits
         random_part = "".join(secrets.choice(charset) for _ in range(32))

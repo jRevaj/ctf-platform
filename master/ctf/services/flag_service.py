@@ -1,7 +1,7 @@
 import logging
 from django.utils import timezone
 
-from ctf.models import Flag, Team
+from ctf.models import Flag, GameContainer, Team
 from ctf.services import DockerService
 
 logger = logging.getLogger(__name__)
@@ -11,7 +11,17 @@ class FlagService:
     def __init__(self):
         self.docker_service = DockerService()
 
-    def create_and_deploy_flag(self, container, points=100):
+    def assign_flag_owner(self, flag, team):
+        """Assign ownership of a flag to a team"""
+        try:
+            flag.assign_owner(team)
+            logger.info(f"Successfully assigned flag {flag.value} to team {team.name}")
+            return True
+        except Exception as e:
+            logger.error(f"Error assigning flag ownership: {e}")
+            return False
+
+    def create_and_deploy_flag(self, container: GameContainer, points=100):
         """Deploy a single flag to a container"""
         try:
             flag = Flag.objects.create_flag(container=container, points=points)
@@ -20,7 +30,6 @@ class FlagService:
                 raise Exception("Failed to create flag")
 
             logger.info(f"Successfully created flag {flag.value}")
-
             self.docker_service.deploy_flag(container, flag)
 
             logger.info(f"Successfully deployed flag {flag.value} to container {container.name}")
