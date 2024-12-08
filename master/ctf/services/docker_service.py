@@ -5,7 +5,7 @@ from django.conf import settings
 from docker.models.containers import Container
 from docker.models.images import Image
 
-from ctf.models import Flag
+from ctf.models import Flag, GameContainer
 from ctf.models.constants import DockerConstants
 from ctf.models.exceptions import ContainerNotFoundError, DockerOperationError
 
@@ -42,7 +42,6 @@ class DockerService:
                 volumes={
                     f"{settings.BASE_DIR}/{DockerConstants.FLAGS_VOLUME_PATH}": {
                         "bind": DockerConstants.FLAGS_CONTAINER_PATH,
-                        "mode": "ro",
                     }
                 },
             )
@@ -95,14 +94,18 @@ class DockerService:
             logger.error(f"Failed to list containers: {e}")
             return []
 
-    def execute_command(self, container: Container, command: list[str]) -> tuple[int, str]:
+    def execute_command(self, container: GameContainer, command: list[str]) -> tuple[int, str]:
         """Execute a command in a container"""
         try:
-            docker_container = self.get_container(container.id)
-            result = docker_container.exec_run(command)
+            docker_container = self.get_container(container.docker_id)
+            result = docker_container.exec_run(command, privileged=True)
+
+            if result.exit_code != 0:
+                raise DockerOperationError(f"Failed to execute command: {result.output.decode('utf-8')}")
+
             return result.exit_code, result.output.decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to execute command in container {container.id}: {e}")
+            logger.error(f"Failed to execute command in container {container.docker_id}: {e}")
             return -1, str(e)
 
     def start_container(self, container_id: str) -> bool:
@@ -129,21 +132,17 @@ class DockerService:
             logger.error(f"Failed to stop container {container_id}: {e}")
             return False
         
-    def deploy_flag(self, container: Container, flag: Flag) -> bool:
+    def deploy_flag(self, container: GameContainer, flag: Flag) -> bool:
         """Deploy a flag to a container"""
         try:
-            # Convert string commands to lists for exec_run
-            create_file_cmd = ["sh", "-c", f"echo '{flag.value}' > {DockerConstants.FLAGS_CONTAINER_PATH}/{flag.value}"]
-            self.execute_command(container, create_file_cmd)
+            create_file_with_flag_cmd = ["sh", "-c", f"echo '{flag.value}' > {DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
+            self.execute_command(container, create_file_with_flag_cmd)
 
-            set_permissions_cmd = ["chmod", "644", f"{DockerConstants.FLAGS_CONTAINER_PATH}/{flag.value}"]
+            set_permissions_cmd = ["chmod", "644", f"{DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
             self.execute_command(container, set_permissions_cmd)
 
-            verify_file_cmd = ["ls", "-l", f"{DockerConstants.FLAGS_CONTAINER_PATH}/{flag.value}"]
-            exit_code, output = self.execute_command(container, verify_file_cmd)
-
-            if exit_code != 0:
-                raise DockerOperationError(f"Failed to verify flag file: {output}")
+            verify_file_cmd = ["ls", "-l", f"{DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
+            self.execute_command(container, verify_file_cmd)
 
             return True
         except Exception as e:

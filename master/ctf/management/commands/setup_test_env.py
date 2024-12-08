@@ -100,14 +100,15 @@ class Command(BaseCommand):
 
     def _create_container(self, template: ContainerTemplate, session: GameSession, blue_team: Team, red_team: Team) -> GameContainer:
         try:
-            container = self.container_service.create_game_container(
+            container: GameContainer = self.container_service.create_game_container(
                 template=template,
                 session=session,
                 blue_team=blue_team,
                 red_team=red_team,
             )
-
-            self.flag_service.create_and_deploy_flag(container)
+            
+            flag = self.flag_service.create_and_deploy_flag(container)
+            self.flag_service.assign_flag_owner(flag, blue_team)
 
             return container
         except Exception as e:
