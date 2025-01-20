@@ -137,7 +137,6 @@ class DockerService:
         try:
             create_file_with_flag_cmd = ["sh", "-c", f"echo '{flag.value}' > {DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
             self.execute_command(container, create_file_with_flag_cmd)
-
             set_permissions_cmd = ["chmod", "000", f"{DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
             self.execute_command(container, set_permissions_cmd)
 
