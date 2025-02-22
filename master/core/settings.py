@@ -179,3 +179,7 @@ DOCKER_SETTINGS = {
     'FLAGS_VOLUME_PATH': 'container-templates/flags',
     'FLAGS_CONTAINER_PATH': '/flags',
 }
+
+ADMINS = [
+    ('admin', 'admin@example.com'),
+]
