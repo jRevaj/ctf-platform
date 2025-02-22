@@ -6,7 +6,13 @@ from django.utils.safestring import mark_safe
 
 from ctf.forms.admin_forms import GameContainerForm
 from ctf.models import *
-from ctf.services import ContainerService, DockerService
+
+
+def handle_action_redirect(request, container_id):
+    """Helper to handle redirects from actions"""
+    if request.META.get("HTTP_REFERER", "").endswith(f"/change/"):
+        return redirect("admin:ctf_gamecontainer_change", container_id)
+    return redirect("admin:ctf_gamecontainer_changelist")
 
 
 class ScenarioTemplateAdmin(admin.ModelAdmin):
@@ -56,8 +62,8 @@ class GameContainerAdmin(admin.ModelAdmin):
 
     def sync_status(self, request, queryset):
         updated = 0
-        for container in queryset:
-            if self.container_service.sync_container_status(container):
+        for game_container in queryset:
+            if self.container_service.sync_container_status(game_container):
                 updated += 1
         self.message_user(request, f"Successfully synced status for {updated} of {queryset.count()} containers.")
 
@@ -65,8 +71,8 @@ class GameContainerAdmin(admin.ModelAdmin):
 
     def start_containers(self, request, queryset):
         started = 0
-        for container in queryset:
-            if self.container_service.start_container(container):
+        for game_container in queryset:
+            if self.container_service.start_container(game_container):
                 started += 1
         self.message_user(request, f"Successfully started {started} of {queryset.count()} containers.")
 
@@ -74,8 +80,8 @@ class GameContainerAdmin(admin.ModelAdmin):
 
     def stop_containers(self, request, queryset):
         stopped = 0
-        for container in queryset:
-            if self.container_service.stop_container(container):
+        for game_container in queryset:
+            if self.container_service.stop_container(game_container):
                 stopped += 1
         self.message_user(request, f"Successfully stopped {stopped} of {queryset.count()} containers.")
 
@@ -109,54 +115,49 @@ class GameContainerAdmin(admin.ModelAdmin):
         ]
         return custom_urls + urls
 
-    def _handle_action_redirect(self, request, container_id):
-        """Helper to handle redirects from actions"""
-        if request.META.get("HTTP_REFERER", "").endswith(f"/change/"):
-            return redirect("admin:ctf_gamecontainer_change", container_id)
-        return redirect("admin:ctf_gamecontainer_changelist")
-
     def start_container_view(self, request, container_id):
-        container = self.model.objects.get(pk=container_id)
-        self.container_service.sync_container_status(container)
-        if container.status == ContainerStatus.RUNNING:
-            self.message_user(request, f"Container {container.name} is already running.", level="WARNING")
-        elif self.container_service.start_container(container):
-            self.message_user(request, f"Container {container.name} started successfully.")
+        game_container = self.model.objects.get(pk=container_id)
+        self.container_service.sync_container_status(game_container)
+        if game_container.status == ContainerStatus.RUNNING:
+            self.message_user(request, f"Container {game_container.name} is already running.", level="WARNING")
+        elif self.container_service.start_container(game_container):
+            self.message_user(request, f"Container {game_container.name} started successfully.")
         else:
-            self.message_user(request, f"Failed to start container {container.name}.", level="ERROR")
-        return self._handle_action_redirect(request, container_id)
+            self.message_user(request, f"Failed to start container {game_container.name}.", level="ERROR")
+        return handle_action_redirect(request, container_id)
 
     def stop_container_view(self, request, container_id):
-        container = self.model.objects.get(pk=container_id)
-        self.container_service.sync_container_status(container)
-        if container.status == ContainerStatus.STOPPED:
-            self.message_user(request, f"Container {container.name} is already stopped.", level="WARNING")
-        elif self.container_service.stop_container(container):
-            self.message_user(request, f"Container {container.name} stopped successfully.")
+        game_container = self.model.objects.get(pk=container_id)
+        self.container_service.sync_container_status(game_container)
+        if game_container.status == ContainerStatus.STOPPED:
+            self.message_user(request, f"Container {game_container.name} is already stopped.", level="WARNING")
+        elif self.container_service.stop_container(game_container):
+            self.message_user(request, f"Container {game_container.name} stopped successfully.")
         else:
-            self.message_user(request, f"Failed to stop container {container.name}.", level="ERROR")
-        return self._handle_action_redirect(request, container_id)
+            self.message_user(request, f"Failed to stop container {game_container.name}.", level="ERROR")
+        return handle_action_redirect(request, container_id)
 
     def sync_container_view(self, request, container_id):
-        container = self.model.objects.get(pk=container_id)
-        if self.container_service.sync_container_status(container):
-            self.message_user(request, f"Container {container.name} status synced successfully.")
+        game_container = self.model.objects.get(pk=container_id)
+        if self.container_service.sync_container_status(game_container):
+            self.message_user(request, f"Container {game_container.name} status synced successfully.")
         else:
-            self.message_user(request, f"Failed to sync container {container.name} status.", level="ERROR")
-        return self._handle_action_redirect(request, container_id)
+            self.message_user(request, f"Failed to sync container {game_container.name} status.", level="ERROR")
+        return handle_action_redirect(request, container_id)
 
     def sync_all_view(self, request):
         """View to sync all containers"""
         synced = 0
         failed = 0
-        for container in self.model.objects.all():
-            if self.container_service.sync_container_status(container):
+        for game_container in self.model.objects.all():
+            if self.container_service.sync_container_status(game_container):
                 synced += 1
             else:
                 failed += 1
 
         if failed:
-            self.message_user(request, f"Synced {synced} containers. Failed to sync {failed} containers.", level="WARNING")
+            self.message_user(request, f"Synced {synced} containers. Failed to sync {failed} containers.",
+                              level="WARNING")
         else:
             self.message_user(request, f"Successfully synced all {synced} containers.")
         return redirect("admin:ctf_gamecontainer_changelist")
@@ -195,8 +196,8 @@ class GameContainerAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         """Override changelist_view to sync all container statuses"""
         if "sync_all" in request.GET:
-            for container in self.model.objects.all():
-                self.container_service.sync_container_status(container)
+            for game_container in self.model.objects.all():
+                self.container_service.sync_container_status(game_container)
         return super().changelist_view(request, extra_context=extra_context)
 
     class Media:
@@ -208,9 +209,9 @@ class StatusWidgetWithButtons(Select):
         super().__init__(*args, **kwargs)
         self.object_id = object_id
         try:
-            container = GameContainer.objects.get(pk=object_id)
-            self.choices = ContainerStatus.choices
-            self.value = container.status
+            game_container = GameContainer.objects.get(pk=object_id)
+            self.choices = ContainerStatus
+            self.value = game_container.status
         except GameContainer.DoesNotExist:
             self.choices = []
             self.value = None

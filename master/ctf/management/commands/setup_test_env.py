@@ -1,17 +1,12 @@
-import os
-import uuid
 import logging
-
-from datetime import timedelta
+import uuid
 
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 
-from ctf.models import ContainerTemplate, GameContainer, GameSession, GameSessionStatus, Team, TeamRole, User
+from ctf.models import GameContainer, GameSession, Team, ScenarioTemplate
 from ctf.models.exceptions import ContainerOperationError, DockerOperationError
-from ctf.services import DockerService, ContainerService, FlagService
-
 from .utils import validate_environment, create_teams, create_users, create_session
+from ...services import DockerService, ContainerService, FlagService
 
 logger = logging.getLogger(__name__)
 
@@ -55,15 +50,16 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f"Unexpected error: {str(e)}"))
 
     @staticmethod
-    def _get_template(template_folder: str) -> ContainerTemplate:
+    def _get_template(template_folder: str) -> ScenarioTemplate:
         if template_folder:
             try:
-                return ContainerTemplate.objects.get(folder=template_folder)
-            except ContainerTemplate.DoesNotExist:
+                return ScenarioTemplate.objects.get(folder=template_folder)
+            except ScenarioTemplate.DoesNotExist:
                 raise ValueError(f"Template {template_folder} not found")
-        return ContainerTemplate.objects.get(folder="base")
+        return ScenarioTemplate.objects.get(folder="base")
 
-    def _create_container(self, template: ContainerTemplate, session: GameSession, blue_team: Team, red_team: Team) -> GameContainer:
+    def _create_container(self, template: ScenarioTemplate, session: GameSession, blue_team: Team,
+                          red_team: Team) -> GameContainer:
         try:
             container: GameContainer = self.container_service.create_game_container(
                 template=template,

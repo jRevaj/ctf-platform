@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 from typing import Optional
 
@@ -6,10 +5,8 @@ import yaml
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from ctf.models.container import ScenarioTemplate
+from ctf.models import ScenarioTemplate
 from ctf.models.exceptions import ContainerOperationError
-
-logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -32,7 +29,6 @@ class Command(BaseCommand):
         except ContainerOperationError as e:
             self.stderr.write(self.style.ERROR(f"Template operation failed: {e}"))
         except Exception as e:
-            logger.exception("Unexpected error in sync_templates")
             self.stderr.write(self.style.ERROR(f"Error syncing templates: {e}"))
 
     @staticmethod
@@ -58,7 +54,7 @@ class Command(BaseCommand):
                     "docker_compose": compose_content,
                     "containers": metadata.get("containers", [])}
         except Exception as e:
-            logger.error(f"Error reading template from {template_dir}: {e}")
+            self.stderr.write(self.style.ERROR(f"Error reading template from {template_dir}: {e}"))
             return None
 
     @staticmethod

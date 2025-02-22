@@ -1,6 +1,10 @@
-from datetime import timedelta, timezone
 import os
 import uuid
+from datetime import timedelta
+
+from django.conf import settings
+from django.core.management import CommandError
+from django.utils.timezone import localtime
 
 from ctf.models.enums import GameSessionStatus, TeamRole
 from ctf.models.game_session import GameSession
@@ -8,18 +12,29 @@ from ctf.models.team import Team
 from ctf.models.user import User
 
 
-@staticmethod
 def validate_environment() -> None:
     if not os.getenv("TEST_BLUE_SSH_PUBLIC_KEY") or not os.getenv("TEST_RED_SSH_PUBLIC_KEY"):
         raise ValueError("TEST_BLUE_SSH_PUBLIC_KEY or TEST_RED_SSH_PUBLIC_KEY environment variable is not set")
 
-@staticmethod
+
+def verify_scenario_template(scenario_template_folder: str) -> None:
+    base_path = os.path.join(settings.BASE_DIR, "game-scenarios", scenario_template_folder)
+    if not os.path.exists(base_path):
+        raise CommandError(f"Scenario template directory not found: {base_path}")
+
+    if not os.path.exists(os.path.join(base_path, "docker-compose.yaml")):
+        raise CommandError(f"docker-compose.yaml not found in {base_path}")
+
+    if not os.path.exists(os.path.join(base_path, "scenario.yaml")):
+        raise CommandError(f"scenario.yaml not found in {base_path}")
+
+
 def create_teams(run_id: uuid.UUID) -> tuple[Team, Team]:
     blue_team = Team.objects.create(name=f"Blue Team {run_id}", role=TeamRole.BLUE)
     red_team = Team.objects.create(name=f"Red Team {run_id}", role=TeamRole.RED)
     return blue_team, red_team
 
-@staticmethod
+
 def create_users(run_id: uuid.UUID, blue_team: Team, red_team: Team) -> None:
     User.objects.create(
         username=f"test-{run_id}",
@@ -36,11 +51,11 @@ def create_users(run_id: uuid.UUID, blue_team: Team, red_team: Team) -> None:
         team=red_team,
     )
 
-@staticmethod
+
 def create_session() -> GameSession:
     return GameSession.objects.create(
-        start_date=timezone.now(),
-        end_date=timezone.now() + timedelta(days=1),
+        start_date=localtime(),
+        end_date=localtime() + timedelta(days=1),
         rotation_period=1,
         status=GameSessionStatus.ACTIVE,
     )

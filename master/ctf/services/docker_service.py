@@ -1,14 +1,43 @@
-import docker
 import logging
-from typing import Tuple, Optional
+from typing import Optional, Any, Iterator
+
+import docker
 from docker.models.containers import Container
 from docker.models.images import Image
+from docker.models.networks import Network
 
-from ctf.models.container import GameContainer
 from ctf.models.constants import DockerConstants
+from ctf.models.container import GameContainer
 from ctf.models.exceptions import ContainerNotFoundError, DockerOperationError
 
 logger = logging.getLogger(__name__)
+
+
+def connect_container_to_network(network, container) -> bool:
+    try:
+        network.connect(container.docker_id)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to add container {container.docker_id} to network {network.name}: {e}")
+        return False
+
+
+def disconnect_container_from_network(network, container) -> bool:
+    try:
+        network.disconnect(container.docker_id)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to disconnect container {container.docker_id} from network {network.name}: {e}")
+        return False
+
+
+def remove_network(network) -> bool:
+    try:
+        network.remove()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to remove network {network.name}: {e}")
+        return False
 
 
 class DockerService:
@@ -22,7 +51,8 @@ class DockerService:
             logger.error(f"Failed to connect to Docker: {e}")
             raise RuntimeError(f"Failed to connect to Docker: {e}")
 
-    def build_image(self, template_path: str, image_tag: str) -> Tuple[Image, list]:
+    def build_image(self, template_path: str, image_tag: str) -> tuple[
+        Image, Iterator[dict[str, Any] | list[Any] | str | int | float | bool | None]]:
         """Build a Docker image from template"""
         try:
             return self.client.images.build(path=template_path, tag=image_tag, rm=True)
@@ -33,7 +63,8 @@ class DockerService:
     def create_container(self, image_tag: str, container_name: str) -> Container:
         """Create and start a new Docker container"""
         try:
-            return self.client.containers.run(image=image_tag, name=container_name, detach=True, ports={DockerConstants.SSH_PORT: None})
+            return self.client.containers.run(image=image_tag, name=container_name, detach=True,
+                                              ports={DockerConstants.SSH_PORT: None})
         except Exception as e:
             logger.error(f"Failed to create container {container_name}: {e}")
             raise DockerOperationError(f"Failed to create container: {e}")
@@ -52,6 +83,7 @@ class DockerService:
 
     def get_container(self, container_id: str) -> Optional[Container]:
         """Get container by ID"""
+        # noinspection PyUnresolvedReferences
         try:
             return self.client.containers.get(container_id)
         except docker.errors.NotFound:
@@ -169,36 +201,12 @@ class DockerService:
             logger.error(f"Error while finding available subnet: {e}")
             raise DockerOperationError(f"Failed to find available subnet: {e}")
 
-    def create_network(self, subnet: str) -> bool:
+    def create_network(self) -> bool | tuple[Network, str]:
         """Create a new Docker network"""
         try:
             subnet = self.get_available_subnet()
-            network = self.client.networks.create(name=subnet, driver="bridge", ipam={"Subnet": subnet})
+            network = self.client.networks.create(name=subnet, driver="bridge")
             return network, subnet
         except Exception as e:
-            logger.error(f"Failed to create network {subnet}: {e}")
-            return False
-
-    def connect_container_to_network(self, network, container) -> bool:
-        try:
-            network.connect(container.docker_id)
-            return True
-        except Exception as e:
-            logger.error(f"Failed to add container {container.docker_id} to network {network.name}: {e}")
-            return False
-
-    def disconnect_container_from_network(self, network, container) -> bool:
-        try:
-            network.disconnect(container.docker_id)
-            return True
-        except Exception as e:
-            logger.error(f"Failed to disconnect container {container.docker_id} from network {network.name}: {e}")
-            return False
-
-    def remove_network(self, network) -> bool:
-        try:
-            network.remove()
-            return True
-        except Exception as e:
-            logger.error(f"Failed to remove network {network.name}: {e}")
+            logger.error(f"Failed to create network: {e}")
             return False

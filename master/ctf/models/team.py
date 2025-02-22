@@ -5,7 +5,7 @@ from .enums import TeamRole
 
 class Team(models.Model):
     name = models.CharField(max_length=128)
-    role = models.CharField(max_length=8, choices=TeamRole.choices)
+    role = models.CharField(max_length=8, choices=TeamRole)
     score = models.IntegerField(default=0)
     red_points = models.IntegerField(default=0)
     blue_points = models.IntegerField(default=0)
@@ -17,3 +17,6 @@ class Team(models.Model):
     def get_flags(self):
         """Get all flags owned by the team"""
         return self.owned_flags.all()
+
+    def update_score(self, points):
+        self.score += points

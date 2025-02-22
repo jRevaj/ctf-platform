@@ -1,12 +1,10 @@
-import os
 import logging
 from typing import Optional
-from django.conf import settings
 
-from .docker_service import DockerService
+from ctf.models import GameContainer, ContainerStatus, Team
 from ctf.models.constants import DockerConstants
 from ctf.models.exceptions import ContainerOperationError
-from ctf.models import GameContainer, ContainerStatus, Team
+from .docker_service import DockerService
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +18,8 @@ class ContainerService:
     def create_game_container(self, template, session, blue_team, red_team) -> Optional[GameContainer]:
         """Create a new game container"""
         try:
-            return GameContainer.objects.create_with_docker(template=template, session=session, blue_team=blue_team, red_team=red_team, docker_service=self.docker)
+            return GameContainer.objects.create_with_docker(template=template, session=session, blue_team=blue_team,
+                                                            red_team=red_team, docker_service=self.docker)
         except Exception as e:
             logger.error(f"Failed to create game container: {e}")
             return None
@@ -79,7 +78,7 @@ class ContainerService:
             logger.error(f"Failed to get SSH connection string: {e}")
             return None
 
-    def sync_container_status(self, container: GameContainer) -> bool:
+    def sync_container_status(self, container) -> bool:
         """Sync container status with Docker"""
         try:
             docker_container = self.docker.get_container(container.docker_id)
@@ -112,7 +111,8 @@ class ContainerService:
         try:
             containers = self.docker.list_all_containers()
             for container in containers:
-                if container.name.startswith(DockerConstants.CONTAINER_PREFIX) and container.name not in game_container_names:
+                if container.name.startswith(
+                        DockerConstants.CONTAINER_PREFIX) and container.name not in game_container_names:
                     if self.docker.remove_container(container.id, force=True):
                         cleaned_count += 1
                         logger.info(f"Removed orphaned container: {container.id}")
