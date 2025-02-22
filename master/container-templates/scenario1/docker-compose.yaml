@@ -1,0 +1,10 @@
+version: '3'
+services:
+  target1:
+    build: ./target1
+
+  target2:
+    build: ./target2
+
+  target3:
+    build: ./target3
