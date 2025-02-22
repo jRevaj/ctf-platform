@@ -1,8 +1,10 @@
-name: "Base multi-container scenario"
-description: "Scenario with multiple containers in one network and multiple services per container"
+name: scenario1
+title: Base multi-container scenario
+description: Scenario with multiple containers in one network and multiple services per container
 
 containers:
   target1:
+    name: target1
     services:
       - name: "SSH"
         port: 22
@@ -11,23 +13,27 @@ containers:
       - name: "MySQL"
         port: 3306
     flags:
-      - placeholder: "FLAG_PLACEHOLDER_1"
+      - id: apache_flag
+        placeholder: "FLAG_PLACEHOLDER_1"
         points: 100
-        deployment_path: "/var/www/hidden/secret.txt"
+        file: "/target1/Dockerfile"
         hint: "Check web server configurations"
         service: "Apache"
-      - placeholder: "FLAG_PLACEHOLDER_2"
+      - id: mysql_flag
+        placeholder: "FLAG_PLACEHOLDER_2"
         points: 200
-        deployment_path: "/var/lib/mysql/flag.txt"
+        file: "/target1/entrypoint.sh"
         hint: "Database permissions might be loose"
         service: "MySQL"
 
   target2:
+    name: "target2"
     services:
       - name: "SSH"
         port: 22
 
   target3:
+    name: "target2"
     services:
       - name: "SSH"
         port: 22

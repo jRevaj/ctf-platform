@@ -2,15 +2,11 @@ from datetime import datetime, timezone
 from django.db import models
 
 from ctf.managers.flag_manager import FlagManager
-from .container import GameContainer
 from .team import Team
 
 
 class Flag(models.Model):
     value = models.CharField(max_length=128, unique=True)
-    container = models.ForeignKey(
-        GameContainer, related_name="flags", on_delete=models.CASCADE
-    )
     points = models.IntegerField(default=100)
     owner = models.ForeignKey(
         Team,

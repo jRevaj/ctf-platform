@@ -176,8 +176,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Docker settings
 DOCKER_SETTINGS = {
     'CONTAINER_PREFIX': 'ctf-game-',
-    'FLAGS_VOLUME_PATH': 'container-templates/flags',
-    'FLAGS_CONTAINER_PATH': '/flags',
 }
 
 ADMINS = [

@@ -11,6 +11,8 @@ from ctf.models import ContainerTemplate, GameContainer, GameSession, GameSessio
 from ctf.models.exceptions import ContainerOperationError, DockerOperationError
 from ctf.services import DockerService, ContainerService, FlagService
 
+from .utils import validate_environment, create_teams, create_users, create_session
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,13 +32,13 @@ class Command(BaseCommand):
         self.stdout.write("Setting up test environment...")
         try:
             template = self._get_template(kwargs.get("template"))
-            self._validate_environment()
+            validate_environment()
 
             run_id = uuid.uuid4()
-            blue_team, red_team = self._create_teams(run_id)
-            self._create_users(run_id, blue_team, red_team)
+            blue_team, red_team = create_teams(run_id)
+            create_users(run_id, blue_team, red_team)
 
-            session = self._create_session()
+            session = create_session()
             container = self._create_container(template, session, blue_team, red_team)
 
             if not self.container_service.configure_ssh_access(container, blue_team):
@@ -61,43 +63,6 @@ class Command(BaseCommand):
                 raise ValueError(f"Template {template_folder} not found")
         return ContainerTemplate.objects.get(folder="base")
 
-    @staticmethod
-    def _validate_environment() -> None:
-        if not os.getenv("TEST_BLUE_SSH_PUBLIC_KEY") or not os.getenv("TEST_RED_SSH_PUBLIC_KEY"):
-            raise ValueError("TEST_BLUE_SSH_PUBLIC_KEY or TEST_RED_SSH_PUBLIC_KEY environment variable is not set")
-
-    @staticmethod
-    def _create_teams(run_id: uuid.UUID) -> tuple[Team, Team]:
-        blue_team = Team.objects.create(name=f"Blue Team {run_id}", role=TeamRole.BLUE)
-        red_team = Team.objects.create(name=f"Red Team {run_id}", role=TeamRole.RED)
-        return blue_team, red_team
-
-    @staticmethod
-    def _create_users(run_id: uuid.UUID, blue_team: Team, red_team: Team) -> None:
-        User.objects.create(
-            username=f"test-{run_id}",
-            email=f"test-{run_id}@example.com",
-            ssh_public_key=os.getenv("TEST_BLUE_SSH_PUBLIC_KEY"),
-            is_active=True,
-            team=blue_team,
-        )
-        User.objects.create(
-            username=f"testing-{run_id}",
-            email=f"testing-{run_id}@example.com",
-            ssh_public_key=os.getenv("TEST_RED_SSH_PUBLIC_KEY"),
-            is_active=True,
-            team=red_team,
-        )
-
-    @staticmethod
-    def _create_session() -> GameSession:
-        return GameSession.objects.create(
-            start_date=timezone.now(),
-            end_date=timezone.now() + timedelta(days=1),
-            rotation_period=1,
-            status=GameSessionStatus.ACTIVE,
-        )
-
     def _create_container(self, template: ContainerTemplate, session: GameSession, blue_team: Team, red_team: Team) -> GameContainer:
         try:
             container: GameContainer = self.container_service.create_game_container(
@@ -106,9 +71,9 @@ class Command(BaseCommand):
                 blue_team=blue_team,
                 red_team=red_team,
             )
-            
-            flag = self.flag_service.create_and_deploy_flag(container)
-            self.flag_service.assign_flag_owner(flag, blue_team)
+
+            # flag = self.flag_service.create_and_deploy_flag(container)
+            # self.flag_service.assign_flag_owner(flag, blue_team)
 
             return container
         except Exception as e:

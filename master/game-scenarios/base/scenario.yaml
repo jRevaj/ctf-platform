@@ -1,2 +1,3 @@
-name: Base SSH Container
+name: base-scenario
+title: Base SSH Container
 description: Basic SSH-enabled container for testing and development

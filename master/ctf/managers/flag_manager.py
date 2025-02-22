@@ -31,3 +31,11 @@ class FlagManager(models.Manager):
             return self.get(value=value, is_captured=False)
         except self.model.DoesNotExist:
             return None
+
+    def get_flags_by_container(self, container):
+        """Get flags by container"""
+        return self.filter(container=container)
+
+    def get_flags_by_template(self, template):
+        """Get flags by template"""
+        return self.filter(container__template=template)

@@ -4,29 +4,20 @@ from typing import Optional
 from django.db import models
 
 from ctf.managers.container_manager import GameContainerManager
+from .flag import Flag
 from .enums import ContainerStatus, TeamRole
 from .team import Team
 
 logger = logging.getLogger(__name__)
 
 
-class ContainerTemplate(models.Model):
-    folder = models.CharField(
-        max_length=128,
-        unique=True,
-        null=True,
-        help_text="Folder name in container-templates directory",
-    )
-    name = models.CharField(max_length=128)
-    description = models.TextField(null=True, blank=True)
-    docker_compose = models.TextField()
-
-
 class GameContainer(models.Model):
     name = models.CharField(max_length=128, unique=True)
     docker_id = models.CharField(max_length=128, unique=True)
     status = models.CharField(max_length=16, choices=ContainerStatus.choices)
-    template = models.ForeignKey(ContainerTemplate, on_delete=models.PROTECT)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    services = models.JSONField(default=list)
+    flags = models.ManyToManyField(Flag, related_name="containers", blank=True)
     current_blue_team = models.ForeignKey(
         Team,
         related_name="blue_containers",

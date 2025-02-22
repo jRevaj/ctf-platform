@@ -6,7 +6,7 @@ import yaml
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from ctf.models import ContainerTemplate
+from ctf.models.container import ScenarioTemplate
 from ctf.models.exceptions import ContainerOperationError
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,6 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(f"Removed {removed_count} obsolete templates"))
 
             self.stdout.write(self.style.SUCCESS("Template sync completed!"))
-
         except ContainerOperationError as e:
             self.stderr.write(self.style.ERROR(f"Template operation failed: {e}"))
         except Exception as e:
@@ -38,7 +37,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def _get_templates_dir() -> Path:
-        templates_dir = Path(settings.BASE_DIR) / "container-templates"
+        templates_dir = Path(settings.BASE_DIR) / "game-scenarios"
         if not templates_dir.exists():
             raise ValueError(f"Templates directory not found: {templates_dir}")
         return templates_dir
@@ -54,8 +53,10 @@ class Command(BaseCommand):
             metadata = self._read_metadata(template_dir)
 
             return {"name": metadata.get("name", template_dir.name),
+                    "title": metadata.get("title", f"Container template from {template_dir.name}"),
                     "description": metadata.get("description", f"Container template from {template_dir.name}"),
-                    "docker_compose": compose_content}
+                    "docker_compose": compose_content,
+                    "containers": metadata.get("containers", [])}
         except Exception as e:
             logger.error(f"Error reading template from {template_dir}: {e}")
             return None
@@ -70,14 +71,14 @@ class Command(BaseCommand):
 
     @staticmethod
     def _read_metadata(template_dir: Path) -> dict:
-        """Read metadata from template.yaml"""
-        metadata_path = template_dir / "template.yaml"
+        """Read metadata from scenario.yaml"""
+        metadata_path = template_dir / "scenario.yaml"
         if metadata_path.exists():
             return yaml.safe_load(metadata_path.read_text())
         return {}
 
     def _process_templates(self, template_dirs) -> set:
-        """Process all template directories"""
+        """Process all scenario directories"""
         processed_templates = set()
 
         for template_dir in template_dirs:
@@ -85,12 +86,15 @@ class Command(BaseCommand):
             if not template_info:
                 continue
 
-            template, created = ContainerTemplate.objects.update_or_create(
+            template, created = ScenarioTemplate.objects.update_or_create(
                 name=template_info["name"],
                 defaults={
                     "folder": template_dir.name,
-                    "description": template_info["description"],
-                    "docker_compose": template_info["docker_compose"],
+                    "name": template_info["name"],
+                    "title": template_info["title"] if "title" in template_info else None,
+                    "description": template_info["description"] if "description" in template_info else None,
+                    "docker_compose": template_info["docker_compose"] if "docker_compose" in template_info else None,
+                    "containers_config": template_info["containers"] if "containers" in template_info else None,
                 },
             )
 
@@ -104,4 +108,4 @@ class Command(BaseCommand):
     @staticmethod
     def _cleanup_obsolete_templates(processed_templates: set) -> int:
         """Remove templates that no longer exist in filesystem"""
-        return ContainerTemplate.objects.exclude(name__in=processed_templates).delete()[0]
+        return ScenarioTemplate.objects.exclude(name__in=processed_templates).delete()[0]

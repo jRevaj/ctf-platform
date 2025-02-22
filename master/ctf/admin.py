@@ -9,7 +9,7 @@ from ctf.models import *
 from ctf.services import ContainerService, DockerService
 
 
-class ContainerTemplateAdmin(admin.ModelAdmin):
+class ScenarioTemplateAdmin(admin.ModelAdmin):
     list_display = ("folder", "name", "description")
 
 
@@ -235,10 +235,10 @@ class StatusWidgetWithButtons(Select):
 
 
 class FlagAdmin(admin.ModelAdmin):
-    list_display = ("value", "container", "owner", "points", "is_captured", "captured_by")
+    list_display = ("value", "owner", "points", "is_captured", "captured_by")
 
 
-admin.site.register(ContainerTemplate, ContainerTemplateAdmin)
+admin.site.register(ScenarioTemplate, ScenarioTemplateAdmin)
 admin.site.register(Team, TeamAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(GameContainer, GameContainerAdmin)

@@ -1,7 +1,7 @@
 import logging
 from django.utils import timezone
 
-from ctf.models import Flag, GameContainer, Team
+from ctf.models import Flag, Team
 from ctf.services import DockerService
 
 logger = logging.getLogger(__name__)
@@ -21,22 +21,22 @@ class FlagService:
             logger.error(f"Error assigning flag ownership: {e}")
             return False
 
-    def create_and_deploy_flag(self, container: GameContainer, points=100):
-        """Deploy a single flag to a container"""
-        try:
-            flag = Flag.objects.create_flag(container=container, points=points)
-            
-            if not flag:
-                raise Exception("Failed to create flag")
+    # def create_and_deploy_flag(self, container: GameContainer, points=100):
+    #     """Deploy a single flag to a container"""
+    #     try:
+    #         flag = Flag.objects.create_flag(container=container, points=points)
 
-            logger.info(f"Successfully created flag {flag.value}")
-            self.docker_service.deploy_flag(container, flag)
+    #         if not flag:
+    #             raise Exception("Failed to create flag")
 
-            logger.info(f"Successfully deployed flag {flag.value} to container {container.name}")
-            return flag
-        except Exception as e:
-            logger.error(f"Error deploying flag: {e}")
-            return None
+    #         logger.info(f"Successfully created flag {flag.value}")
+    #         self.docker_service.deploy_flag(container, flag)
+
+    #         logger.info(f"Successfully deployed flag {flag.value} to container {container.name}")
+    #         return flag
+    #     except Exception as e:
+    #         logger.error(f"Error deploying flag: {e}")
+    #         return None
 
     def verify_and_capture_flag(self, team: Team, submitted_flag: str) -> tuple[bool, str]:
         """Verify and capture a flag with points calculation"""

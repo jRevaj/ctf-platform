@@ -39,6 +39,14 @@ class GameContainerManager(models.Manager):
     def get_by_docker_id(self, docker_id):
         """Get container by Docker ID"""
         return self.get(docker_id=docker_id)
+    
+    def get_by_template(self, template):
+        """Get container by template"""
+        return self.filter(template=template)
+
+    def get_by_ip_address(self, ip_address):
+        """Get container by IP address"""
+        return self.get(ip_address=ip_address)
 
     def get_active(self):
         """Get all active containers"""

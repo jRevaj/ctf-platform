@@ -1,11 +1,10 @@
 import docker
 import logging
 from typing import Tuple, Optional
-from django.conf import settings
 from docker.models.containers import Container
 from docker.models.images import Image
 
-from ctf.models import Flag, GameContainer
+from ctf.models.container import GameContainer
 from ctf.models.constants import DockerConstants
 from ctf.models.exceptions import ContainerNotFoundError, DockerOperationError
 
@@ -34,17 +33,7 @@ class DockerService:
     def create_container(self, image_tag: str, container_name: str) -> Container:
         """Create and start a new Docker container"""
         try:
-            return self.client.containers.run(
-                image=image_tag,
-                name=container_name,
-                detach=True,
-                ports={DockerConstants.SSH_PORT: None},
-                volumes={
-                    f"{settings.BASE_DIR}/{DockerConstants.FLAGS_VOLUME_PATH}": {
-                        "bind": DockerConstants.FLAGS_CONTAINER_PATH,
-                    }
-                },
-            )
+            return self.client.containers.run(image=image_tag, name=container_name, detach=True, ports={DockerConstants.SSH_PORT: None})
         except Exception as e:
             logger.error(f"Failed to create container {container_name}: {e}")
             raise DockerOperationError(f"Failed to create container: {e}")
@@ -132,21 +121,21 @@ class DockerService:
             logger.error(f"Failed to stop container {container_id}: {e}")
             return False
 
-    def deploy_flag(self, container: GameContainer, flag: Flag) -> bool:
-        """Deploy a flag to a container"""
-        try:
-            create_file_with_flag_cmd = ["sh", "-c", f"echo '{flag.value}' > {DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
-            self.execute_command(container, create_file_with_flag_cmd)
-            set_permissions_cmd = ["chmod", "000", f"{DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
-            self.execute_command(container, set_permissions_cmd)
+    # def deploy_flag(self, container: GameContainer, flag: Flag) -> bool:
+    #     """Deploy a flag to a container"""
+    #     try:
+    #         create_file_with_flag_cmd = ["sh", "-c", f"echo '{flag.value}' > {DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
+    #         self.execute_command(container, create_file_with_flag_cmd)
+    #         set_permissions_cmd = ["chmod", "000", f"{DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
+    #         self.execute_command(container, set_permissions_cmd)
 
-            verify_file_cmd = ["ls", "-l", f"{DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
-            self.execute_command(container, verify_file_cmd)
+    #         verify_file_cmd = ["ls", "-l", f"{DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
+    #         self.execute_command(container, verify_file_cmd)
 
-            return True
-        except Exception as e:
-            logger.error(f"Failed to deploy flag {flag.value} to container {container.name}: {e}")
-            return False
+    #         return True
+    #     except Exception as e:
+    #         logger.error(f"Failed to deploy flag {flag.value} to container {container.name}: {e}")
+    #         return False
 
     def list_networks(self) -> list:
         """List all Docker networks"""
@@ -179,3 +168,37 @@ class DockerService:
         except Exception as e:
             logger.error(f"Error while finding available subnet: {e}")
             raise DockerOperationError(f"Failed to find available subnet: {e}")
+
+    def create_network(self, subnet: str) -> bool:
+        """Create a new Docker network"""
+        try:
+            subnet = self.get_available_subnet()
+            network = self.client.networks.create(name=subnet, driver="bridge", ipam={"Subnet": subnet})
+            return network, subnet
+        except Exception as e:
+            logger.error(f"Failed to create network {subnet}: {e}")
+            return False
+
+    def connect_container_to_network(self, network, container) -> bool:
+        try:
+            network.connect(container.docker_id)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add container {container.docker_id} to network {network.name}: {e}")
+            return False
+
+    def disconnect_container_from_network(self, network, container) -> bool:
+        try:
+            network.disconnect(container.docker_id)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to disconnect container {container.docker_id} from network {network.name}: {e}")
+            return False
+
+    def remove_network(self, network) -> bool:
+        try:
+            network.remove()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to remove network {network.name}: {e}")
+            return False
