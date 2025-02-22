@@ -14,7 +14,7 @@ class ContainerTemplateAdmin(admin.ModelAdmin):
 
 
 class TeamAdmin(admin.ModelAdmin):
-    list_display = ("name", "role", "score")
+    list_display = ("name", "role", "score", "red_points", "blue_points")
 
 
 class UserAdmin(admin.ModelAdmin):

@@ -84,7 +84,7 @@ class DockerService:
     def list_all_containers(self) -> list[Container]:
         """
         List all Docker containers.
-        
+
         Returns:
             List[Container]: List of all Docker containers
         """
@@ -131,7 +131,7 @@ class DockerService:
         except Exception as e:
             logger.error(f"Failed to stop container {container_id}: {e}")
             return False
-        
+
     def deploy_flag(self, container: GameContainer, flag: Flag) -> bool:
         """Deploy a flag to a container"""
         try:
@@ -147,3 +147,35 @@ class DockerService:
         except Exception as e:
             logger.error(f"Failed to deploy flag {flag.value} to container {container.name}: {e}")
             return False
+
+    def list_networks(self) -> list:
+        """List all Docker networks"""
+        try:
+            return self.client.networks.list()
+        except Exception as e:
+            logger.error(f"Failed to list networks: {e}")
+            return []
+
+    def get_available_subnet(self) -> str:
+        """Find an available subnet for new network"""
+        try:
+            used_subnets = []
+            for network in self.list_networks():
+                if network.attrs.get("IPAM") and network.attrs["IPAM"].get("Config"):
+                    for config in network.attrs["IPAM"]["Config"]:
+                        if "Subnet" in config:
+                            used_subnets.append(config["Subnet"])
+
+            logger.debug(f"Used subnets: {used_subnets}")
+
+            for i in range(0, 255):
+                subnet = f"172.{i}.0.0/16"
+                if subnet not in used_subnets:
+                    logger.info(f"Found available subnet: {subnet}")
+                    return subnet
+
+            raise DockerOperationError("No available subnet found in any range")
+
+        except Exception as e:
+            logger.error(f"Error while finding available subnet: {e}")
+            raise DockerOperationError(f"Failed to find available subnet: {e}")

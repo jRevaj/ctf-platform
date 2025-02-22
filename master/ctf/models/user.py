@@ -8,10 +8,12 @@ from django.contrib.auth.models import (
 
 from .team import Team
 
+
 def validate_ssh_key(value: str) -> None:
     """Validate SSH public key format"""
-    if not value.startswith(('ssh-rsa', 'ssh-ed25519', 'ssh-dss', 'ecdsa-sha2-nistp')):
+    if not value.startswith(("ssh-rsa", "ssh-ed25519", "ssh-dss", "ecdsa-sha2-nistp")):
         raise ValidationError("Invalid SSH public key format")
+
 
 class UserManager(BaseUserManager):
     def create_user(self, username, email, password=None, **extra_fields):
