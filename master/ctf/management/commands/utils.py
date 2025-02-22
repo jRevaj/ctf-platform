@@ -2,8 +2,6 @@ import os
 import uuid
 from datetime import timedelta
 
-from django.conf import settings
-from django.core.management import CommandError
 from django.utils.timezone import localtime
 
 from ctf.models.enums import GameSessionStatus, TeamRole
@@ -15,18 +13,6 @@ from ctf.models.user import User
 def validate_environment() -> None:
     if not os.getenv("TEST_BLUE_SSH_PUBLIC_KEY") or not os.getenv("TEST_RED_SSH_PUBLIC_KEY"):
         raise ValueError("TEST_BLUE_SSH_PUBLIC_KEY or TEST_RED_SSH_PUBLIC_KEY environment variable is not set")
-
-
-def verify_scenario_template(scenario_template_folder: str) -> None:
-    base_path = os.path.join(settings.BASE_DIR, "game-scenarios", scenario_template_folder)
-    if not os.path.exists(base_path):
-        raise CommandError(f"Scenario template directory not found: {base_path}")
-
-    if not os.path.exists(os.path.join(base_path, "docker-compose.yaml")):
-        raise CommandError(f"docker-compose.yaml not found in {base_path}")
-
-    if not os.path.exists(os.path.join(base_path, "scenario.yaml")):
-        raise CommandError(f"scenario.yaml not found in {base_path}")
 
 
 def create_teams(run_id: uuid.UUID) -> tuple[Team, Team]:

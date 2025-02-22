@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import shutil
@@ -78,15 +79,17 @@ class ScenarioArchitectureManager(models.Manager):
 
             return container
         except (ContainerOperationError, DockerOperationError) as e:
-            logger.error(f"Container operation failed: {e}")
+            raise e
         except ValueError as e:
-            logger.error(f"Validation error: {e}")
+            raise e
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            raise e
 
     def prepare_flags(self, team, template):
         # Generate flags for each placeholder
         flag_mapping = {}
+        logger.info(template.containers_config)
+        # TODO: debug and implement flag preparation
         for flag in template.containers_config["flags"]:
             db_flag = Flag.objects.create_flag(flag["id"], flag["points"])
             flag_mapping[flag["placeholder"]] = db_flag
@@ -133,7 +136,7 @@ class ScenarioTemplate(models.Model):
     title = models.CharField(max_length=256, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     docker_compose = models.TextField(null=True, blank=True)
-    containers_config = models.TextField(null=True, blank=True)
+    containers_config = models.JSONField(default=dict, null=True, blank=True)
 
     def __str__(self) -> str:
         return self.name
