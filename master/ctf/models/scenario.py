@@ -1,6 +1,6 @@
-import json
 import logging
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -88,41 +88,50 @@ class ScenarioArchitectureManager(models.Manager):
     def prepare_flags(self, team, template):
         # Generate flags for each placeholder
         flag_mapping = {}
-        logger.info(template.containers_config)
-        # TODO: debug and implement flag preparation
-        for flag in template.containers_config["flags"]:
-            db_flag = Flag.objects.create_flag(flag["id"], flag["points"])
-            flag_mapping[flag["placeholder"]] = db_flag
+        for key, value in template.containers_config.items():
+            if "flags" in value:
+                logger.info(f"Preparing flags for container {key}")
+                for flag in value["flags"]:
+                    db_flag = Flag.objects.create_flag(flag["points"], flag["placeholder"], flag["hint"])
+                    flag_mapping[flag["placeholder"]] = db_flag
+            else:
+                logger.info(f"Container {key} has no flags")
 
-        # Create temporary directory for this team's version
         temp_dir = f"temp/{team.pk}/{template.name}"
         shutil.copytree(template.get_full_path(), temp_dir)
 
-        # Replace placeholders in all files
         for root, _, files in os.walk(temp_dir):
             for file in files:
                 filepath = Path(root) / file
                 if filepath.is_file():
-                    self.replace_placeholders(filepath, flag_mapping)
+                    success = self.replace_placeholders(filepath, flag_mapping)
+                    if not success:
+                        logger.error(f"Failed to replace placeholders for file {filepath}")
 
         return temp_dir, flag_mapping
 
     @staticmethod
     def replace_placeholders(filepath: Path, flag_mapping):
         try:
-            with open(filepath, "rb") as f:
-                content = f.read().decode("utf-8", errors="ignore")
+            content = filepath.read_text(encoding='utf-8')
 
-            # Only process files that contain flag placeholders
-            if "{{FLAG_PLACEHOLDER_" in content:
-                for placeholder, flag in flag_mapping.items():
+            pattern = r'FLAG_PLACEHOLDER_\d+'
+            if not re.search(pattern, content):
+                return True
+
+            modified = False
+            for placeholder, flag in flag_mapping.items():
+                if placeholder in content:
                     content = content.replace(placeholder, flag.value)
+                    modified = True
 
-                with open(filepath, "w") as f:
-                    f.write(content)
-        except Exception:
-            # Skip problematic files
-            pass
+            if modified:
+                filepath.write_text(content, encoding='utf-8')
+
+            return True
+        except Exception as e:
+            logging.error(f"Error processing {filepath}: {str(e)}")
+            return False
 
 
 class ScenarioTemplate(models.Model):

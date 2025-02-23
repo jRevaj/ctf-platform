@@ -20,11 +20,11 @@ def generate_flag(prefix="flag"):
 class FlagManager(models.Manager):
     """Custom manager for Flag model"""
 
-    def create_flag(self, container, points):
-        """Create a flag for a container"""
+    def create_flag(self, points, placeholder = "", hint = ""):
+        """Create a flag"""
         try:
             flag_value = generate_flag()
-            return self.create(container=container, value=flag_value, points=points)
+            return self.create(value=flag_value, points=points, placeholder=placeholder, hint=hint)
         except Exception as e:
             logger.error(f"Error creating flag: {e}")
             return None
@@ -36,10 +36,6 @@ class FlagManager(models.Manager):
         except self.model.DoesNotExist:
             return None
 
-    def get_flags_by_container(self, container):
-        """Get flags by container"""
-        return self.filter(container=container)
-
     def get_flags_by_template(self, template):
         """Get flags by template"""
         return self.filter(container__template=template)
@@ -48,6 +44,8 @@ class FlagManager(models.Manager):
 class Flag(models.Model):
     value = models.CharField(max_length=128, unique=True)
     points = models.IntegerField(default=100)
+    placeholder = models.CharField(max_length=128, null=True)
+    hint = models.TextField(null=True)
     owner = models.ForeignKey(
         Team,
         related_name="owned_flags",
