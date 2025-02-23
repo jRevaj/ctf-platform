@@ -189,7 +189,7 @@ class DockerService:
 
             logger.debug(f"Used subnets: {used_subnets}")
 
-            for i in range(0, 255):
+            for i in range(1, 255):
                 subnet = f"172.{i}.0.0/16"
                 if subnet not in used_subnets:
                     logger.info(f"Found available subnet: {subnet}")
@@ -205,7 +205,9 @@ class DockerService:
         """Create a new Docker network"""
         try:
             subnet = self.get_available_subnet()
-            network = self.client.networks.create(name=subnet, driver="bridge")
+            # noinspection PyUnresolvedReferences
+            ipam_pool = docker.types.IPAMPool(subnet=subnet)
+            network = self.client.networks.create(name=subnet, driver="bridge", ipam=ipam_pool)
             return network, subnet
         except Exception as e:
             logger.error(f"Failed to create network: {e}")
