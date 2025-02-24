@@ -1,14 +1,12 @@
 import logging
-import os
+from pathlib import Path
 from typing import Optional
 
-from django.conf import settings
 from django.db import models
 
 from .constants import DockerConstants
 from .enums import ContainerStatus, TeamRole
 from .exceptions import ContainerOperationError
-from .flag import Flag
 from .team import Team
 
 logger = logging.getLogger(__name__)
@@ -17,23 +15,23 @@ logger = logging.getLogger(__name__)
 class GameContainerManager(models.Manager):
     """Custom manager for GameContainer model"""
 
-    def create_with_docker(self, template, session, blue_team, red_team, docker_service):
+    def create_with_docker(self, template, session, blue_team, docker_service, path=""):
         """Create a new game container with Docker container"""
         try:
-            container_name = f"{DockerConstants.CONTAINER_PREFIX}{session.pk}-{blue_team.pk}-{red_team.pk}"
-            image_tag = f"ctf-{template.folder}:{session.pk}"
-            build_path = os.path.join(settings.BASE_DIR, f"container-templates/{template.folder}")
+            template_name = Path(template.folder).name
+            template_container_path = Path(path) if path else template.get_full_template_path()
+            tag = f"ctf-{template_name}-{template_container_path.parent.name}-{session.pk}"
 
-            docker_service.build_image(build_path, image_tag)
-            docker_container = docker_service.create_container(image_tag, container_name)
+            build_path = str(template_container_path.parent)
+            docker_service.build_image(build_path, tag)
+            docker_container = docker_service.create_container(container_name=tag, image_tag=tag)
 
             return self.create(
-                name=container_name,
+                name=tag,
+                template_name=path if path else template_name,
                 docker_id=docker_container.id,
                 status=ContainerStatus.RUNNING,
-                template=template,
                 current_blue_team=blue_team,
-                current_red_team=red_team,
                 access_rotation_date=session.end_date,
             )
         except Exception as e:
@@ -43,10 +41,6 @@ class GameContainerManager(models.Manager):
     def get_by_docker_id(self, docker_id):
         """Get container by Docker ID"""
         return self.get(docker_id=docker_id)
-
-    def get_by_template(self, template):
-        """Get container by template"""
-        return self.filter(template=template)
 
     def get_by_ip_address(self, ip_address):
         """Get container by IP address"""
@@ -66,11 +60,11 @@ class GameContainerManager(models.Manager):
 
 class GameContainer(models.Model):
     name = models.CharField(max_length=128, unique=True)
+    template_name = models.CharField(max_length=128, null=True, blank=True)
     docker_id = models.CharField(max_length=128, unique=True)
     status = models.CharField(max_length=16, choices=ContainerStatus)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     services = models.JSONField(default=list)
-    flags = models.ManyToManyField(Flag, related_name="containers", blank=True)
     current_blue_team = models.ForeignKey(
         Team,
         related_name="blue_containers",

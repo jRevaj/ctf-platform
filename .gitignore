@@ -65,3 +65,6 @@ out/
 
 # VSCode
 .vscode/
+
+# Custom
+master/temp/

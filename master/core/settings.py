@@ -173,11 +173,6 @@ STATICFILES_DIRS = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Docker settings
-DOCKER_SETTINGS = {
-    'CONTAINER_PREFIX': 'ctf-game-',
-}
-
 ADMINS = [
     ('admin', 'admin@example.com'),
 ]

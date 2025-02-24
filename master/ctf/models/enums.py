@@ -2,19 +2,19 @@ from django.db import models
 
 
 class TeamRole(models.TextChoices):
-    BLUE = "Blue"
-    RED = "Red"
+    BLUE = "blue"
+    RED = "red"
 
 
 class ContainerStatus(models.TextChoices):
-    CREATED = "Created"
-    RUNNING = "Running"
-    STOPPED = "Stopped"
-    DELETED = "Deleted"
-    ERROR = "Error"
+    CREATED = "created"
+    RUNNING = "running"
+    STOPPED = "stopped"
+    DELETED = "deleted"
+    ERROR = "error"
 
 
 class GameSessionStatus(models.TextChoices):
-    PLANNED = "Planned"
-    ACTIVE = "Active"
-    COMPLETED = "Completed"
+    PLANNED = "planned"
+    ACTIVE = "active"
+    COMPLETED = "completed"

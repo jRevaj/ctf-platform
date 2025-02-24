@@ -20,7 +20,7 @@ def generate_flag(prefix="flag"):
 class FlagManager(models.Manager):
     """Custom manager for Flag model"""
 
-    def create_flag(self, points, placeholder = "", hint = ""):
+    def create_flag(self, points, placeholder="", hint=""):
         """Create a flag"""
         try:
             flag_value = generate_flag()
@@ -46,6 +46,13 @@ class Flag(models.Model):
     points = models.IntegerField(default=100)
     placeholder = models.CharField(max_length=128, null=True)
     hint = models.TextField(null=True)
+    container = models.ForeignKey(
+        "GameContainer",
+        related_name="flags",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
     owner = models.ForeignKey(
         Team,
         related_name="owned_flags",

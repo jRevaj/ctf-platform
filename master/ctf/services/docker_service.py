@@ -1,11 +1,13 @@
 import logging
-from typing import Optional, Any, Iterator
+from typing import Optional
 
 import docker
+from docker.errors import APIError, NotFound
 from docker.models.containers import Container
-from docker.models.images import Image
 from docker.models.networks import Network
+from docker.types import IPAMPool, IPAMConfig
 
+from ctf.models import ContainerStatus
 from ctf.models.constants import DockerConstants
 from ctf.models.container import GameContainer
 from ctf.models.exceptions import ContainerNotFoundError, DockerOperationError
@@ -51,18 +53,19 @@ class DockerService:
             logger.error(f"Failed to connect to Docker: {e}")
             raise RuntimeError(f"Failed to connect to Docker: {e}")
 
-    def build_image(self, template_path: str, image_tag: str) -> tuple[
-        Image, Iterator[dict[str, Any] | list[Any] | str | int | float | bool | None]]:
+    def build_image(self, template_path: str, image_tag: str):
         """Build a Docker image from template"""
         try:
+            logger.info(f"Building image {image_tag} from template {template_path}")
             return self.client.images.build(path=template_path, tag=image_tag, rm=True)
         except Exception as e:
             logger.error(f"Failed to build image {image_tag}: {e}")
             raise
 
-    def create_container(self, image_tag: str, container_name: str) -> Container:
+    def create_container(self, container_name: str, image_tag: str) -> Container:
         """Create and start a new Docker container"""
         try:
+            logger.info(f"Starting new Docker container {container_name}")
             return self.client.containers.run(image=image_tag, name=container_name, detach=True,
                                               ports={DockerConstants.SSH_PORT: None})
         except Exception as e:
@@ -83,10 +86,9 @@ class DockerService:
 
     def get_container(self, container_id: str) -> Optional[Container]:
         """Get container by ID"""
-        # noinspection PyUnresolvedReferences
         try:
             return self.client.containers.get(container_id)
-        except docker.errors.NotFound:
+        except NotFound:
             raise ContainerNotFoundError(f"Container {container_id} not found")
         except Exception as e:
             logger.error(f"Failed to get container {container_id}: {e}")
@@ -169,6 +171,14 @@ class DockerService:
     #         logger.error(f"Failed to deploy flag {flag.value} to container {container.name}: {e}")
     #         return False
 
+    def check_status(self, container_docker_id) -> ContainerStatus | None:
+        """Check the status of given container"""
+        try:
+            return ContainerStatus(self.client.containers.get(container_docker_id).status)
+        except (NotFound, APIError) as e:
+            logger.error(f"Failed to check status of container: {e}")
+            return None
+
     def list_networks(self) -> list:
         """List all Docker networks"""
         try:
@@ -205,10 +215,19 @@ class DockerService:
         """Create a new Docker network"""
         try:
             subnet = self.get_available_subnet()
-            # noinspection PyUnresolvedReferences
-            ipam_pool = docker.types.IPAMPool(subnet=subnet)
-            network = self.client.networks.create(name=subnet, driver="bridge", ipam=ipam_pool)
+            ipam_config = IPAMConfig(pool_configs=[IPAMPool(subnet=subnet)])
+            network = self.client.networks.create(name=f"{DockerConstants.CONTAINER_PREFIX}{subnet}", driver="bridge", ipam=ipam_config)
             return network, subnet
         except Exception as e:
             logger.error(f"Failed to create network: {e}")
             return False
+
+    def clean_networks(self):
+        """Clean up unused networks"""
+        try:
+            logger.info("Cleaning up unused networks")
+            self.client.networks.prune()
+        except APIError as e:
+            logger.error(f"Failed to clean up network: {e}")
+        except Exception as e:
+            logger.error(f"Failed to clean up network: {e}")

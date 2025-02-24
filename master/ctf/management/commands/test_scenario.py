@@ -4,10 +4,15 @@ from django.core.management.base import BaseCommand
 
 from ctf.management.commands.utils import create_teams, create_users, validate_environment
 from ctf.models import ScenarioArchitecture, ScenarioTemplate
+from ctf.services import DockerService
 
 
 class Command(BaseCommand):
     help = "Test run a scenario"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.docker_service = DockerService()
 
     def add_arguments(self, parser):
         parser.add_argument("scenario", nargs=1, type=str)
@@ -33,11 +38,14 @@ class Command(BaseCommand):
 
         # Prepare scenario
         self.stdout.write("Preparing scenario")
-        container = ScenarioArchitecture.objects.prepare_scenario(blue_team, red_team, template)
+        containers = ScenarioArchitecture.objects.prepare_scenario(template, blue_team)
 
         # Print connection information
-        self.stdout.write(self.style.SUCCESS(f"\nScenario {run_id} deployed successfully!"))
-        self.stdout.write("\nConnection Information:")
-        port = container.attrs["NetworkSettings"]["Ports"]["22/tcp"][0]["HostPort"]
-        self.stdout.write(
-            self.style.SUCCESS(f"Container {container.name} SSH access: ssh -p {port} ctf-user@localhost"))
+        for container in containers:
+            self.stdout.write(self.style.SUCCESS(f"\nScenario {run_id} deployed successfully!"))
+            self.stdout.write("\nConnection Information:")
+            port = \
+            self.docker_service.get_container(container.docker_id).attrs["NetworkSettings"]["Ports"]["22/tcp"][0][
+                "HostPort"]
+            self.stdout.write(
+                self.style.SUCCESS(f"Container {container.name} SSH access: ssh -p {port} ctf-user@localhost"))

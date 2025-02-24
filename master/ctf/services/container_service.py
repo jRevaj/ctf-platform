@@ -15,11 +15,35 @@ class ContainerService:
     def __init__(self, docker_service: DockerService):
         self.docker = docker_service
 
-    def create_game_container(self, template, session, blue_team, red_team) -> Optional[GameContainer]:
-        """Create a new game container"""
+    def create_related_containers(self, template, session, blue_team):
+        """Batch create related containers"""
         try:
+            dockerfiles = []
+            containers = []
+            for filepath in template.get_full_template_path().rglob("*"):
+                if filepath.is_file():
+                    if filepath.name == 'Dockerfile' or filepath.name.startswith('Dockerfile.'):
+                        dockerfiles.append(filepath)
+
+            for dockerfile in dockerfiles:
+                container = self.create_game_container(template, session, blue_team, dockerfile)
+                containers.append(container)
+
+            logger.info(f"Created {len(containers)} related containers: {containers}")
+            return containers
+        except ContainerOperationError as e:
+            logger.error(f"Error batch creating containers: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Error batch creating containers: {e}")
+            return []
+
+    def create_game_container(self, template, session, blue_team, path = "") -> Optional[GameContainer]:
+        """Create a new game container from template"""
+        try:
+            logger.info(f"Creating new game container {path if path else template.folder}")
             return GameContainer.objects.create_with_docker(template=template, session=session, blue_team=blue_team,
-                                                            red_team=red_team, docker_service=self.docker)
+                                                            docker_service=self.docker, path=path)
         except Exception as e:
             logger.error(f"Failed to create game container: {e}")
             return None
