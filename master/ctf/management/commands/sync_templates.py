@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -8,12 +9,13 @@ from django.core.management.base import BaseCommand
 from ctf.models import ScenarioTemplate
 from ctf.models.exceptions import ContainerOperationError
 
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = "Sync container templates from filesystem with database"
 
     def handle(self, *args, **options):
-        self.stdout.write("Syncing container templates...")
+        logger.info("Syncing container templates...")
 
         try:
             templates_dir = self._get_templates_dir()
@@ -23,13 +25,13 @@ class Command(BaseCommand):
             removed_count = self._cleanup_obsolete_templates(processed_templates)
 
             if removed_count:
-                self.stdout.write(self.style.WARNING(f"Removed {removed_count} obsolete templates"))
+                logger.warning(f"Removed {removed_count} obsolete templates")
 
-            self.stdout.write(self.style.SUCCESS("Template sync completed!"))
+            logger.info("Template sync completed!")
         except ContainerOperationError as e:
-            self.stderr.write(self.style.ERROR(f"Template operation failed: {e}"))
+            logger.error(f"Template operation failed: {e}")
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f"Error syncing templates: {e}"))
+            logger.error(f"Error syncing templates: {e}")
 
     @staticmethod
     def _get_templates_dir() -> Path:
@@ -54,7 +56,7 @@ class Command(BaseCommand):
                     "docker_compose": compose_content,
                     "containers": metadata.get("containers", [])}
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f"Error reading template from {template_dir}: {e}"))
+            logger.error(f"Error reading template from {template_dir}: {e}")
             return None
 
     @staticmethod
@@ -95,7 +97,7 @@ class Command(BaseCommand):
             )
 
             action = "Created" if created else "Updated"
-            self.stdout.write(self.style.SUCCESS(f"{action} template: {template.name}"))
+            logger.info(f"{action} template: {template.name}")
 
             processed_templates.add(template.name)
 

@@ -24,7 +24,7 @@ class Command(BaseCommand):
         parser.add_argument("-t", "--template", dest="template", default="base", type=str, help="Template folder name")
 
     def handle(self, *args, **kwargs):
-        self.stdout.write("Setting up test environment...")
+        logger.info("Setting up test environment...")
         try:
             template = self._get_template(kwargs.get("template"))
             validate_environment()
@@ -34,7 +34,7 @@ class Command(BaseCommand):
             create_users(run_id, blue_team, red_team)
 
             session = create_session()
-            container = self._create_container(template, session, blue_team, red_team)
+            container = self._create_container(template, session, blue_team)
 
             if not self.container_service.configure_ssh_access(container, blue_team):
                 raise ContainerOperationError("Failed to configure SSH access")
@@ -42,12 +42,11 @@ class Command(BaseCommand):
             self._print_success_message(container)
 
         except (ContainerOperationError, DockerOperationError) as e:
-            self.stderr.write(self.style.ERROR(f"Container operation failed: {e}"))
+            logger.error(f"Container operation failed: {e}")
         except ValueError as e:
-            self.stderr.write(self.style.ERROR(f"Validation error: {e}"))
+            logger.error(f"Validation error: {e}")
         except Exception as e:
-            logger.exception("Unexpected error in setup_test_env")
-            self.stderr.write(self.style.ERROR(f"Unexpected error: {str(e)}"))
+            logger.exception(f"Unexpected error: {str(e)}")
 
     @staticmethod
     def _get_template(template_folder: str) -> ScenarioTemplate:
@@ -58,14 +57,12 @@ class Command(BaseCommand):
                 raise ValueError(f"Template {template_folder} not found")
         return ScenarioTemplate.objects.get(folder="base")
 
-    def _create_container(self, template: ScenarioTemplate, session: GameSession, blue_team: Team,
-                          red_team: Team) -> GameContainer:
+    def _create_container(self, template: ScenarioTemplate, session: GameSession, blue_team: Team) -> GameContainer:
         try:
             container: GameContainer = self.container_service.create_game_container(
                 template=template,
                 session=session,
                 blue_team=blue_team,
-                red_team=red_team,
             )
 
             # flag = self.flag_service.create_and_deploy_flag(container)
@@ -77,6 +74,6 @@ class Command(BaseCommand):
             raise e
 
     def _print_success_message(self, container: GameContainer) -> None:
-        self.stdout.write(self.style.SUCCESS(f"Test environment created successfully!"))
+        logger.info(f"Test environment created successfully!")
         ssh_string = self.container_service.get_ssh_connection_string(container)
-        self.stdout.write(self.style.SUCCESS(f"Game container SSH connection string: {ssh_string}"))
+        logger.info(f"Game container SSH connection string: {ssh_string}")
