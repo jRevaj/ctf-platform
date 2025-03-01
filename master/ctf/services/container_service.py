@@ -38,7 +38,7 @@ class ContainerService:
             logger.error(f"Error batch creating containers: {e}")
             return []
 
-    def create_game_container(self, template, session, blue_team, path = "") -> Optional[GameContainer]:
+    def create_game_container(self, template, session, blue_team, path="") -> Optional[GameContainer]:
         """Create a new game container from template"""
         try:
             logger.info(f"Creating new game container {path if path else template.folder}")
@@ -63,6 +63,7 @@ class ContainerService:
     def configure_ssh_access(self, container: GameContainer, team: Team) -> bool:
         """Configure SSH access for the given container and team"""
         try:
+            logger.info(f"Configuring SSH access for {team.name} container {container.name}")
             docker_container = self.docker.get_container(container.docker_id)
             if not docker_container:
                 return False
@@ -81,6 +82,8 @@ class ContainerService:
                     f'mkdir -p /home/ctf-user/.ssh && echo "{authorized_keys}" > ' f"/home/ctf-user/.ssh/authorized_keys && chmod 600 " f"/home/ctf-user/.ssh/authorized_keys && " f"chown -R ctf-user:ctf-user /home/ctf-user/.ssh",
                 ]
             )
+
+            logger.info(f"SSH access configured successfully")
             return True
         except Exception as e:
             logger.error(f"Failed to configure SSH access: {e}")

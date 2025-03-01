@@ -20,7 +20,7 @@ class GameContainerManager(models.Manager):
         try:
             template_name = Path(template.folder).name
             template_container_path = Path(path) if path else template.get_full_template_path()
-            tag = f"ctf-{template_name}-{template_container_path.parent.name}-{session.pk}"
+            tag = f"{DockerConstants.CONTAINER_PREFIX}-{template_name}-{template_container_path.parent.name}-{session.pk}-{blue_team.pk}"
 
             build_path = str(template_container_path.parent)
             docker_service.build_image(build_path, tag)

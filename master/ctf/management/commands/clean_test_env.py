@@ -19,20 +19,16 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         try:
-            self.stdout.write("Cleaning up test environment...")
-
+            logger.info("Cleaning up test environment...")
             cleaned_count = self.container_service.clean_docker_containers()
             if cleaned_count:
-                self.stdout.write(self.style.SUCCESS(f"Cleaned up {cleaned_count} orphaned containers"))
-
+                logger.info(f"Cleaned up {cleaned_count} orphaned containers")
             self._cleanup_game_resources()
-            self.stdout.write(self.style.SUCCESS("Test environment cleaned up successfully!"))
-
+            logger.info("Test environment cleaned up successfully!")
         except (ContainerOperationError, DockerOperationError) as e:
-            self.stderr.write(self.style.ERROR(f"Container operation failed: {e}"))
+            logger.error(f"Container operation failed: {e}")
         except Exception as e:
-            logger.exception("Unexpected error in clean_test_env")
-            self.stderr.write(self.style.ERROR(f"Unexpected error: {e}"))
+            logger.error(f"Unexpected error: {e}")
 
     def _cleanup_game_resources(self):
         game_sessions = GameSession.objects.all()
@@ -40,15 +36,16 @@ class Command(BaseCommand):
         teams = Team.objects.all()
 
         if game_sessions.count() == 0 and game_containers.count() == 0:
-            self.stdout.write(self.style.WARNING("No game sessions or containers found"))
+            logger.error("No game sessions or containers found")
             return
 
-        # Delete game sessions
         game_sessions.delete()
 
-        # Delete containers
         for container in game_containers:
             self.container_service.delete_game_container(container)
+
+        self.docker_service.prune_images()
+        self.docker_service.clean_networks()
 
         # Delete teams
         teams.delete()

@@ -87,11 +87,13 @@ class ScenarioArchitectureManager(models.Manager):
 
                 container_flags = flag_mapping.get(container.template_name, [])
                 container.flags.set([flag_data["flag"] for flag_data in container_flags])
+                # TODO: assign other necessary items
                 container.save()
 
                 if not self.container_service.configure_ssh_access(container, blue_team):
                     raise ContainerOperationError("Failed to configure SSH access")
 
+                # TODO: assign network config
                 connect_container_to_network(scenario_network, container)
 
             return containers

@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Dict
 
 import docker
 from docker.errors import APIError, NotFound
@@ -171,12 +171,21 @@ class DockerService:
     #         logger.error(f"Failed to deploy flag {flag.value} to container {container.name}: {e}")
     #         return False
 
-    def check_status(self, container_docker_id) -> ContainerStatus | None:
+    def check_status(self, container_docker_id: str) -> ContainerStatus | None:
         """Check the status of given container"""
         try:
             return ContainerStatus(self.client.containers.get(container_docker_id).status)
         except (NotFound, APIError) as e:
             logger.error(f"Failed to check status of container: {e}")
+            return None
+
+    def prune_images(self, dangling: bool = True) -> Dict | None:
+        """Prune unused or dangling images"""
+        try:
+            logger.info("Pruning unused or dangling images")
+            return self.client.images.prune(filters={"dangling": dangling})
+        except APIError as e:
+            logger.error(f"Failed to prune images: {e}")
             return None
 
     def list_networks(self) -> list:
@@ -216,7 +225,8 @@ class DockerService:
         try:
             subnet = self.get_available_subnet()
             ipam_config = IPAMConfig(pool_configs=[IPAMPool(subnet=subnet)])
-            network = self.client.networks.create(name=f"{DockerConstants.CONTAINER_PREFIX}{subnet}", driver="bridge", ipam=ipam_config)
+            network = self.client.networks.create(name=f"{DockerConstants.CONTAINER_PREFIX}{subnet}", driver="bridge",
+                                                  ipam=ipam_config)
             return network, subnet
         except Exception as e:
             logger.error(f"Failed to create network: {e}")
