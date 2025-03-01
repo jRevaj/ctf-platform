@@ -1,5 +1,8 @@
 import logging
+import os
+import shutil
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from ctf.models import GameContainer, GameSession, Team
@@ -35,6 +38,10 @@ class Command(BaseCommand):
         game_containers = GameContainer.objects.all()
         teams = Team.objects.all()
 
+        temp_folder = os.path.join(settings.BASE_DIR, "temp")
+        if os.path.exists(temp_folder):
+            shutil.rmtree(temp_folder)
+
         if game_sessions.count() == 0 and game_containers.count() == 0:
             logger.error("No game sessions or containers found")
             return
@@ -47,5 +54,4 @@ class Command(BaseCommand):
         self.docker_service.prune_images()
         self.docker_service.clean_networks()
 
-        # Delete teams
         teams.delete()

@@ -18,11 +18,15 @@ class GameContainerManager(models.Manager):
     def create_with_docker(self, template, session, blue_team, docker_service, path=""):
         """Create a new game container with Docker container"""
         try:
-            template_name = Path(template.folder).name
-            template_container_path = Path(path) if path else template.get_full_template_path()
-            tag = f"{DockerConstants.CONTAINER_PREFIX}-{template_name}-{template_container_path.parent.name}-{session.pk}-{blue_team.pk}"
+            template_name = Path(template.folder).name if template.folder else template.name
+            if path:
+                template_container_path = Path(path)
+                build_path = str(template_container_path.parent)
+            else:
+                build_path = template.folder if template.folder else str(template.get_full_template_path())
+            
+            tag = f"{DockerConstants.CONTAINER_PREFIX}-{template_name}-{Path(build_path).name}-{session.pk}-{blue_team.pk}"
 
-            build_path = str(template_container_path.parent)
             docker_service.build_image(build_path, tag)
             docker_container = docker_service.create_container(container_name=tag, image_tag=tag)
 

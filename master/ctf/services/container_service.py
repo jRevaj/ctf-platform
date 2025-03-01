@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from pathlib import Path
 
 from ctf.models import GameContainer, ContainerStatus, Team
 from ctf.models.constants import DockerConstants
@@ -20,7 +21,8 @@ class ContainerService:
         try:
             dockerfiles = []
             containers = []
-            for filepath in template.get_full_template_path().rglob("*"):
+            template_path = Path(template.folder) if template.folder else template.get_full_template_path()
+            for filepath in template_path.rglob("*"):
                 if filepath.is_file():
                     if filepath.name == 'Dockerfile' or filepath.name.startswith('Dockerfile.'):
                         dockerfiles.append(filepath)
