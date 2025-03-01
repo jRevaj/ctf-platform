@@ -1,3 +1,10 @@
-name: base-scenario
+name: base
 title: Base SSH Container
 description: Basic SSH-enabled container for testing and development
+
+containers:
+  target1:
+    name: "target1"
+    services:
+      - name: "SSH"
+        port: 22

@@ -118,8 +118,17 @@ class ScenarioArchitectureManager(models.Manager):
                 logger.info(f"Container {key} has no flags")
 
         temp_dir = f"temp/{team.pk}/{template.name}"
-        shutil.copytree(template.get_full_template_path(), temp_dir)
-
+        
+        temp_path = Path(settings.BASE_DIR) / temp_dir
+        temp_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        source_path = template.get_full_template_path()
+        if not source_path.exists():
+            logger.warning(f"Source path {source_path} does not exist, creating empty temp directory")
+            temp_path.mkdir(parents=True, exist_ok=True)
+            return temp_dir, flag_mapping
+        
+        shutil.copytree(source_path, temp_dir)
         for root, _, files in os.walk(temp_dir):
             for file in files:
                 filepath = Path(root) / file

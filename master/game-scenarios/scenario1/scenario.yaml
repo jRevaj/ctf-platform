@@ -19,8 +19,14 @@ containers:
         file: "/target1/Dockerfile"
         hint: "Check web server configurations"
         service: "Apache"
-      - id: mysql_flag
+      - id: file_flag
         placeholder: "FLAG_PLACEHOLDER_2"
+        points: 100
+        file: "/target1/flag.txt"
+        hint: "Check root folder"
+        service: "filesystem"
+      - id: mysql_flag
+        placeholder: "FLAG_PLACEHOLDER_3"
         points: 200
         file: "/target1/entrypoint.sh"
         hint: "Database permissions might be loose"
