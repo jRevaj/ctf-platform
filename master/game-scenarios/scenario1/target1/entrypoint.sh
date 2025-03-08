@@ -5,9 +5,16 @@ echo "Starting entrypoint script" > /tmp/debug.log
 echo "Current directory: $(pwd)" >> /tmp/debug.log
 ls -la / >> /tmp/debug.log
 
-# Set a password for ctf-user for debugging
-echo "ctf-user:password" | chpasswd
+# Set a specific password for ctf-user
+echo "ctf-user:starthere" | chpasswd
 echo "Set password for ctf-user" >> /tmp/debug.log
+
+# Create a hint file for the challenge
+echo "I found these credentials in the admin's notes:" > /home/ctf-user/network_scan.txt
+echo "Server: 172.1.0.3 - Username: ctf-user, Password: s3cret_t4rget2" >> /home/ctf-user/network_scan.txt
+echo "There might be more servers on the network..." >> /home/ctf-user/network_scan.txt
+chmod 644 /home/ctf-user/network_scan.txt
+chown ctf-user:ctf-user /home/ctf-user/network_scan.txt
 
 # Setup SSH
 mkdir -p /home/ctf-user/.ssh
@@ -58,7 +65,7 @@ INSERT INTO users (username, password) VALUES
 INSERT INTO secrets VALUES (1, 'FLAG_PLACEHOLDER_3');
 
 -- Create MySQL user with same password as system user
-CREATE USER 'ctf-user'@'localhost' IDENTIFIED BY 'password';
+CREATE USER 'ctf-user'@'localhost' IDENTIFIED BY 'starthere';
 GRANT SELECT ON ctf_db.* TO 'ctf-user'@'localhost';
 FLUSH PRIVILEGES;
 EOF

@@ -43,3 +43,10 @@ containers:
     services:
       - name: "SSH"
         port: 22
+    flags:
+      - id: file_flag
+        placeholder: "FLAG_PLACEHOLDER_4"
+        points: 300
+        file: "/target3/entrypoint.sh"
+        hint: ""
+        service: "filesystem"

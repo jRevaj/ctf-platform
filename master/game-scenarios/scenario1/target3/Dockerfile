@@ -3,7 +3,9 @@ FROM alpine:latest
 RUN apk update && apk add --no-cache \
     openssh-server \
     openssh-sftp-server \
+    openssh-client \
     bash \
+    curl \
     shadow \
     && rm -rf /var/cache/apk/*
 

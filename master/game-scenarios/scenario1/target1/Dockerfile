@@ -3,10 +3,12 @@ FROM alpine:latest
 RUN apk update && apk add --no-cache \
     openssh-server \
     openssh-sftp-server \
+    openssh-client \
     mysql \
     mysql-client \
     apache2 \
     bash \
+    curl \
     shadow \
     php \
     php-apache2 \
