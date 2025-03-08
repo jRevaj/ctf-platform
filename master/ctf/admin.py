@@ -29,11 +29,33 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ("username", "email")
 
 
+class FlagInline(admin.TabularInline):
+    model = Flag
+    fields = ("points", "owner", "is_captured", "captured_by")
+    readonly_fields = ("points", "owner", "is_captured", "captured_by")
+    show_change_link = True
+    extra = 0
+    can_delete = False
+
+
 class GameContainerAdmin(admin.ModelAdmin):
     form = GameContainerForm
-    list_display = ("name", "status", "current_blue_team", "current_red_team", "container_actions")
+    list_display = ("name", "status", "blue_team", "red_team", "container_actions")
     list_filter = ("status",)
     actions = ["sync_status", "start_containers", "stop_containers"]
+    inlines = [FlagInline]
+
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'template_name', 'docker_id', 'status', 'ip_address')
+        }),
+        ('Team Assignment', {
+            'fields': ('blue_team', 'red_team', 'access_rotation_date')
+        }),
+        ('Services', {
+            'fields': ('services',)
+        }),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -236,13 +258,70 @@ class StatusWidgetWithButtons(Select):
 
 
 class FlagAdmin(admin.ModelAdmin):
-    list_display = ("value", "owner", "points", "is_captured", "captured_by")
+    list_display = ("value", "owner", "container", "points", "is_captured", "captured_by", "captured_at")
+    list_filter = ("is_captured", "owner", "container")
+    search_fields = ("value", "placeholder")
+    fieldsets = (
+        (None, {
+            'fields': ('value', 'points', 'placeholder', 'hint')
+        }),
+        ('Relationships', {
+            'fields': ('container', 'owner'),
+            'classes': ('wide',)
+        }),
+        ('Capture Status', {
+            'fields': ('is_captured', 'captured_by', 'captured_at'),
+            'classes': ('wide',)
+        }),
+    )
+    readonly_fields = ('captured_at',)
+
+    def get_queryset(self, request):
+        """Ensure container and owner are prefetched for efficiency"""
+        queryset = super().get_queryset(request)
+        return queryset.select_related('container', 'owner', 'captured_by')
+
+
+class ContainerAccessLogAdmin(admin.ModelAdmin):
+    """Admin interface for container access logs"""
+    list_display = ('user', 'container', 'access_type', 'timestamp', 'ip_address', 'session_length')
+    list_filter = ('access_type', 'container', 'user')
+    search_fields = ('user__username', 'container__name', 'ip_address')
+    date_hierarchy = 'timestamp'
+    readonly_fields = ('timestamp',)
+
+
+class GameSessionAdmin(admin.ModelAdmin):
+    """Enhanced admin interface for game sessions"""
+    list_display = ('name', 'status', 'start_date', 'end_date', 'is_active')
+    list_filter = ('status',)
+    search_fields = ('name',)
+
+    def is_active(self, obj):
+        return obj.is_active()
+
+    is_active.boolean = True
+    is_active.short_description = "Active"
+
+
+class TeamAssignmentAdmin(admin.ModelAdmin):
+    """Enhanced admin interface for team assignments"""
+    list_display = ('team', 'container', 'role', 'session', 'start_date', 'end_date', 'is_active')
+    list_filter = ('role', 'session')
+    search_fields = ('team__name', 'container__name')
+
+    def is_active(self, obj):
+        return obj.is_active()
+
+    is_active.boolean = True
+    is_active.short_description = "Active"
 
 
 admin.site.register(ScenarioTemplate, ScenarioTemplateAdmin)
 admin.site.register(Team, TeamAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(GameContainer, GameContainerAdmin)
-admin.site.register(GameSession)
-admin.site.register(TeamAssignment)
+admin.site.register(GameSession, GameSessionAdmin)
+admin.site.register(TeamAssignment, TeamAssignmentAdmin)
 admin.site.register(Flag, FlagAdmin)
+admin.site.register(ContainerAccessLog, ContainerAccessLogAdmin)

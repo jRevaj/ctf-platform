@@ -10,7 +10,7 @@ class GameContainerForm(ModelForm):
         help_texts = {
             'status': 'Container status is automatically synced with Docker. Use the action buttons to change status.',
             'docker_id': 'Docker container ID is set automatically upon creation.',
-            'template': 'Template cannot be changed after container creation.',
+            'template_name': 'Template cannot be changed after container creation.',
         }
 
     def __init__(self, *args, **kwargs):
@@ -20,7 +20,7 @@ class GameContainerForm(ModelForm):
             self.fields['docker_id'].disabled = True
             # Don't disable status field as we're handling it with custom widget
             # self.fields['status'].disabled = True
-            self.fields['template'].disabled = True
+            self.fields['template_name'].disabled = True
 
     def clean_status(self):
         """Prevent manual status editing through the form"""
