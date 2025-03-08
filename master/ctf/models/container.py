@@ -15,15 +15,17 @@ logger = logging.getLogger(__name__)
 class GameContainerManager(models.Manager):
     """Custom manager for GameContainer model"""
 
-    def create_with_docker(self, template, session, blue_team, docker_service, path=""):
+    def create_with_docker(self, template, temp_dir, session, blue_team, docker_service, path=""):
         """Create a new game container with Docker container"""
         try:
-            template_name = Path(template.folder).name if template.folder else template.name
+            template_name = Path(temp_dir).name if temp_dir else template.name
             if path:
                 template_container_path = Path(path)
                 build_path = str(template_container_path.parent)
+                container_name = template_container_path.parent.name
             else:
-                build_path = template.folder if template.folder else str(template.get_full_template_path())
+                build_path = temp_dir if temp_dir else str(template.get_full_template_path())
+                container_name = template_name
             
             tag = f"{DockerConstants.CONTAINER_PREFIX}-{template_name}-{Path(build_path).name}-{session.pk}-{blue_team.pk}"
 
@@ -32,10 +34,10 @@ class GameContainerManager(models.Manager):
 
             return self.create(
                 name=tag,
-                template_name=path if path else template_name,
+                template_name=container_name,
                 docker_id=docker_container.id,
                 status=ContainerStatus.RUNNING,
-                current_blue_team=blue_team,
+                blue_team=blue_team,
                 access_rotation_date=session.end_date,
             )
         except Exception as e:
@@ -57,8 +59,8 @@ class GameContainerManager(models.Manager):
     def get_for_team(self, team):
         """Get all containers accessible by a team"""
         return self.filter(
-            models.Q(current_blue_team=team) |
-            models.Q(current_red_team=team)
+            models.Q(blue_team=team) |
+            models.Q(red_team=team)
         )
 
 
@@ -69,14 +71,14 @@ class GameContainer(models.Model):
     status = models.CharField(max_length=16, choices=ContainerStatus)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     services = models.JSONField(default=list)
-    current_blue_team = models.ForeignKey(
+    blue_team = models.ForeignKey(
         Team,
         related_name="blue_containers",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
     )
-    current_red_team = models.ForeignKey(
+    red_team = models.ForeignKey(
         Team,
         related_name="red_containers",
         null=True,
@@ -107,15 +109,15 @@ class GameContainer(models.Model):
 
     def get_current_role(self, team: Team) -> Optional[TeamRole]:
         """Get team's role in the container"""
-        if self.current_blue_team == team:
+        if self.blue_team == team:
             return TeamRole.BLUE
-        elif self.current_red_team == team:
+        elif self.red_team == team:
             return TeamRole.RED
         return None
 
     def is_accessible_by(self, team: Team) -> bool:
         """Check if team has access to the container"""
-        return self.current_blue_team == team or self.current_red_team == team
+        return self.blue_team == team or self.red_team == team
 
 
 class ContainerAccessHistory(models.Model):
@@ -124,3 +126,29 @@ class ContainerAccessHistory(models.Model):
     role = models.CharField(max_length=8, choices=TeamRole)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
+
+
+class ContainerAccessLog(models.Model):
+    """Model to track individual SSH and other access attempts to containers"""
+    container = models.ForeignKey(GameContainer, related_name="access_logs", on_delete=models.CASCADE)
+    user = models.ForeignKey('User', related_name="container_access", on_delete=models.CASCADE)
+    access_type = models.CharField(max_length=16, choices=[
+        ('SSH', 'SSH Connection'),
+        ('HTTP', 'Web Access'),
+        ('API', 'API Access'),
+        ('OTHER', 'Other Access')
+    ])
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    session_length = models.DurationField(null=True, blank=True, help_text="Duration of session if applicable")
+    commands_executed = models.TextField(null=True, blank=True, help_text="Commands executed during session")
+    
+    class Meta:
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["container", "timestamp"]),
+            models.Index(fields=["user", "timestamp"]),
+        ]
+        
+    def __str__(self):
+        return f"{self.user} - {self.access_type} - {self.container.name} at {self.timestamp}"

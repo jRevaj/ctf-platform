@@ -51,6 +51,23 @@ from ctf.services.docker_service import DockerService, connect_container_to_netw
 logger = logging.getLogger(__name__)
 
 
+def create_temp_folder(template):
+    """Create temporary folder for scenario files"""
+    temp_dir = f"temp/{template.name}"
+
+    temp_path = Path(settings.BASE_DIR) / temp_dir
+    temp_path.parent.mkdir(parents=True, exist_ok=True)
+
+    source_path = template.get_full_template_path()
+    if not source_path.exists():
+        logger.warning(f"Source path {source_path} does not exist, creating empty temp directory")
+        temp_path.mkdir(parents=True, exist_ok=True)
+        return temp_dir
+
+    shutil.copytree(source_path, temp_dir)
+    return temp_dir
+
+
 def remove_temp_folder(folder):
     """Remove temp folder"""
     try:
@@ -70,13 +87,13 @@ class ScenarioArchitectureManager(models.Manager):
         self.container_service = ContainerService(docker_service=self.docker_service)
 
     def prepare_scenario(self, template, blue_team):
+        temp_scenario_dir = create_temp_folder(template)
         try:
-            temp_scenario_dir, flag_mapping = self.prepare_flags(blue_team, template)
-            template.folder = temp_scenario_dir
-            template.save()
+            flag_mapping = self.prepare_flags(temp_scenario_dir, blue_team, template)
 
             session = create_session()
-            containers = self.container_service.create_related_containers(template, session, blue_team)
+            containers = self.container_service.create_related_containers(template, temp_scenario_dir, session,
+                                                                          blue_team)
             if not containers:
                 raise ContainerOperationError("Failed to create game containers")
 
@@ -86,30 +103,31 @@ class ScenarioArchitectureManager(models.Manager):
                     raise DockerOperationError("Container is not running")
 
                 container_flags = flag_mapping.get(container.template_name, [])
-                container.flags.set([flag_data["flag"] for flag_data in container_flags])
-                # TODO: assign other necessary items
+                flag_objects = [flag_data["flag"] for flag_data in container_flags]
+                container.flags.set(flag_objects)
                 container.save()
 
-                if not self.container_service.configure_ssh_access(container, blue_team):
-                    raise ContainerOperationError("Failed to configure SSH access")
+                if container.template_name == "target1":
+                    if not self.container_service.configure_ssh_access(container, blue_team):
+                        raise ContainerOperationError("Failed to configure SSH access")
 
-                # TODO: assign network config
                 connect_container_to_network(scenario_network, container)
 
             return containers
         except (ContainerOperationError, DockerOperationError, ValueError, Exception) as e:
             self.container_service.docker.clean_networks()
-            remove_temp_folder(template.folder)
             raise e
+        finally:
+            remove_temp_folder(temp_scenario_dir)
 
-    def prepare_flags(self, team, template):
+    def prepare_flags(self, temp_dir, team, template):
         flag_mapping = {}
         for key, value in template.containers_config.items():
             if "flags" in value:
                 logger.info(f"Preparing flags for container {key}")
                 flag_mapping[key] = []
                 for flag in value["flags"]:
-                    db_flag = Flag.objects.create_flag(flag["points"], flag["placeholder"], flag["hint"])
+                    db_flag = Flag.objects.create_flag(team, flag["points"], flag["placeholder"], flag["hint"])
                     flag_mapping[key].append({
                         "flag": db_flag,
                         "placeholder": flag["placeholder"]
@@ -117,18 +135,6 @@ class ScenarioArchitectureManager(models.Manager):
             else:
                 logger.info(f"Container {key} has no flags")
 
-        temp_dir = f"temp/{team.pk}/{template.name}"
-        
-        temp_path = Path(settings.BASE_DIR) / temp_dir
-        temp_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        source_path = template.get_full_template_path()
-        if not source_path.exists():
-            logger.warning(f"Source path {source_path} does not exist, creating empty temp directory")
-            temp_path.mkdir(parents=True, exist_ok=True)
-            return temp_dir, flag_mapping
-        
-        shutil.copytree(source_path, temp_dir)
         for root, _, files in os.walk(temp_dir):
             for file in files:
                 filepath = Path(root) / file
@@ -137,7 +143,7 @@ class ScenarioArchitectureManager(models.Manager):
                     if not success:
                         logger.error(f"Failed to replace placeholders for file {filepath}")
 
-        return temp_dir, flag_mapping
+        return flag_mapping
 
     @staticmethod
     def replace_placeholders(filepath: Path, flag_mapping):

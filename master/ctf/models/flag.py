@@ -20,11 +20,11 @@ def generate_flag(prefix="flag"):
 class FlagManager(models.Manager):
     """Custom manager for Flag model"""
 
-    def create_flag(self, points, placeholder="", hint=""):
+    def create_flag(self, owner, points, placeholder="", hint=""):
         """Create a flag"""
         try:
             flag_value = generate_flag()
-            return self.create(value=flag_value, points=points, placeholder=placeholder, hint=hint)
+            return self.create(value=flag_value, points=points, placeholder=placeholder, hint=hint, owner=owner)
         except Exception as e:
             logger.error(f"Error creating flag: {e}")
             return None

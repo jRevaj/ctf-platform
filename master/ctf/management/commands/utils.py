@@ -16,8 +16,8 @@ def validate_environment() -> None:
 
 
 def create_teams(run_id: uuid.UUID) -> tuple[Team, Team]:
-    blue_team = Team.objects.create(name=f"Blue Team {run_id}", role=TeamRole.BLUE)
-    red_team = Team.objects.create(name=f"Red Team {run_id}", role=TeamRole.RED)
+    blue_team = Team.objects.create(name=f"Team {run_id}", role=TeamRole.BLUE)
+    red_team = Team.objects.create(name=f"Team {run_id}", role=TeamRole.RED)
     return blue_team, red_team
 
 

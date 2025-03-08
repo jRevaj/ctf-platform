@@ -16,19 +16,19 @@ class ContainerService:
     def __init__(self, docker_service: DockerService):
         self.docker = docker_service
 
-    def create_related_containers(self, template, session, blue_team):
+    def create_related_containers(self, template, temp_dir, session, blue_team):
         """Batch create related containers"""
         try:
             dockerfiles = []
             containers = []
-            template_path = Path(template.folder) if template.folder else template.get_full_template_path()
+            template_path = Path(temp_dir) if temp_dir else template.get_full_template_path()
             for filepath in template_path.rglob("*"):
                 if filepath.is_file():
                     if filepath.name == 'Dockerfile' or filepath.name.startswith('Dockerfile.'):
                         dockerfiles.append(filepath)
 
             for dockerfile in dockerfiles:
-                container = self.create_game_container(template, session, blue_team, dockerfile)
+                container = self.create_game_container(template, temp_dir, session, blue_team, dockerfile)
                 containers.append(container)
 
             logger.info(f"Created {len(containers)} related containers: {containers}")
@@ -40,11 +40,11 @@ class ContainerService:
             logger.error(f"Error batch creating containers: {e}")
             return []
 
-    def create_game_container(self, template, session, blue_team, path="") -> Optional[GameContainer]:
+    def create_game_container(self, template, temp_dir, session, blue_team, path="") -> Optional[GameContainer]:
         """Create a new game container from template"""
         try:
-            logger.info(f"Creating new game container {path if path else template.folder}")
-            return GameContainer.objects.create_with_docker(template=template, session=session, blue_team=blue_team,
+            logger.info(f"Creating new game container {path if path else temp_dir}")
+            return GameContainer.objects.create_with_docker(template=template, temp_dir=temp_dir, session=session, blue_team=blue_team,
                                                             docker_service=self.docker, path=path)
         except Exception as e:
             logger.error(f"Failed to create game container: {e}")

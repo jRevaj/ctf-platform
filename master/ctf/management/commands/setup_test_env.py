@@ -61,6 +61,7 @@ class Command(BaseCommand):
         try:
             container: GameContainer = self.container_service.create_game_container(
                 template=template,
+                temp_dir=template.folder,
                 session=session,
                 blue_team=blue_team,
             )
