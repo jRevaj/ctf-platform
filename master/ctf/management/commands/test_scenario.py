@@ -39,10 +39,9 @@ class Command(BaseCommand):
         containers = ScenarioArchitecture.objects.prepare_scenario(template, blue_team)
 
         for container in containers:
-            logger.info("Connection Information:")
+            logger.info(f"Connection Information for {container.name}:")
             docker_container = self.docker_service.get_container(container_id=container.docker_id)
-            logger.info(f"Container NetworkSettings: {docker_container.attrs['NetworkSettings']}")
             port = docker_container.attrs["NetworkSettings"]["Ports"]["22/tcp"][0]["HostPort"]
-            logger.info(f"Container {container.name} SSH access: ssh -p {port} ctf-user@localhost")
+            logger.info(f"SSH access: ssh -p {port} ctf-user@localhost")
 
         logger.info(f"Scenario {run_id} deployed successfully!")

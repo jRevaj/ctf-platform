@@ -39,7 +39,7 @@ containers:
         port: 22
 
   target3:
-    name: "target2"
+    name: "target3"
     services:
       - name: "SSH"
         port: 22
