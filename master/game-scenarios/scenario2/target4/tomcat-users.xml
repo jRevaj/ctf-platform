@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tomcat-users xmlns="http://tomcat.apache.org/xml"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd"
+              version="1.0">
+  <!-- Default credentials - intentionally vulnerable -->
+  <role rolename="manager-gui"/>
+  <role rolename="manager-script"/>
+  <role rolename="manager-jmx"/>
+  <role rolename="manager-status"/>
+  <role rolename="admin-gui"/>
+  <role rolename="admin-script"/>
+  
+  <!-- Default admin user with default password -->
+  <user username="admin" password="tomcat_admin_password" roles="manager-gui,manager-script,manager-jmx,manager-status,admin-gui,admin-script"/>
+  
+  <!-- Another user with weak password -->
+  <user username="tomcat" password="tomcat" roles="manager-gui"/>
+  
+  <!-- Comment with sensitive information -->
+  <!-- Note: We also have a backup admin account: backup_admin/backup123 -->
+</tomcat-users> 

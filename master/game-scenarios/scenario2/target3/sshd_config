@@ -1,0 +1,14 @@
+Port 22
+PermitRootLogin no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication no
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+# UsePAM yes  # Commented out as Alpine doesn't support PAM the same way
+X11Forwarding yes
+PrintMotd no
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/lib/ssh/sftp-server
+StrictModes no  # Added to be less strict about permissions
+LogLevel DEBUG  # Added for debugging

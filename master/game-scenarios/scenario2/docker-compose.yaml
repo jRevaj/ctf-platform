@@ -1,0 +1,41 @@
+services:
+  target1:
+    build: ./target1
+    ports:
+      - "2201:22"
+      - "8001:80"
+      - "3301:3306"
+      - "6301:6379"
+    networks:
+      - ctf_network
+
+  target2:
+    build: ./target2
+    ports:
+      - "2202:22"
+      - "3002:3000"
+      - "27002:27017"
+    networks:
+      - ctf_network
+
+  target3:
+    build: ./target3
+    ports:
+      - "2203:22"
+      - "8803:8080" 
+      - "11003:11211"
+    networks:
+      - ctf_network
+
+  target4:
+    build: ./target4
+    ports:
+      - "2204:22"
+      - "2101:21"
+      - "8804:8080"
+    networks:
+      - ctf_network
+
+networks:
+  ctf_network:
+    driver: bridge

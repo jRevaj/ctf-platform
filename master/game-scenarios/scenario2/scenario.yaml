@@ -1,0 +1,163 @@
+name: scenario2
+title: Advanced Multi-Container Security Challenge
+description: Complex scenario with multiple containers, service interdependencies, privilege escalation paths, and communication channels
+
+containers:
+  target1:
+    name: target1
+    services:
+      - name: "SSH"
+        port: 22
+      - name: "Apache"
+        port: 80
+      - name: "MySQL"
+        port: 3306
+      - name: "Redis"
+        port: 6379
+    flags:
+      - id: apache_flag
+        placeholder: "FLAG_PLACEHOLDER_1"
+        points: 100
+        file: "/target1/Dockerfile"
+        hint: "Check web server configurations"
+        service: "Apache"
+      - id: file_flag
+        placeholder: "FLAG_PLACEHOLDER_2"
+        points: 100
+        file: "/target1/flag.txt"
+        hint: "Check root folder"
+        service: "filesystem"
+      - id: mysql_flag
+        placeholder: "FLAG_PLACEHOLDER_3"
+        points: 200
+        file: "/target1/entrypoint.sh"
+        hint: "Database permissions might be loose"
+        service: "MySQL"
+      - id: cron_flag
+        placeholder: "FLAG_PLACEHOLDER_4"
+        points: 150
+        file: "/target1/cron/backup.sh"
+        hint: "Scheduled tasks might reveal secrets"
+        service: "filesystem"
+    vulnerabilities:
+      - id: "weak_sudo_config"
+        description: "User 'apache' can run specific commands as root without password"
+      - id: "redis_unauth"
+        description: "Redis instance accessible without authentication"
+    scheduled_tasks:
+      - name: "backup_database"
+        schedule: "*/10 * * * *"
+        command: "/target1/cron/backup.sh"
+        user: "root"
+
+  target2:
+    name: "target2"
+    services:
+      - name: "SSH"
+        port: 22
+      - name: "NodeJS App"
+        port: 3000
+      - name: "MongoDB"
+        port: 27017
+    flags:
+      - id: nodejs_flag
+        placeholder: "FLAG_PLACEHOLDER_5"
+        points: 200
+        file: "/target2/app/config.js"
+        hint: "Check application configurations"
+        service: "NodeJS App"
+      - id: mongodb_flag
+        placeholder: "FLAG_PLACEHOLDER_6"
+        points: 250
+        file: "/target2/mongodb/setup.js"
+        hint: "NoSQL databases can have security issues too"
+        service: "MongoDB"
+    vulnerabilities:
+      - id: "path_traversal"
+        description: "NodeJS app vulnerable to path traversal"
+      - id: "log_poisoning"
+        description: "Log files writable by www-data user"
+
+  target3:
+    name: "target3"
+    services:
+      - name: "SSH"
+        port: 22
+      - name: "Jenkins"
+        port: 8080
+      - name: "Memcached"
+        port: 11211
+    flags:
+      - id: file_flag
+        placeholder: "FLAG_PLACEHOLDER_7"
+        points: 300
+        file: "/target3/entrypoint.sh"
+        hint: "Look for sensitive information in startup scripts"
+        service: "filesystem"
+      - id: jenkins_flag
+        placeholder: "FLAG_PLACEHOLDER_8"
+        points: 350
+        file: "/target3/jenkins/credentials.xml"
+        hint: "CI/CD systems often contain sensitive credentials"
+        service: "Jenkins"
+    vulnerabilities:
+      - id: "exposed_api_key"
+        description: "API key stored in environment variable"
+      - id: "unprotected_memcached"
+        description: "Memcached instance with no authentication"
+
+  target4:
+    name: "target4"
+    services:
+      - name: "SSH"
+        port: 22
+      - name: "FTP"
+        port: 21
+      - name: "Tomcat"
+        port: 8080
+    flags:
+      - id: tomcat_flag
+        placeholder: "FLAG_PLACEHOLDER_9"
+        points: 400
+        file: "/target4/tomcat/manager/flag.txt"
+        hint: "Default credentials are dangerous"
+        service: "Tomcat"
+    vulnerabilities:
+      - id: "default_creds"
+        description: "Default credentials for Tomcat admin"
+      - id: "anonymous_ftp"
+        description: "FTP server allows anonymous access"
+
+dependencies:
+  - source: "target1"
+    destination: "target2"
+    service: "MySQL"
+    description: "NodeJS app connects to MySQL database on target1"
+  
+  - source: "target2"
+    destination: "target3"
+    service: "NodeJS App"
+    description: "Jenkins periodically pulls data from NodeJS app"
+  
+  - source: "target3"
+    destination: "target4"
+    service: "Jenkins"
+    description: "Jenkins deploys to Tomcat"
+  
+  - source: "target4"
+    destination: "target1"
+    service: "Tomcat"
+    description: "Tomcat app accesses Redis on target1"
+
+lateral_movement:
+  - source: "target1"
+    destination: "target2"
+    method: "SSH key reuse"
+    
+  - source: "target2"
+    destination: "target3"
+    method: "Hard-coded credentials in NodeJS app"
+    
+  - source: "target3"
+    destination: "target4"
+    method: "Jenkins deployment script with credentials"
