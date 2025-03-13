@@ -39,6 +39,7 @@ class Command(BaseCommand):
         containers = ScenarioArchitecture.objects.prepare_scenario(template, blue_team)
 
         for container in containers:
+            # TODO: save connection strings to db
             logger.info(f"Connection Information for {container.name}:")
             docker_container = self.docker_service.get_container(container_id=container.docker_id)
             port = docker_container.attrs["NetworkSettings"]["Ports"]["22/tcp"][0]["HostPort"]

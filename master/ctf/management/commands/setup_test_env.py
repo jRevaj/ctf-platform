@@ -11,6 +11,7 @@ from ...services import DockerService, ContainerService, FlagService
 logger = logging.getLogger(__name__)
 
 
+# TODO: merge with command that handles complex scenarios
 class Command(BaseCommand):
     help = "Setup test environment"
 
@@ -75,6 +76,7 @@ class Command(BaseCommand):
             raise e
 
     def _print_success_message(self, container: GameContainer) -> None:
+        # TODO: save connection string
         logger.info(f"Test environment created successfully!")
         ssh_string = self.container_service.get_ssh_connection_string(container)
         logger.info(f"Game container SSH connection string: {ssh_string}")

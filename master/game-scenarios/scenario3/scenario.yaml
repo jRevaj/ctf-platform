@@ -1,0 +1,223 @@
+name: corporate_breach
+title: Corporate Network Breach Challenge
+description: Multi-container environment simulating a corporate network with various interconnected services. Players must identify and exploit vulnerabilities across multiple attack vectors to capture flags through diverse mechanisms including service exploits, database queries, application interactions, and more.
+
+containers:
+  webserver:
+    name: webserver
+    base_image: ubuntu:22.04
+    services:
+      - name: "SSH"
+        port: 22
+      - name: "WordPress"
+        port: 80
+      - name: "MySQL"
+        port: 3306
+    flags:
+      - id: wordpress_plugin_flag
+        placeholder: "FLAG_PLACEHOLDER_1"
+        points: 150
+        location: "WordPress plugin admin page response header (X-Flag)"
+        hint: "Analyze the HTTP response headers when accessing the plugin admin page"
+        service: "WordPress"
+      - id: mysql_user_flag
+        placeholder: "FLAG_PLACEHOLDER_2"
+        points: 200
+        location: "MySQL database, table 'wp_secrets', column 'flag_value'"
+        hint: "SQL queries can reveal hidden database content"
+        service: "MySQL"
+      - id: hidden_admin_flag
+        placeholder: "FLAG_PLACEHOLDER_3"
+        points: 100
+        location: "WordPress hidden admin panel at /wp-admin/secret.php"
+        hint: "Not all admin interfaces are well-known"
+        service: "WordPress"
+    vulnerabilities:
+#       TODO: these are just notes..
+      - id: "wordpress_plugin_rce"
+        description: "Vulnerable WordPress plugin with remote code execution capability"
+      - id: "directory_listing_enabled"
+        description: "Directory listing enabled on web server"
+      - id: "mysql_weak_password"
+        description: "MySQL root account has a weak password"
+
+  intranet:
+    name: "intranet"
+    base_image: debian:11
+    services:
+      - name: "SSH"
+        port: 22
+      - name: "Internal Wiki (Gogs)"
+        port: 3000
+      - name: "Redis"
+        port: 6379
+    flags:
+      - id: api_endpoint_flag
+        placeholder: "FLAG_PLACEHOLDER_4"
+        points: 250
+        location: "Response from API endpoint /api/v1/system/status with parameter debug=true"
+        hint: "Some API endpoints have hidden parameters"
+        service: "Internal Wiki"
+      - id: redis_command_flag
+        placeholder: "FLAG_PLACEHOLDER_5"
+        points: 200
+        location: "Redis key 'secret_flag' visible only when executing specific Redis commands"
+        hint: "Redis commands can reveal more than just GET"
+        service: "Redis"
+      - id: session_hijacking_flag
+        placeholder: "FLAG_PLACEHOLDER_6"
+        points: 300
+        location: "Cookie value when logged in as admin user"
+        hint: "Session management can be vulnerable"
+        service: "Internal Wiki"
+    vulnerabilities:
+#       TODO: these are just notes..
+      - id: "gogs_sqli"
+        description: "SQL injection vulnerability in the wiki search functionality"
+      - id: "redis_no_auth"
+        description: "Redis instance running without authentication"
+      - id: "session_fixation"
+        description: "Session IDs aren't regenerated after login"
+
+  fileserver:
+    name: "fileserver"
+    base_image: ubuntu:22.04
+    services:
+      - name: "SSH"
+        port: 22
+      - name: "FTP"
+        port: 21
+      - name: "Samba"
+        port: 445
+    flags:
+      - id: hidden_share_flag
+        placeholder: "FLAG_PLACEHOLDER_7"
+        points: 200
+        location: "Content of file accessible only through a hidden Samba share"
+        hint: "Not all shares are visible by default"
+        service: "Samba"
+      - id: ftp_upload_flag
+        placeholder: "FLAG_PLACEHOLDER_8"
+        points: 150
+        location: "Response after uploading and executing a specific file via FTP"
+        hint: "Some uploaded files might be executable in certain locations"
+        service: "FTP"
+      - id: ssh_banner_flag
+        placeholder: "FLAG_PLACEHOLDER_9"
+        points: 100
+        location: "SSH banner message when connecting to a specific user"
+        hint: "SSH banners can vary by connection parameters"
+        service: "SSH"
+    vulnerabilities:
+#       TODO: these are just notes..
+      - id: "anonymous_ftp"
+        description: "FTP server configured to allow anonymous access with write permissions"
+      - id: "samba_public_share"
+        description: "Samba share with world-readable permissions"
+      - id: "custom_ssh_config"
+        description: "SSH configuration leaks information in custom banner messages"
+
+  monitoring:
+    name: "monitoring"
+    base_image: centos:7
+    services:
+      - name: "SSH"
+        port: 22
+      - name: "Nagios"
+        port: 8080
+      - name: "Elasticsearch"
+        port: 9200
+    flags:
+      - id: nagios_command_flag
+        placeholder: "FLAG_PLACEHOLDER_10"
+        points: 300
+        location: "Output of a custom Nagios command execution"
+        hint: "Monitoring systems execute commands to check service status"
+        service: "Nagios"
+      - id: elasticsearch_query_flag
+        placeholder: "FLAG_PLACEHOLDER_11"
+        points: 350
+        location: "Result of a specific Elasticsearch query on index 'system-secrets'"
+        hint: "Complex search queries can reveal hidden data"
+        service: "Elasticsearch"
+      - id: status_page_flag
+        placeholder: "FLAG_PLACEHOLDER_12"
+        points: 250
+        location: "Revealed when exploiting XSS on Nagios status page"
+        hint: "Input fields aren't always properly sanitized"
+        service: "Nagios"
+    vulnerabilities:
+#       TODO: these are just notes..
+      - id: "nagios_default_creds"
+        description: "Nagios web interface using default admin credentials"
+      - id: "elasticsearch_no_auth"
+        description: "Elasticsearch instance with no authentication required"
+      - id: "nagios_command_injection"
+        description: "Nagios check command vulnerable to command injection"
+
+  devserver:
+    name: "devserver"
+    base_image: ubuntu:22.04
+    services:
+      - name: "SSH"
+        port: 22
+      - name: "Jenkins"
+        port: 8080
+      - name: "GitLab"
+        port: 80
+    flags:
+      - id: jenkins_build_flag
+        placeholder: "FLAG_PLACEHOLDER_13"
+        points: 400
+        location: "Console output of a specific Jenkins build job"
+        hint: "Build logs can contain sensitive information"
+        service: "Jenkins"
+      - id: gitlab_issue_flag
+        placeholder: "FLAG_PLACEHOLDER_14"
+        points: 350
+        location: "Description of a hidden GitLab issue only visible to admin users"
+        hint: "Access control might not be properly implemented"
+        service: "GitLab"
+      - id: environment_var_flag
+        placeholder: "FLAG_PLACEHOLDER_15"
+        points: 325
+        location: "Environment variable revealed through server-side template injection"
+        hint: "Template rendering can expose server variables"
+        service: "GitLab"
+    vulnerabilities:
+#       TODO: these are just notes..
+      - id: "jenkins_groovy_script"
+        description: "Jenkins script console accessible with weak credentials"
+      - id: "gitlab_ssti"
+        description: "Server-side template injection in GitLab wiki rendering"
+      - id: "git_config_leak"
+        description: "Git configuration exposes credentials in .git directory"
+
+# TODO: good idea??
+network:
+  internal_networks:
+    - name: "corporate_network"
+      containers: ["webserver", "intranet", "fileserver", "monitoring", "devserver"]
+    - name: "backend_network"
+      containers: ["webserver", "intranet"]
+    - name: "storage_network"
+      containers: ["fileserver", "devserver"]
+    - name: "monitoring_network"
+      containers: ["monitoring", "webserver", "intranet", "fileserver", "devserver"]
+
+# TODO: good but too complex to implement??
+additional_challenge_elements:
+  - name: "network_traffic_analysis"
+    description: "Redis backup process leaks flag in unencrypted network traffic between containers"
+    flag: "FLAG_PLACEHOLDER_16"
+    points: 275
+
+  - name: "distributed_flag"
+    description: "Flag is split across multiple containers and requires combining parts"
+    flag: "FLAG_PLACEHOLDER_17"
+    points: 500
+
+  - name: "timing_attack"
+    description: "Authentication system vulnerable to timing attacks revealing flag character by character"
+    flag: "FLAG_PLACEHOLDER_18"
+    points: 450

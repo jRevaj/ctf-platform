@@ -1,0 +1,33 @@
+{
+  "name": "corporate-app",
+  "version": "1.0.0",
+  "description": "Corporate internal application",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^5.13.7",
+    "dotenv": "^10.0.0"
+  },
+  "devDependencies": {
+    "jest": "^27.0.6"
+  },
+  "config": {
+    "database": {
+      "host": "mongodb://localhost:27017",
+      "user": "admin",
+      "password": "admin123"
+    },
+    "api": {
+      "key": "api_key_12345",
+      "secret": "api_secret_67890"
+    },
+    "gitlab": {
+      "token": "glpat-ABCDEF123456",
+      "project_id": 123
+    }
+  }
+} 

@@ -111,6 +111,7 @@ class ScenarioArchitectureManager(models.Manager):
                     if not self.container_service.configure_ssh_access(container, blue_team):
                         raise ContainerOperationError("Failed to configure SSH access")
 
+                # TODO: complex network setups??
                 connect_container_to_network(scenario_network, container)
 
             return containers
