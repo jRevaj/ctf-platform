@@ -47,7 +47,7 @@ class GameContainerAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (None, {
-            'fields': ('name', 'template_name', 'docker_id', 'status', 'ip_address')
+            'fields': ('name', 'template_name', 'docker_id', 'status')
         }),
         ('Team Assignment', {
             'fields': ('blue_team', 'red_team', 'access_rotation_date')

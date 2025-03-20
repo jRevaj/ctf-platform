@@ -24,9 +24,9 @@ class GameContainerManager(models.Manager):
                 build_path = str(template_container_path.parent)
                 container_name = template_container_path.parent.name
             else:
-                build_path = temp_dir if temp_dir else str(template.get_full_template_path())
+                build_path = str(template.get_full_template_path())
                 container_name = template_name
-            
+
             tag = f"{DockerConstants.CONTAINER_PREFIX}-{template_name}-{Path(build_path).name}-{session.pk}-{blue_team.pk}"
 
             docker_service.build_image(build_path, tag)
@@ -69,7 +69,7 @@ class GameContainer(models.Model):
     template_name = models.CharField(max_length=128, null=True, blank=True)
     docker_id = models.CharField(max_length=128, unique=True)
     status = models.CharField(max_length=16, choices=ContainerStatus)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    port = models.IntegerField(null=True, blank=True)
     services = models.JSONField(default=list)
     blue_team = models.ForeignKey(
         Team,
@@ -119,6 +119,10 @@ class GameContainer(models.Model):
         """Check if team has access to the container"""
         return self.blue_team == team or self.red_team == team
 
+    def get_connection_string(self):
+        """Get container connection string"""
+        return f"ssh -p {self.port} ctf-user@localhost"
+
 
 class ContainerAccessHistory(models.Model):
     container = models.ForeignKey(GameContainer, related_name="access_history", on_delete=models.CASCADE)
@@ -142,13 +146,13 @@ class ContainerAccessLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     session_length = models.DurationField(null=True, blank=True, help_text="Duration of session if applicable")
     commands_executed = models.TextField(null=True, blank=True, help_text="Commands executed during session")
-    
+
     class Meta:
         ordering = ["-timestamp"]
         indexes = [
             models.Index(fields=["container", "timestamp"]),
             models.Index(fields=["user", "timestamp"]),
         ]
-        
+
     def __str__(self):
         return f"{self.user} - {self.access_type} - {self.container.name} at {self.timestamp}"
