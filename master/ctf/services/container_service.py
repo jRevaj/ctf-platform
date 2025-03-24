@@ -1,11 +1,12 @@
 import logging
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
-from ctf.models import GameContainer, ContainerStatus, Team
+from ctf.models import GameContainer, Team
 from ctf.models.constants import DockerConstants
+from ctf.models.enums import ContainerStatus
 from ctf.models.exceptions import ContainerOperationError
-from .docker_service import DockerService
+from ctf.services.docker_service import DockerService
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +14,8 @@ logger = logging.getLogger(__name__)
 class ContainerService:
     """Business logic for container operations"""
 
-    def __init__(self, docker_service: DockerService):
-        self.docker = docker_service
+    def __init__(self, docker_service=None):
+        self.docker = docker_service or DockerService()
 
     def create_related_containers(self, template, temp_dir, session, blue_team):
         """Batch create related containers"""
@@ -44,7 +45,8 @@ class ContainerService:
         """Create a new game container from template"""
         try:
             logger.info(f"Creating new game container {path if path else temp_dir}")
-            return GameContainer.objects.create_with_docker(template=template, temp_dir=temp_dir, session=session, blue_team=blue_team,
+            return GameContainer.objects.create_with_docker(template=template, temp_dir=temp_dir, session=session,
+                                                            blue_team=blue_team,
                                                             docker_service=self.docker, path=path)
         except Exception as e:
             logger.error(f"Failed to create game container: {e}")

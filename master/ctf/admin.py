@@ -6,6 +6,8 @@ from django.utils.safestring import mark_safe
 
 from ctf.forms.admin_forms import GameContainerForm
 from ctf.models import *
+from ctf.models.enums import ContainerStatus
+from ctf.services import DockerService, ContainerService
 
 
 def handle_action_redirect(request, container_id):
@@ -15,7 +17,7 @@ def handle_action_redirect(request, container_id):
     return redirect("admin:ctf_gamecontainer_changelist")
 
 
-class ScenarioTemplateAdmin(admin.ModelAdmin):
+class ChallengeTemplateAdmin(admin.ModelAdmin):
     list_display = ("folder", "name", "description")
 
 
@@ -36,6 +38,7 @@ class FlagInline(admin.TabularInline):
     show_change_link = True
     extra = 0
     can_delete = False
+    fk_name = 'container'
 
 
 class GameContainerAdmin(admin.ModelAdmin):
@@ -282,13 +285,13 @@ class FlagAdmin(admin.ModelAdmin):
         return queryset.select_related('container', 'owner', 'captured_by')
 
 
-class ContainerAccessLogAdmin(admin.ModelAdmin):
+class ContainerAccessAdmin(admin.ModelAdmin):
     """Admin interface for container access logs"""
-    list_display = ('user', 'container', 'access_type', 'timestamp', 'ip_address', 'session_length')
+    list_display = ('user', 'container', 'access_type', 'start_time', 'ip_address', 'session_length')
     list_filter = ('access_type', 'container', 'user')
     search_fields = ('user__username', 'container__name', 'ip_address')
-    date_hierarchy = 'timestamp'
-    readonly_fields = ('timestamp',)
+    date_hierarchy = 'start_time'
+    readonly_fields = ('start_time',)
 
 
 class GameSessionAdmin(admin.ModelAdmin):
@@ -317,11 +320,24 @@ class TeamAssignmentAdmin(admin.ModelAdmin):
     is_active.short_description = "Active"
 
 
-admin.site.register(ScenarioTemplate, ScenarioTemplateAdmin)
+class GamePhaseAdmin(admin.ModelAdmin):
+    """Admin interface for managing game rounds"""
+    list_display = ('session', 'phase_number', 'template', 'status')
+    list_filter = ('status', 'session')
+    ordering = ('session', 'phase_number')
+
+    def get_phase(self, obj):
+        return obj.get_phase() or 'N/A'
+
+    get_phase.short_description = 'Current Phase'
+
+
+admin.site.register(ChallengeTemplate, ChallengeTemplateAdmin)
 admin.site.register(Team, TeamAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(GameContainer, GameContainerAdmin)
 admin.site.register(GameSession, GameSessionAdmin)
 admin.site.register(TeamAssignment, TeamAssignmentAdmin)
 admin.site.register(Flag, FlagAdmin)
-admin.site.register(ContainerAccessLog, ContainerAccessLogAdmin)
+admin.site.register(ContainerAccess, ContainerAccessAdmin)
+admin.site.register(GamePhase, GamePhaseAdmin)

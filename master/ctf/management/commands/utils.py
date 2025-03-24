@@ -15,13 +15,20 @@ def validate_environment() -> None:
         raise ValueError("TEST_BLUE_SSH_PUBLIC_KEY or TEST_RED_SSH_PUBLIC_KEY environment variable is not set")
 
 
-def create_teams(run_id: uuid.UUID) -> tuple[Team, Team]:
-    blue_team = Team.objects.create(name=f"Team {run_id}", role=TeamRole.BLUE)
-    red_team = Team.objects.create(name=f"Team {run_id}", role=TeamRole.RED)
-    return blue_team, red_team
+def create_teams(run_id: uuid.UUID, count: int) -> list[Team]:
+    return [Team.objects.create(name=f"Team {i} {run_id}") for i in range(count)]
 
 
-def create_users(run_id: uuid.UUID, blue_team: Team, red_team: Team) -> None:
+def create_users(run_id: uuid.UUID, count: int) -> list[User]:
+    return [User.objects.create(
+        username=f"User {i} {run_id}",
+        email=f"test-{i}-{run_id}@example.com",
+        ssh_public_key=os.getenv("TEST_BLUE_SSH_PUBLIC_KEY"),
+        is_active=True
+    ) for i in range(count)]
+
+
+def create_users_with_key(run_id: uuid.UUID, blue_team: Team, red_team: Team) -> None:
     User.objects.create(
         username=f"test-{run_id}",
         email=f"test-{run_id}@example.com",

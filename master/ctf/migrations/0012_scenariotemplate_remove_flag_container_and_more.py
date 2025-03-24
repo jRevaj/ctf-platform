@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
             name='ScenarioTemplate',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('folder', models.CharField(help_text='Folder name in game-scenarios directory', max_length=128, null=True, unique=True)),
+                ('folder', models.CharField(help_text='Folder name in game-challenges directory', max_length=128, null=True, unique=True)),
                 ('name', models.CharField(max_length=64)),
                 ('title', models.CharField(blank=True, max_length=256, null=True)),
                 ('description', models.TextField(blank=True, null=True)),

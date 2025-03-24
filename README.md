@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a CTF platform that allows you to create and manage CTF scenarios.
+This project is a CTF platform that allows you to create and manage CTF challenges.
 
 ## Management Commands
 
@@ -10,7 +10,7 @@ This directory contains management commands for the CTF platform.
 
 ### `setup_environment`
 
-This command can set up either a single-container environment or a multi-container scenario.
+This command can set up either a single-container environment or a multi-container challenge.
 
 ### Usage
 
@@ -34,5 +34,5 @@ The command will output connection information for all created containers, inclu
 Usage of these commands is the same as in `setup_environment` command.
 
 - `clean_test_env`: Cleans up test environments
-- `sync_templates`: Synchronizes scenario templates
+- `sync_templates`: Synchronizes challenge templates
 - `init_admin`: Initializes admin user

@@ -7,9 +7,9 @@ from docker.models.containers import Container
 from docker.models.networks import Network
 from docker.types import IPAMPool, IPAMConfig
 
-from ctf.models import ContainerStatus
 from ctf.models.constants import DockerConstants
 from ctf.models.container import GameContainer
+from ctf.models.enums import ContainerStatus
 from ctf.models.exceptions import ContainerNotFoundError, DockerOperationError
 
 logger = logging.getLogger(__name__)

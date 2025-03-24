@@ -5,8 +5,6 @@ from datetime import datetime, timezone
 
 from django.db import models
 
-from .team import Team
-
 logger = logging.getLogger(__name__)
 
 
@@ -47,14 +45,14 @@ class Flag(models.Model):
     placeholder = models.CharField(max_length=128, null=True)
     hint = models.TextField(null=True)
     container = models.ForeignKey(
-        "GameContainer",
+        "ctf.GameContainer",
         related_name="flags",
         null=True,
         blank=True,
         on_delete=models.CASCADE
     )
     owner = models.ForeignKey(
-        Team,
+        "ctf.Team",
         related_name="owned_flags",
         null=True,
         blank=True,
@@ -62,7 +60,7 @@ class Flag(models.Model):
     )
     is_captured = models.BooleanField(default=False)
     captured_by = models.ForeignKey(
-        Team,
+        "ctf.Team",
         related_name="captured_flags",
         null=True,
         blank=True,
@@ -82,12 +80,12 @@ class Flag(models.Model):
     def __str__(self):
         return self.value
 
-    def assign_owner(self, team: Team):
+    def assign_owner(self, team):
         """Assign ownership of the flag to a team"""
         self.owner = team
         self.save()
 
-    def capture(self, team: Team):
+    def capture(self, team):
         """Mark the flag as captured"""
         self.is_captured = True
         self.captured_by = team

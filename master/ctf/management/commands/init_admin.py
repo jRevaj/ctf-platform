@@ -5,6 +5,7 @@ from ctf.models import User
 
 
 class Command(BaseCommand):
+    help = "Initialize admin accounts"
 
     def handle(self, *args, **options):
         if User.objects.count() == 0:

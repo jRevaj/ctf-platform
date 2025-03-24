@@ -14,4 +14,4 @@ if [ -f /var/ftp/pub/*.php ]; then
 fi
 
 # This is a simulated vulnerability for the CTF challenge
-# In a real scenario, this would be more complex and involve actual code execution 
+# In a real challenge, this would be more complex and involve actual code execution

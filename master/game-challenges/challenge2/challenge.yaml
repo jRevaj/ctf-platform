@@ -1,6 +1,6 @@
-name: scenario2
+name: challenge2
 title: Advanced Multi-Container Security Challenge
-description: Complex scenario with multiple containers, service interdependencies, privilege escalation paths, and communication channels
+description: Complex challenge with multiple containers, service interdependencies, privilege escalation paths, and communication channels
 
 containers:
   target1:

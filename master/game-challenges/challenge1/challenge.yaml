@@ -1,6 +1,6 @@
-name: scenario1
-title: Base multi-container scenario
-description: Scenario with multiple containers in one network and multiple services per container
+name: challenge1
+title: Base multi-container challenge
+description: Challenge with multiple containers in one network and multiple services per container
 
 containers:
   target1:

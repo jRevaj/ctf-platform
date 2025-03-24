@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Vulnerable Plugin
  * Plugin URI: http://example.com/vulnerable-plugin
- * Description: A deliberately vulnerable plugin for CTF scenario
+ * Description: A deliberately vulnerable plugin for CTF challenge
  * Version: 1.0
  * Author: CTF Creator
  */

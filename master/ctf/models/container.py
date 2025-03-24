@@ -1,13 +1,12 @@
 import logging
 from pathlib import Path
-from typing import Optional
 
 from django.db import models
+from django.utils import timezone
 
-from .constants import DockerConstants
-from .enums import ContainerStatus, TeamRole
-from .exceptions import ContainerOperationError
-from .team import Team
+from ctf.models.constants import DockerConstants
+from ctf.models.enums import ContainerStatus, TeamRole
+from ctf.models.exceptions import ContainerOperationError
 
 logger = logging.getLogger(__name__)
 
@@ -72,14 +71,13 @@ class GameContainer(models.Model):
     port = models.IntegerField(null=True, blank=True)
     services = models.JSONField(default=list)
     blue_team = models.ForeignKey(
-        Team,
+        'ctf.Team',
         related_name="blue_containers",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL
     )
     red_team = models.ForeignKey(
-        Team,
+        'ctf.Team',
         related_name="red_containers",
         null=True,
         blank=True,
@@ -95,9 +93,11 @@ class GameContainer(models.Model):
             models.Index(fields=["docker_id"]),
             models.Index(fields=["status"]),
         ]
+        verbose_name = "Game Container"
+        verbose_name_plural = "Game Containers"
 
     def __str__(self) -> str:
-        return self.name
+        return f"{self.name} ({self.status})"
 
     def get_flags(self):
         """Get all flags in the container"""
@@ -105,9 +105,9 @@ class GameContainer(models.Model):
 
     def get_access_history(self):
         """Get access history for the container"""
-        return self.access_history.all()
+        return self.access_records.all()
 
-    def get_current_role(self, team: Team) -> Optional[TeamRole]:
+    def get_current_role(self, team):
         """Get team's role in the container"""
         if self.blue_team == team:
             return TeamRole.BLUE
@@ -115,7 +115,7 @@ class GameContainer(models.Model):
             return TeamRole.RED
         return None
 
-    def is_accessible_by(self, team: Team) -> bool:
+    def is_accessible_by(self, team):
         """Check if team has access to the container"""
         return self.blue_team == team or self.red_team == team
 
@@ -124,35 +124,46 @@ class GameContainer(models.Model):
         return f"ssh -p {self.port} ctf-user@localhost"
 
 
-class ContainerAccessHistory(models.Model):
-    container = models.ForeignKey(GameContainer, related_name="access_history", on_delete=models.CASCADE)
-    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+class ContainerAccess(models.Model):
+    container = models.ForeignKey(GameContainer, related_name="access_records", on_delete=models.CASCADE)
+    team = models.ForeignKey('ctf.Team', related_name="container_access_history", on_delete=models.CASCADE)
+    user = models.ForeignKey('ctf.User', related_name="container_access", on_delete=models.CASCADE, null=True,
+                             blank=True)
     role = models.CharField(max_length=8, choices=TeamRole)
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-
-
-class ContainerAccessLog(models.Model):
-    """Model to track individual SSH and other access attempts to containers"""
-    container = models.ForeignKey(GameContainer, related_name="access_logs", on_delete=models.CASCADE)
-    user = models.ForeignKey('User', related_name="container_access", on_delete=models.CASCADE)
-    access_type = models.CharField(max_length=16, choices=[
-        ('SSH', 'SSH Connection'),
-        ('HTTP', 'Web Access'),
-        ('API', 'API Access'),
-        ('OTHER', 'Other Access')
-    ])
+    access_type = models.CharField(max_length=64)
+    start_time = models.DateTimeField(auto_now_add=True)
+    end_time = models.DateTimeField(null=True, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
     session_length = models.DurationField(null=True, blank=True, help_text="Duration of session if applicable")
     commands_executed = models.TextField(null=True, blank=True, help_text="Commands executed during session")
 
     class Meta:
-        ordering = ["-timestamp"]
+        ordering = ["-start_time"]
         indexes = [
-            models.Index(fields=["container", "timestamp"]),
-            models.Index(fields=["user", "timestamp"]),
+            models.Index(fields=["container", "start_time"]),
+            models.Index(fields=["team", "start_time"]),
+            models.Index(fields=["user", "start_time"]),
+            models.Index(fields=["access_type"]),
         ]
+        verbose_name = "Container Access Record"
+        verbose_name_plural = "Container Access Records"
 
     def __str__(self):
-        return f"{self.user} - {self.access_type} - {self.container.name} at {self.timestamp}"
+        if self.access_type == 'SESSION':
+            return f"{self.team.name} - {self.role} access to {self.container.name} from {self.start_time} to {self.end_time or 'ongoing'}"
+        else:
+            return f"{self.user} - {self.access_type} - {self.container.name} at {self.start_time}"
+
+    def calculate_session_length(self):
+        """Calculate and update the session length if end_time is set"""
+        if self.end_time:
+            self.session_length = self.end_time - self.start_time
+            return self.session_length
+        return None
+
+    def end_session(self):
+        """End the current session"""
+        if not self.end_time:
+            self.end_time = timezone.now()
+            self.calculate_session_length()
+            self.save()

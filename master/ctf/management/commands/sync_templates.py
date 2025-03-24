@@ -6,7 +6,7 @@ import yaml
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from ctf.models import ScenarioTemplate
+from ctf.models import ChallengeTemplate
 from ctf.models.exceptions import ContainerOperationError
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def _get_templates_dir() -> Path:
-        templates_dir = Path(settings.BASE_DIR) / "game-scenarios"
+        templates_dir = Path(settings.BASE_DIR) / "game-challenges"
         if not templates_dir.exists():
             raise ValueError(f"Templates directory not found: {templates_dir}")
         return templates_dir
@@ -69,14 +69,14 @@ class Command(BaseCommand):
 
     @staticmethod
     def _read_metadata(template_dir: Path) -> dict:
-        """Read metadata from scenario.yaml"""
-        metadata_path = template_dir / "scenario.yaml"
+        """Read metadata from challenge.yaml"""
+        metadata_path = template_dir / "challenge.yaml"
         if metadata_path.exists():
             return yaml.safe_load(metadata_path.read_text())
         return {}
 
     def _process_templates(self, template_dirs) -> set:
-        """Process all scenario directories"""
+        """Process all challenge directories"""
         processed_templates = set()
 
         for template_dir in template_dirs:
@@ -84,7 +84,7 @@ class Command(BaseCommand):
             if not template_info:
                 continue
 
-            template, created = ScenarioTemplate.objects.update_or_create(
+            template, created = ChallengeTemplate.objects.update_or_create(
                 name=template_info["name"],
                 defaults={
                     "folder": template_dir.name,
@@ -106,4 +106,4 @@ class Command(BaseCommand):
     @staticmethod
     def _cleanup_obsolete_templates(processed_templates: set) -> int:
         """Remove templates that no longer exist in filesystem"""
-        return ScenarioTemplate.objects.exclude(name__in=processed_templates).delete()[0]
+        return ChallengeTemplate.objects.exclude(name__in=processed_templates).delete()[0]
