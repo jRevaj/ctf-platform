@@ -91,7 +91,7 @@ class ChallengeService:
                 else:
                     logger.debug(f"Adding network {network.name} to architecture")
                     architecture.networks.add(network)
-            
+
             architecture.save()
             logger.info(f"Successfully prepared challenge '{template.name}' for blue team {blue_team.id}")
             return architecture
@@ -160,8 +160,8 @@ class ChallengeService:
             logger.debug(f"Assigning flags to container {container.name}")
             self.assign_flags_to_container(container, flag_mapping)
 
-            if container.template_name == "target1":
-                logger.debug(f"Configuring SSH access for primary target container {container.name}")
+            if container.is_entrypoint:
+                logger.debug(f"Configuring SSH access for entrypoint container {container.name}")
                 self.configure_container_ssh(container, blue_team)
 
             logger.debug(f"Configuring port mapping for container {container.name}")
@@ -174,19 +174,19 @@ class ChallengeService:
         """Setup networks for containers based on template config or create a default network"""
         logger.debug(f"Setting up networks for challenge template {template.name}")
         network_configs = []
-        
+
         if self._has_network_config(template):
             logger.info(f"Using template-defined network configuration")
             networks = {}
-            
-            if hasattr(template, 'networks_config') and template.networks_config and 'internal_networks' in template.networks_config:
-                internal_networks = template.networks_config['internal_networks']
-                logger.debug(f"Found {len(internal_networks)} network definitions")
-                
-                for network_def in internal_networks:
+
+            network_definitions = self._extract_network_definitions(template.networks_config)
+            if network_definitions:
+                logger.debug(f"Found {len(network_definitions)} network definitions")
+
+                for network_def in network_definitions:
                     network_name = network_def.get('name')
                     container_names = network_def.get('containers', [])
-                    
+
                     if network_name and container_names:
                         logger.info(f"Creating network '{network_name}' with {len(container_names)} containers")
                         network, subnet = self.docker_service.create_network()
@@ -210,7 +210,13 @@ class ChallengeService:
                         db_network.save()
                         network_configs.append(db_network)
                         logger.debug(f"Network '{network_name}' setup complete")
-            
+
+                logger.info(f"Disconnecting non-entrypoint containers from bridge network to enforce network isolation")
+                for container in containers:
+                    if not container.is_entrypoint:
+                        logger.info(f"Disconnecting container {container.name} from bridge network")
+                        self.docker_service.disconnect_from_bridge(container)
+
             if network_configs:
                 logger.info(f"Created {len(network_configs)} networks")
                 return network_configs
@@ -232,9 +238,59 @@ class ChallengeService:
                 self.docker_service.connect_container_to_network(challenge_network, container)
                 db_network.containers.add(container)
 
+            logger.info(f"Disconnecting non-entrypoint containers from bridge network")
+            for container in containers:
+                if not container.is_entrypoint:
+                    logger.info(f"Disconnecting container {container.name} from bridge network")
+                    self.docker_service.disconnect_from_bridge(container)
+            
             db_network.save()
             logger.info(f"Created default network with subnet {subnet}")
             return db_network
+
+    def _extract_network_definitions(self, networks_config):
+        """
+        Extract network definitions from networks_config regardless of structure.
+        Handles various formats of the networks configuration.
+        """
+        if not networks_config:
+            logger.debug("Empty networks_config")
+            return []
+
+        network_definitions = []
+
+        if isinstance(networks_config, list):
+            logger.debug("networks_config is a direct list of network definitions")
+            for item in networks_config:
+                if isinstance(item, dict) and 'name' in item and 'containers' in item:
+                    network_definitions.append(item)
+            return network_definitions
+
+        if isinstance(networks_config, dict):
+            if 'name' in networks_config and 'containers' in networks_config:
+                logger.debug("networks_config is a single network definition")
+                return [networks_config]
+
+            for key, value in networks_config.items():
+                logger.debug(f"Checking network definitions under key '{key}'")
+
+                if isinstance(value, list):
+                    valid_networks = []
+                    for item in value:
+                        if isinstance(item, dict) and 'name' in item and 'containers' in item:
+                            valid_networks.append(item)
+
+                    if valid_networks:
+                        logger.debug(f"Found {len(valid_networks)} network definitions under '{key}'")
+                        network_definitions.extend(valid_networks)
+
+                elif isinstance(value, dict):
+                    nested_networks = self._extract_network_definitions(value)
+                    if nested_networks:
+                        network_definitions.extend(nested_networks)
+
+        logger.debug(f"Extracted a total of {len(network_definitions)} network definitions")
+        return network_definitions
 
     @staticmethod
     def _has_network_config(template):
@@ -243,10 +299,10 @@ class ChallengeService:
         if hasattr(template, 'networks_config') and template.networks_config:
             logger.debug(f"Found networks_config for {template.name}")
             return True
-            
+
         logger.debug("No network configuration found")
         return False
-        
+
     def configure_container_ssh(self, container, blue_team):
         """Configure SSH access for a container"""
         logger.debug(f"Configuring SSH access for container {container.name}")

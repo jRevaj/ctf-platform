@@ -45,9 +45,29 @@ class ContainerService:
         """Create a new game container from template"""
         try:
             logger.info(f"Creating new game container {path if path else temp_dir}")
-            return GameContainer.objects.create_with_docker(template=template, temp_dir=temp_dir, session=session,
-                                                            blue_team=blue_team,
-                                                            docker_service=self.docker, path=path)
+            container_name = ""
+            
+            if path:
+                template_container_path = Path(path)
+                container_name = template_container_path.parent.name
+            else:
+                container_name = Path(temp_dir).name if temp_dir else template.name
+            
+            is_entrypoint = False
+            if template.containers_config and container_name in template.containers_config:
+                container_config = template.containers_config.get(container_name, {})
+                is_entrypoint = container_config.get('is_entrypoint', False)
+                logger.debug(f"Container {container_name} is_entrypoint set to {is_entrypoint} from template config")
+            
+            return GameContainer.objects.create_with_docker(
+                template=template, 
+                temp_dir=temp_dir, 
+                session=session,
+                blue_team=blue_team,
+                docker_service=self.docker, 
+                path=path,
+                is_entrypoint=is_entrypoint
+            )
         except Exception as e:
             logger.error(f"Failed to create game container: {e}")
             return None

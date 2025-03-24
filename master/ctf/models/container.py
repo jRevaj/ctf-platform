@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class GameContainerManager(models.Manager):
     """Custom manager for GameContainer model"""
 
-    def create_with_docker(self, template, temp_dir, session, blue_team, docker_service, path=""):
+    def create_with_docker(self, template, temp_dir, session, blue_team, docker_service, path="", is_entrypoint=False):
         """Create a new game container with Docker container"""
         try:
             template_name = Path(temp_dir).name if temp_dir else template.name
@@ -38,6 +38,7 @@ class GameContainerManager(models.Manager):
                 status=ContainerStatus.RUNNING,
                 blue_team=blue_team,
                 access_rotation_date=session.end_date,
+                is_entrypoint=is_entrypoint
             )
         except Exception as e:
             logger.error(f"Failed to create game container: {e}")
@@ -84,6 +85,7 @@ class GameContainer(models.Model):
         on_delete=models.SET_NULL,
     )
     access_rotation_date = models.DateTimeField()
+    is_entrypoint = models.BooleanField(default=False)
 
     objects = GameContainerManager()
 

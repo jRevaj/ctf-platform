@@ -241,3 +241,24 @@ class DockerService:
         except Exception as e:
             logger.error(f"Failed to remove network {network.name}: {e}")
             return False
+
+    def get_bridge_network(self) -> Optional[Network]:
+        """Get the default bridge network"""
+        try:
+            return self.client.networks.get("bridge")
+        except Exception as e:
+            logger.error(f"Failed to get bridge network: {e}")
+            return None
+            
+    def disconnect_from_bridge(self, container) -> bool:
+        """Disconnect a container from the default bridge network"""
+        try:
+            bridge = self.get_bridge_network()
+            if bridge:
+                bridge.disconnect(container.docker_id)
+                logger.info(f"Container {container.name} disconnected from bridge network")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Failed to disconnect container {container.name} from bridge network: {e}")
+            return False

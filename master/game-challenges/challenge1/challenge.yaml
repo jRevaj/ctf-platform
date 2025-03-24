@@ -5,6 +5,7 @@ description: Challenge with multiple containers in one network and multiple serv
 containers:
   target1:
     name: target1
+    is_entrypoint: true
     services:
       - name: "SSH"
         port: 22
@@ -50,3 +51,13 @@ containers:
         file: "/target3/entrypoint.sh"
         hint: ""
         service: "filesystem"
+
+networks:
+  internal_networks:
+    - name: "corporate_network"
+      containers: [ "target1", "target2" ]
+    - name: "backend_network"
+      containers: [ "target2", "target3" ]
+  dev_networks:
+    - name: "storage_network"
+      containers: [ "target3" ]
