@@ -193,17 +193,16 @@ containers:
       - id: "git_config_leak"
         description: "Git configuration exposes credentials in .git directory"
 
-# TODO: good idea??
-network:
+networks:
   internal_networks:
     - name: "corporate_network"
-      containers: ["webserver", "intranet", "fileserver", "monitoring", "devserver"]
+      containers: [ "webserver", "intranet", "fileserver", "monitoring", "devserver" ]
     - name: "backend_network"
-      containers: ["webserver", "intranet"]
+      containers: [ "webserver", "intranet" ]
     - name: "storage_network"
-      containers: ["fileserver", "devserver"]
+      containers: [ "fileserver", "devserver" ]
     - name: "monitoring_network"
-      containers: ["monitoring", "webserver", "intranet", "fileserver", "devserver"]
+      containers: [ "monitoring", "webserver", "intranet", "fileserver", "devserver" ]
 
 # TODO: good but too complex to implement??
 additional_challenge_elements:

@@ -15,33 +15,6 @@ from ctf.models.exceptions import ContainerNotFoundError, DockerOperationError
 logger = logging.getLogger(__name__)
 
 
-def connect_container_to_network(network, container) -> bool:
-    try:
-        network.connect(container.docker_id)
-        return True
-    except Exception as e:
-        logger.error(f"Failed to add container {container.docker_id} to network {network.name}: {e}")
-        return False
-
-
-def disconnect_container_from_network(network, container) -> bool:
-    try:
-        network.disconnect(container.docker_id)
-        return True
-    except Exception as e:
-        logger.error(f"Failed to disconnect container {container.docker_id} from network {network.name}: {e}")
-        return False
-
-
-def remove_network(network) -> bool:
-    try:
-        network.remove()
-        return True
-    except Exception as e:
-        logger.error(f"Failed to remove network {network.name}: {e}")
-        return False
-
-
 class DockerService:
     """Handles all low-level Docker operations"""
 
@@ -241,3 +214,30 @@ class DockerService:
             logger.error(f"Failed to clean up network: {e}")
         except Exception as e:
             logger.error(f"Failed to clean up network: {e}")
+
+    @staticmethod
+    def connect_container_to_network(network, container) -> bool:
+        try:
+            network.connect(container.docker_id)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add container {container.docker_id} to network {network.name}: {e}")
+            return False
+
+    @staticmethod
+    def disconnect_container_from_network(network, container) -> bool:
+        try:
+            network.disconnect(container.docker_id)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to disconnect container {container.docker_id} from network {network.name}: {e}")
+            return False
+
+    @staticmethod
+    def remove_network(network) -> bool:
+        try:
+            network.remove()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to remove network {network.name}: {e}")
+            return False

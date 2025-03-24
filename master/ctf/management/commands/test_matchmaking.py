@@ -52,7 +52,6 @@ class Command(BaseCommand):
             template_name = options["template"]
             number_of_teams = options["teams"]
 
-            # Prepare necessary db objects
             try:
                 template = ChallengeTemplate.objects.get(name=template_name)
                 session = GameSession.objects.create(
@@ -76,7 +75,6 @@ class Command(BaseCommand):
             logger.info(f"Testing matchmaking for session: {session.name}")
             logger.info(f"Number of teams: {len(teams)}")
 
-            # 1. Test initial round assignments (Week 1 - Blue phase)
             logger.info("\n=== Testing Week 1 (Blue Phase) ===")
             success = self.matchmaking_service.create_round_assignments(session, teams)
             if not success:

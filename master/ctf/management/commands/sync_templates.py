@@ -18,7 +18,7 @@ class Command(BaseCommand):
         logger.info("Syncing container templates...")
 
         try:
-            templates_dir = self._get_templates_dir()
+            templates_dir = self.get_templates_dir()
             template_dirs = [d for d in templates_dir.iterdir() if d.is_dir()]
 
             processed_templates = self._process_templates(template_dirs)
@@ -34,13 +34,13 @@ class Command(BaseCommand):
             logger.error(f"Error syncing templates: {e}")
 
     @staticmethod
-    def _get_templates_dir() -> Path:
+    def get_templates_dir() -> Path:
         templates_dir = Path(settings.BASE_DIR) / "game-challenges"
         if not templates_dir.exists():
             raise ValueError(f"Templates directory not found: {templates_dir}")
         return templates_dir
 
-    def _read_template_info(self, template_dir: Path) -> Optional[dict]:
+    def read_template_info(self, template_dir: Path) -> Optional[dict]:
         """Read template information from a directory"""
         try:
             compose_path = self._get_compose_path(template_dir)
@@ -54,7 +54,8 @@ class Command(BaseCommand):
                     "title": metadata.get("title", f"Container template from {template_dir.name}"),
                     "description": metadata.get("description", f"Container template from {template_dir.name}"),
                     "docker_compose": compose_content,
-                    "containers": metadata.get("containers", [])}
+                    "containers": metadata.get("containers", []),
+                    "networks": metadata.get("networks", [])}
         except Exception as e:
             logger.error(f"Error reading template from {template_dir}: {e}")
             return None
@@ -80,7 +81,7 @@ class Command(BaseCommand):
         processed_templates = set()
 
         for template_dir in template_dirs:
-            template_info = self._read_template_info(template_dir)
+            template_info = self.read_template_info(template_dir)
             if not template_info:
                 continue
 
@@ -93,6 +94,7 @@ class Command(BaseCommand):
                     "description": template_info["description"] if "description" in template_info else None,
                     "docker_compose": template_info["docker_compose"] if "docker_compose" in template_info else None,
                     "containers_config": template_info["containers"] if "containers" in template_info else None,
+                    "networks_config": template_info["networks"] if "networks" in template_info else None
                 },
             )
 

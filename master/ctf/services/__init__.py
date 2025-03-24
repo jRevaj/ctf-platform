@@ -1,4 +1,4 @@
-from .docker_service import DockerService, connect_container_to_network
+from .docker_service import DockerService
 from .container_service import ContainerService
 from .flag_service import FlagService
 from .challenge_service import ChallengeService
@@ -12,5 +12,4 @@ __all__ = [
     'ChallengeService',
     'MatchmakingService',
     'SchedulerService',
-    'connect_container_to_network',
 ]

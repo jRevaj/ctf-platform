@@ -8,12 +8,14 @@ logger = logging.getLogger(__name__)
 
 
 class ChallengeTemplate(models.Model):
-    folder = models.CharField(max_length=128, unique=True, null=True, help_text="Folder name in game-templates directory")
+    folder = models.CharField(max_length=128, unique=True, null=True,
+                              help_text="Folder name in game-templates directory")
     name = models.CharField(max_length=64)
     title = models.CharField(max_length=256, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     docker_compose = models.TextField(null=True, blank=True)
     containers_config = models.JSONField(default=dict, null=True, blank=True)
+    networks_config = models.JSONField(default=dict, null=True, blank=True)
 
     def __str__(self) -> str:
         return self.name
@@ -26,13 +28,16 @@ class ChallengeTemplate(models.Model):
 
 
 class ChallengeNetworkConfig(models.Model):
-    template = models.ForeignKey('ctf.ChallengeTemplate', on_delete=models.PROTECT)
+    name = models.CharField(max_length=128, null=True, blank=True)
     subnet = models.GenericIPAddressField()
-    used_ips = models.JSONField(default=list)
+    template = models.ForeignKey('ctf.ChallengeTemplate', on_delete=models.PROTECT)
     containers = models.ManyToManyField('ctf.GameContainer', related_name="challenge_network_configs")
+
+    def __str__(self):
+        return f"Network {self.name or 'Default'} ({self.subnet})"
 
 
 class ChallengeArchitecture(models.Model):
     template = models.ForeignKey('ctf.ChallengeTemplate', on_delete=models.PROTECT)
     containers = models.ManyToManyField('ctf.GameContainer', related_name="challenge_architecture")
-    network = models.ForeignKey('ctf.ChallengeNetworkConfig', on_delete=models.PROTECT)
+    networks = models.ManyToManyField('ctf.ChallengeNetworkConfig', related_name="architectures", blank=True)

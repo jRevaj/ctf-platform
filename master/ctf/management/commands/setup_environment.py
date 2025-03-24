@@ -35,12 +35,27 @@ class Command(BaseCommand):
             validate_environment()
             template = self._get_template(template_name)
 
-            if bool(template.containers_config) and len(dict(template.containers_config)) == 1:
-                logger.info("Setting up single container challenge")
-                self.setup_single_container(run_id, template)
+            logger.info("Creating test teams")
+            teams = create_teams(run_id, 2)
+            blue_team, red_team = teams[0], teams[1]
+            red_team.rotate_role()
+
+            logger.info("Creating test users with SSH keys")
+            create_users_with_key(run_id, blue_team, red_team)
+
+            logger.info("Preparing challenge")
+            architecture = self.challenge_service.prepare_challenge(template, blue_team)
+            containers = architecture.containers.all()
+
+            is_single_container = containers.count() == 1
+            if is_single_container:
+                container = containers[0]
+                logger.info(f"SSH connection string: {container.get_connection_string()}")
             else:
-                logger.info("Setting up multi container challenge")
-                self.setup_multi_container(run_id, template)
+                for container in containers:
+                    logger.info(f"SSH connection string for {container.name}: {container.get_connection_string()}")
+
+            logger.info(f"Challenge {run_id} deployed successfully!")
 
         except (ContainerOperationError, DockerOperationError) as e:
             logger.error(f"Container operation failed: {e}")
@@ -49,63 +64,9 @@ class Command(BaseCommand):
         except Exception as e:
             logger.exception(f"Unexpected error: {str(e)}")
 
-    def setup_multi_container(self, run_id: uuid.UUID, template: ChallengeTemplate):
-        """Setup a multi-container challenge"""
-        logger.info("Creating test teams")
-        teams = create_teams(run_id, 2)
-        blue_team, red_team = teams[0], teams[1]
-        red_team.rotate_role()
-
-        logger.info("Creating test users with SSH keys")
-        create_users_with_key(run_id, blue_team, red_team)
-
-        logger.info("Preparing challenge")
-        containers = self.challenge_service.prepare_challenge(template, blue_team)
-
-        for container in containers:
-            logger.info(f"SSH access for {container.name}: {container.get_connection_string()}")
-
-        logger.info(f"Challenge {run_id} deployed successfully!")
-
-    def setup_single_container(self, run_id: uuid.UUID, template: ChallengeTemplate):
-        """Set up a single container environment"""
-        logger.info("Creating test teams")
-        teams = create_teams(run_id, 2)
-        blue_team, red_team = teams[0], teams[1]
-        red_team.rotate_role()
-
-        logger.info("Creating test users with SSH keys")
-        create_users_with_key(run_id, blue_team, red_team)
-
-        session = create_session()
-        container = self._create_container(template, session, blue_team)
-
-        if not self.container_service.configure_ssh_access(container, blue_team):
-            raise ContainerOperationError("Failed to configure SSH access")
-
-        # flag = self.flag_service.create_and_deploy_flag(container)
-        # self.flag_service.assign_flag_owner(flag, blue_team)
-
-        logger.info(f"Test environment created successfully!")
-        ssh_string = self.container_service.get_ssh_connection_string(container)
-        logger.info(f"Game container SSH connection string: {ssh_string}")
-
     @staticmethod
     def _get_template(template_name: str) -> ChallengeTemplate:
         try:
             return ChallengeTemplate.objects.get(name=template_name)
         except ChallengeTemplate.DoesNotExist:
             raise ValueError(f"Template {template_name} not found")
-
-    def _create_container(self, template: ChallengeTemplate, session: GameSession, blue_team: Team) -> GameContainer:
-        try:
-            container: GameContainer = self.container_service.create_game_container(
-                template=template,
-                temp_dir=template.folder,
-                session=session,
-                blue_team=blue_team,
-            )
-            return container
-        except Exception as e:
-            logger.error(f"Error creating container: {e}")
-            raise e
