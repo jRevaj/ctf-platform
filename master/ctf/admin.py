@@ -309,9 +309,9 @@ class GameSessionAdmin(admin.ModelAdmin):
 
 class TeamAssignmentAdmin(admin.ModelAdmin):
     """Enhanced admin interface for team assignments"""
-    list_display = ('team', 'container', 'role', 'session', 'start_date', 'end_date', 'is_active')
+    list_display = ('team', 'deployment', 'role', 'session', 'start_date', 'end_date', 'is_active')
     list_filter = ('role', 'session')
-    search_fields = ('team__name', 'container__name')
+    search_fields = ('team__name', 'deployment__pk')
 
     def is_active(self, obj):
         return obj.is_active()

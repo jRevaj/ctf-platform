@@ -31,13 +31,15 @@ class ChallengeNetworkConfig(models.Model):
     name = models.CharField(max_length=128, null=True, blank=True)
     subnet = models.GenericIPAddressField()
     template = models.ForeignKey('ctf.ChallengeTemplate', on_delete=models.PROTECT)
+    deployment = models.ForeignKey('ctf.ChallengeDeployment', related_name="networks", on_delete=models.CASCADE)
     containers = models.ManyToManyField('ctf.GameContainer', related_name="challenge_network_configs")
 
     def __str__(self):
         return f"Network {self.name or 'Default'} ({self.subnet})"
 
 
-class ChallengeArchitecture(models.Model):
-    template = models.ForeignKey('ctf.ChallengeTemplate', on_delete=models.PROTECT)
-    containers = models.ManyToManyField('ctf.GameContainer', related_name="challenge_architecture")
-    networks = models.ManyToManyField('ctf.ChallengeNetworkConfig', related_name="architectures", blank=True)
+class ChallengeDeployment(models.Model):
+    template = models.ForeignKey('ctf.ChallengeTemplate', related_name="deployments", on_delete=models.PROTECT)
+
+    def __str__(self):
+        return f"Deployment {self.template.name} ({self.template.pk})"

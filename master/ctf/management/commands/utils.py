@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from django.utils.timezone import localtime
 
+from ctf.models import ChallengeTemplate
 from ctf.models.enums import GameSessionStatus, TeamRole
 from ctf.models.game_session import GameSession
 from ctf.models.team import Team
@@ -45,8 +46,9 @@ def create_users_with_key(run_id: uuid.UUID, blue_team: Team, red_team: Team) ->
     )
 
 
-def create_session() -> GameSession:
+def create_session(template: ChallengeTemplate) -> GameSession:
     return GameSession.objects.create(
+        template=template,
         start_date=localtime(),
         end_date=localtime() + timedelta(days=1),
         rotation_period=1,

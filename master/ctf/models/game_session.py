@@ -1,7 +1,6 @@
 from django.db import models
 from django.utils import timezone
 
-from ctf.models.container import GameContainer
 from ctf.models.enums import GameSessionStatus, TeamRole
 from ctf.models.team import Team
 
@@ -28,6 +27,7 @@ class GameSession(models.Model):
 
     def get_containers(self):
         """Get all containers associated with this session via team assignments"""
+        from ctf.models.container import GameContainer
         container_ids = self.team_assignments.values_list('container_id', flat=True).distinct()
         return GameContainer.objects.filter(id__in=container_ids)
 
@@ -45,19 +45,19 @@ class GameSession(models.Model):
 class TeamAssignment(models.Model):
     session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="team_assignments")
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="team_assignments")
-    container = models.ForeignKey("ctf.GameContainer", on_delete=models.CASCADE, related_name="team_assignments")
+    deployment = models.ForeignKey("ctf.ChallengeDeployment", on_delete=models.CASCADE, related_name="team_assignments")
     role = models.CharField(max_length=8, choices=TeamRole, default=TeamRole.BLUE)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
 
     class Meta:
         ordering = ["-start_date"]
-        indexes = [models.Index(fields=["session", "team"]), models.Index(fields=["session", "container"])]
+        indexes = [models.Index(fields=["session", "team"]), models.Index(fields=["session", "deployment"])]
         verbose_name = "Team Assignment"
         verbose_name_plural = "Team Assignments"
 
     def __str__(self):
-        return f"{self.team.name} as {self.role} on {self.container.name}"
+        return f"{self.team.name} as {self.role} on {self.deployment.pk}"
 
     def is_active(self):
         """Check if this assignment is currently active"""

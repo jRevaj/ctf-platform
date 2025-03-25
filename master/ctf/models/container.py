@@ -71,6 +71,7 @@ class GameContainer(models.Model):
     status = models.CharField(max_length=16, choices=ContainerStatus)
     port = models.IntegerField(null=True, blank=True)
     services = models.JSONField(default=list)
+    deployment = models.ForeignKey('ctf.ChallengeDeployment', null=True, blank=True, related_name="containers", on_delete=models.CASCADE)
     blue_team = models.ForeignKey(
         'ctf.Team',
         related_name="blue_containers",
