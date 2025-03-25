@@ -4,7 +4,7 @@ import uuid
 from django.core.management.base import BaseCommand
 
 from ctf.management.commands.utils import validate_environment, create_teams, create_users_with_key, create_session
-from ctf.models import GameContainer, GameSession, Team, ChallengeTemplate
+from ctf.models import ChallengeTemplate
 from ctf.models.exceptions import ContainerOperationError, DockerOperationError
 from ctf.services import DockerService, ContainerService, FlagService, ChallengeService
 
@@ -34,6 +34,7 @@ class Command(BaseCommand):
             logger.info("Verifying environment")
             validate_environment()
             template = self._get_template(template_name)
+            session = create_session(template)
 
             logger.info("Creating test teams")
             teams = create_teams(run_id, 2)
@@ -44,8 +45,8 @@ class Command(BaseCommand):
             create_users_with_key(run_id, blue_team, red_team)
 
             logger.info("Preparing challenge")
-            architecture = self.challenge_service.prepare_challenge(template, blue_team)
-            containers = architecture.containers.all()
+            deployment = self.challenge_service.prepare_challenge(session, blue_team)
+            containers = deployment.containers.all()
 
             is_single_container = containers.count() == 1
             if is_single_container:

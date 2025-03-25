@@ -5,7 +5,7 @@ import shutil
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from ctf.models import GameContainer, GameSession, Team, Flag
+from ctf.models import GameContainer, GameSession, Team, Flag, GamePhase, ChallengeDeployment, TeamAssignment
 from ctf.models.exceptions import ContainerOperationError, DockerOperationError
 from ctf.services import DockerService, ContainerService
 
@@ -36,8 +36,6 @@ class Command(BaseCommand):
     def _cleanup_game_resources(self):
         game_sessions = GameSession.objects.all()
         game_containers = GameContainer.objects.all()
-        teams = Team.objects.all()
-        flags = Flag.objects.all()
 
         temp_folder = os.path.join(settings.BASE_DIR, "temp")
         if os.path.exists(temp_folder):
@@ -55,6 +53,8 @@ class Command(BaseCommand):
         self.docker_service.prune_images()
         self.docker_service.clean_networks()
 
-        teams.delete()
-        flags.delete()
-
+        GamePhase.objects.all().delete()
+        ChallengeDeployment.objects.all().delete()
+        TeamAssignment.objects.all().delete()
+        Team.objects.all().delete()
+        Flag.objects.all().delete()
