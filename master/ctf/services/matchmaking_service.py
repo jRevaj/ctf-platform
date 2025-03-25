@@ -27,75 +27,92 @@ class MatchmakingService:
         """
         try:
             logger.info("Creating round assignments")
-            template = session.template
             start_date = timezone.now()
             end_date = start_date + timedelta(days=session.rotation_period)
 
             logger.info("Preparing containers for each team")
             for team in teams:
-                containers = self.challenge_service.prepare_challenge(template, team)
-                if not containers:
+                deployment = self.challenge_service.prepare_challenge(session, team)
+                if not deployment:
                     logger.error(f"Failed to prepare challenge for team {team.name}")
                     continue
 
-                for container in containers:
-                    TeamAssignment.objects.create(
-                        session=session,
-                        team=team,
-                        container=container,
-                        role=TeamRole.BLUE,
-                        start_date=start_date,
-                        end_date=end_date
-                    )
+                TeamAssignment.objects.create(
+                    session=session,
+                    team=team,
+                    deployment=deployment,
+                    role=TeamRole.BLUE,
+                    start_date=start_date,
+                    end_date=end_date
+                )
 
             return True
         except Exception as e:
             logger.error(f"Error creating round assignments: {e}")
             return False
 
-    @staticmethod
-    def create_random_red_assignments(session: GameSession, teams: List[Team], phase: GamePhase) -> bool:
+    def create_random_red_assignments(self, session: GameSession, phase: GamePhase, teams: List[Team]) -> bool:
         """
-        Create random red team assignments for the second week
-        Teams will attack containers that their opponents secured in week 1
+        Create random red team assignments for the second week.
+        Each team will be randomly assigned to attack another team's setup from week 1.
+        Teams cannot be assigned to their own setup.
         """
         try:
             logger.info("Creating random red team assignments")
             start_date = phase.start_date + timedelta(days=session.rotation_period)
             end_date = start_date + timedelta(days=session.rotation_period)
 
-            logger.info("Getting containers secured by teams in week 1")
             blue_assignments = TeamAssignment.objects.filter(
                 session=session,
                 role=TeamRole.BLUE,
                 start_date__gte=phase.start_date
-            ).select_related('container', 'team')
+            ).select_related('deployment', 'team')
 
-            logger.info("Shuffling teams")
-            shuffled_teams = list(teams)
-            random.shuffle(shuffled_teams)
+            team_assignments = {
+                assignment.team: assignment 
+                for assignment in blue_assignments
+            }
 
-            logger.info("Assigning teams to containers")
-            for team in shuffled_teams:
-                available_containers = [
-                    assignment for assignment in blue_assignments
-                    if assignment.team != team
-                ]
+            teams_to_assign = list(teams)
+            random.shuffle(teams_to_assign)
 
-                if not available_containers:
-                    logger.error(f"No available containers for team {team.name}")
-                    continue
+            available_targets = list(teams)
+            random.shuffle(available_targets)
 
-                target_assignment = random.choice(available_containers)
+            for attacking_team in teams_to_assign:
+                valid_targets = [t for t in available_targets if t != attacking_team]
+                
+                if not valid_targets:
+                    logger.error(f"No valid targets found for team {attacking_team.name}")
+                    raise Exception(f"No valid targets found for team {attacking_team.name}")
+
+                target_team = random.choice(valid_targets)
+                available_targets.remove(target_team)
+
+                target_assignment = team_assignments.get(target_team)
+                if not target_assignment:
+                    logger.error(f"No week 1 assignment found for target team {target_team.name}")
+                    raise Exception(f"No week 1 assignment found for target team {target_team.name}")
+
+                logger.info(f"Assigning team {attacking_team.name} to attack {target_team.name}'s deployment")
+                entry_container = target_assignment.deployment.containers.filter(is_entrypoint=True).first()
+
+                if not entry_container:
+                    logger.error(f"No entrypoint container found for {target_team.name}'s deployment")
+                    raise Exception(f"No entrypoint container found for {target_team.name}'s deployment")
+
+                logger.info(f"Swapping SSH access for {attacking_team.name} to {entry_container.name}")
+                self.container_service.swap_ssh_access(entry_container, attacking_team)
 
                 TeamAssignment.objects.create(
                     session=session,
-                    team=team,
-                    container=target_assignment.container,
+                    team=attacking_team,
+                    deployment=target_assignment.deployment,
                     role=TeamRole.RED,
                     start_date=start_date,
                     end_date=end_date
                 )
+                logger.info(f"Successfully created random assignment: {attacking_team.name} -> {target_team.name}")
 
             return True
         except Exception as e:
@@ -141,13 +158,13 @@ class MatchmakingService:
                     team=blue_team,
                     role=TeamRole.BLUE,
                     start_date__gte=start_date - timedelta(days=session.rotation_period)
-                ).select_related('container')
+                ).select_related('deployment')
 
                 for blue_assignment in blue_containers:
                     TeamAssignment.objects.create(
                         session=session,
                         team=red_team,
-                        container=blue_assignment.container,
+                        deployment=blue_assignment.deployment,
                         role=TeamRole.RED,
                         start_date=start_date,
                         end_date=end_date
