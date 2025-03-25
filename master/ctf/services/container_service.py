@@ -46,25 +46,25 @@ class ContainerService:
         try:
             logger.info(f"Creating new game container {path if path else temp_dir}")
             container_name = ""
-            
+
             if path:
                 template_container_path = Path(path)
                 container_name = template_container_path.parent.name
             else:
                 container_name = Path(temp_dir).name if temp_dir else template.name
-            
+
             is_entrypoint = False
             if template.containers_config and container_name in template.containers_config:
                 container_config = template.containers_config.get(container_name, {})
                 is_entrypoint = container_config.get('is_entrypoint', False)
                 logger.debug(f"Container {container_name} is_entrypoint set to {is_entrypoint} from template config")
-            
+
             return GameContainer.objects.create_with_docker(
-                template=template, 
-                temp_dir=temp_dir, 
+                template=template,
+                temp_dir=temp_dir,
                 session=session,
                 blue_team=blue_team,
-                docker_service=self.docker, 
+                docker_service=self.docker,
                 path=path,
                 is_entrypoint=is_entrypoint
             )
@@ -82,6 +82,38 @@ class ContainerService:
             return True
         except Exception as e:
             logger.error(f"Failed to delete container {container_pk}: {e}")
+            return False
+
+    def swap_ssh_access(self, container: GameContainer, new_team: Team) -> bool:
+        """Swap SSH access for the given container to the new team"""
+        try:
+            self.clean_ssh_access(container)
+            self.configure_ssh_access(container, new_team)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to swap SSH access for container {container.docker_id}: {e}")
+            return False
+
+    def clean_ssh_access(self, container: GameContainer) -> bool:
+        """Clean up SSH access for the given container"""
+        try:
+            docker_container = self.docker.get_container(container.docker_id)
+            if not docker_container:
+                logger.warning(f"Container {container.name} ({container.docker_id}) not found")
+                return False
+
+            docker_container.exec_run(
+                [
+                    "sh",
+                    "-c",
+                    "rm -rf /home/ctf-user/.ssh && rm -rf /home/ctf-user/.ssh/authorized_keys"
+                ]
+            )
+
+            logger.info(f"SSH access cleaned up for container {container.docker_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to clean up SSH access for container {container.docker_id}: {e}")
             return False
 
     def configure_ssh_access(self, container: GameContainer, team: Team) -> bool:
