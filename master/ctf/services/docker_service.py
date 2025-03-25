@@ -128,22 +128,6 @@ class DockerService:
             logger.error(f"Failed to stop container {container_id}: {e}")
             return False
 
-    # def deploy_flag(self, container: GameContainer, flag: Flag) -> bool:
-    #     """Deploy a flag to a container"""
-    #     try:
-    #         create_file_with_flag_cmd = ["sh", "-c", f"echo '{flag.value}' > {DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
-    #         self.execute_command(container, create_file_with_flag_cmd)
-    #         set_permissions_cmd = ["chmod", "000", f"{DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
-    #         self.execute_command(container, set_permissions_cmd)
-
-    #         verify_file_cmd = ["ls", "-l", f"{DockerConstants.FLAGS_CONTAINER_PATH}/flag"]
-    #         self.execute_command(container, verify_file_cmd)
-
-    #         return True
-    #     except Exception as e:
-    #         logger.error(f"Failed to deploy flag {flag.value} to container {container.name}: {e}")
-    #         return False
-
     def check_status(self, container_docker_id: str) -> ContainerStatus | None:
         """Check the status of given container"""
         try:
@@ -249,7 +233,7 @@ class DockerService:
         except Exception as e:
             logger.error(f"Failed to get bridge network: {e}")
             return None
-            
+
     def disconnect_from_bridge(self, container) -> bool:
         """Disconnect a container from the default bridge network"""
         try:
