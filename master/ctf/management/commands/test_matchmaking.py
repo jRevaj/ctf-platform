@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import timedelta
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
@@ -68,14 +69,15 @@ class Command(BaseCommand):
 
             self._simulate_first_round(session, teams)
 
-            # if test_round == 1:
-            #     self._test_random_assignment(session, phase, teams)
-            # else:
-            #     self._test_swiss_assignment(session, teams)
+            if test_round == 1:
+                self._test_random_assignment(session, phase, teams)
+            else:
+                self._test_swiss_assignment(session, teams)
 
             logger.info("\nTest completed successfully!")
         except Exception as e:
             logger.error(f"Error during testing: {e}")
+            call_command("clean_test_env")
 
     @staticmethod
     def _prepare_objects(run_id, session_name, template_name, number_of_teams):
@@ -96,7 +98,7 @@ class Command(BaseCommand):
                 start_date=timezone.now(),
                 status='active'
             )
-            users = create_users(run_id, number_of_teams * 2)
+            users = create_users(run_id, number_of_teams * 2, True)
             teams = create_teams(run_id, number_of_teams)
             for i, user in enumerate(users):
                 user.team = teams[i % number_of_teams]
@@ -112,7 +114,7 @@ class Command(BaseCommand):
         success = self.matchmaking_service.create_round_assignments(session, teams)
         if not success:
             logger.error("Failed to create initial assignments")
-            return
+            raise Exception("Failed to create initial assignments")
 
         logger.info("Blue Team Assignments:")
         blue_assignments = TeamAssignment.objects.filter(
@@ -129,7 +131,7 @@ class Command(BaseCommand):
         success = self.matchmaking_service.create_random_red_assignments(session, phase, teams)
         if not success:
             logger.error("Failed to create random red assignments")
-            return
+            raise Exception("Failed to create random red assignments")
 
         red_assignments = TeamAssignment.objects.filter(
             session=session,

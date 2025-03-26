@@ -69,19 +69,17 @@ class MatchmakingService:
             ).select_related('deployment', 'team')
 
             team_assignments = {
-                assignment.team: assignment 
+                assignment.team: assignment
                 for assignment in blue_assignments
             }
 
             teams_to_assign = list(teams)
             random.shuffle(teams_to_assign)
-
             available_targets = list(teams)
-            random.shuffle(available_targets)
 
             for attacking_team in teams_to_assign:
                 valid_targets = [t for t in available_targets if t != attacking_team]
-                
+
                 if not valid_targets:
                     logger.error(f"No valid targets found for team {attacking_team.name}")
                     raise Exception(f"No valid targets found for team {attacking_team.name}")
@@ -95,14 +93,13 @@ class MatchmakingService:
                     raise Exception(f"No week 1 assignment found for target team {target_team.name}")
 
                 logger.info(f"Assigning team {attacking_team.name} to attack {target_team.name}'s deployment")
-                entry_container = target_assignment.deployment.containers.filter(is_entrypoint=True).first()
-
-                if not entry_container:
-                    logger.error(f"No entrypoint container found for {target_team.name}'s deployment")
-                    raise Exception(f"No entrypoint container found for {target_team.name}'s deployment")
-
-                logger.info(f"Swapping SSH access for {attacking_team.name} to {entry_container.name}")
-                self.container_service.swap_ssh_access(entry_container, attacking_team)
+                containers = target_assignment.deployment.containers.all()
+                for container in containers:
+                    if container.is_entrypoint:
+                        logger.info(f"Swapping SSH access for {attacking_team.name} to {container.name}")
+                        self.container_service.swap_ssh_access(container, attacking_team)
+                    container.red_team = attacking_team
+                    container.save()
 
                 TeamAssignment.objects.create(
                     session=session,

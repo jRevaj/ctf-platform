@@ -45,7 +45,6 @@ class ContainerService:
         """Create a new game container from template"""
         try:
             logger.info(f"Creating new game container {path if path else temp_dir}")
-            container_name = ""
 
             if path:
                 template_container_path = Path(path)
