@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from datetime import timedelta
@@ -5,10 +6,12 @@ from datetime import timedelta
 from django.utils.timezone import localtime
 
 from ctf.models import ChallengeTemplate
-from ctf.models.enums import GameSessionStatus, TeamRole
+from ctf.models.enums import GameSessionStatus
 from ctf.models.game_session import GameSession
 from ctf.models.team import Team
 from ctf.models.user import User
+
+logger = logging.getLogger(__name__)
 
 
 def validate_environment() -> None:
@@ -20,11 +23,14 @@ def create_teams(run_id: uuid.UUID, count: int) -> list[Team]:
     return [Team.objects.create(name=f"Team {i} {run_id}") for i in range(count)]
 
 
-def create_users(run_id: uuid.UUID, count: int) -> list[User]:
+def create_users(run_id: uuid.UUID, count: int, with_keys: bool = False) -> list[User]:
+    if with_keys and count > 8:
+        raise ValueError('Too many users for setting up ssh keys')
+
     return [User.objects.create(
         username=f"User {i} {run_id}",
-        email=f"test-{i}-{run_id}@example.com",
-        ssh_public_key=os.getenv("TEST_BLUE_SSH_PUBLIC_KEY"),
+        email=f"test-{i}@example.com",
+        ssh_public_key=os.getenv(f"TEST_SSH_PUBLIC_KEY_{i}") if with_keys else None,
         is_active=True
     ) for i in range(count)]
 
