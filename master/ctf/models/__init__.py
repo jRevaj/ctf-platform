@@ -5,8 +5,8 @@ __all__ = [
     'GameContainer',
     'ContainerAccess',
     'GameSession',
-    'TeamAssignment',
     'GamePhase',
+    'TeamAssignment',
     'Team',
     'User',
     'Flag',
@@ -15,7 +15,7 @@ __all__ = [
 from .challenge import ChallengeTemplate, ChallengeNetworkConfig, ChallengeDeployment
 from .container import GameContainer, ContainerAccess
 from .flag import Flag
-from .game_session import GameSession, TeamAssignment
 from .game_phase import GamePhase
+from .game_session import GameSession, TeamAssignment
 from .team import Team
 from .user import User

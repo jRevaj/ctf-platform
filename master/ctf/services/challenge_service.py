@@ -53,7 +53,8 @@ class ChallengeService:
         """Prepare a challenge (single or multi-container) for a blue team"""
         template = session.template
         is_single_container = (bool(template.containers_config) and len(dict(template.containers_config)) == 1)
-        logger.info(f"Preparing '{template.name}' for blue team {blue_team.id} ({'single' if is_single_container else 'multi'}-container)")
+        logger.info(
+            f"Preparing '{template.name}' for blue team {blue_team.id} ({'single' if is_single_container else 'multi'}-container)")
         temp_challenge_dir = create_temp_folder(template)
 
         try:
@@ -136,7 +137,7 @@ class ChallengeService:
 
             if container.is_entrypoint:
                 self.configure_container_ssh(container, blue_team)
-                
+
             self.configure_container_port(container)
 
         return containers
@@ -149,7 +150,7 @@ class ChallengeService:
         if self._has_network_config(template):
             networks = {}
             network_definitions = self._extract_network_definitions(template.networks_config)
-            
+
             if network_definitions:
                 logger.debug(f"Found {len(network_definitions)} network definitions")
 
@@ -270,7 +271,7 @@ class ChallengeService:
                 self.docker_service.get_container(container.docker_id)
                 .attrs["NetworkSettings"]["Ports"]["22/tcp"][0]["HostPort"]
             )
-            container.save()
+            container.save(update_fields=['port'])
             logger.debug(f"Container {container.name} port set to {container.port}")
         except (KeyError, IndexError) as e:
             raise ContainerOperationError(f"Failed to get port for container {container.name}: {e}")
@@ -289,10 +290,10 @@ class ChallengeService:
                 container.template_name = container_key
 
         flag_objects = [flag_data["flag"] for flag_data in container_flags]
-        
+
         for flag in flag_objects:
             flag.container = container
-            flag.save()
+            flag.save(update_fields=['container'])
 
         container.save()
         logger.debug(f"Assigned {len(flag_objects)} flags to container {container.name}")
@@ -309,7 +310,7 @@ class ChallengeService:
                         "flag": db_flag,
                         "placeholder": flag["placeholder"]
                     })
-                
+
                 if container_flags:
                     logger.debug(f"Created {len(container_flags)} flags for container {key}")
                     flag_mapping[key] = container_flags
@@ -321,14 +322,14 @@ class ChallengeService:
         """Replace flag placeholders in all files under temp_dir"""
         total_files = 0
         replaced_files = 0
-        
+
         for root, _, files in os.walk(temp_dir):
             for file in files:
                 filepath = Path(root) / file
                 total_files += 1
                 if filepath.is_file() and self.replace_placeholders(filepath, flag_mapping):
                     replaced_files += 1
-                    
+
         logger.debug(f"Replaced flag placeholders in {replaced_files}/{total_files} files")
 
     @staticmethod

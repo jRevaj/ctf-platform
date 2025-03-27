@@ -25,12 +25,13 @@ def create_teams(run_id: uuid.UUID, count: int) -> list[Team]:
 
 def create_users(run_id: uuid.UUID, count: int, with_keys: bool = False) -> list[User]:
     if with_keys and count > 8:
-        raise ValueError('Too many users for setting up ssh keys')
+        logger.warning('Too many users for setting up ssh keys. Using single key for all users!')
+        with_keys = False
 
     return [User.objects.create(
         username=f"User {i} {run_id}",
         email=f"test-{i}@example.com",
-        ssh_public_key=os.getenv(f"TEST_SSH_PUBLIC_KEY_{i}") if with_keys else None,
+        ssh_public_key=os.getenv(f"TEST_SSH_PUBLIC_KEY_{i}") if with_keys else os.getenv("TEST_BLUE_SSH_PUBLIC_KEY"),
         is_active=True
     ) for i in range(count)]
 

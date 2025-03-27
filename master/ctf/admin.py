@@ -22,7 +22,7 @@ class ChallengeTemplateAdmin(admin.ModelAdmin):
 
 
 class TeamAdmin(admin.ModelAdmin):
-    list_display = ("name", "role", "score", "red_points", "blue_points")
+    list_display = ("name", "score", "red_points", "blue_points")
 
 
 class UserAdmin(admin.ModelAdmin):
@@ -322,9 +322,9 @@ class TeamAssignmentAdmin(admin.ModelAdmin):
 
 class GamePhaseAdmin(admin.ModelAdmin):
     """Admin interface for managing game rounds"""
-    list_display = ('session', 'phase_number', 'template', 'status')
+    list_display = ('session', 'phase_name', 'status', 'start_date', 'end_date')
     list_filter = ('status', 'session')
-    ordering = ('session', 'phase_number')
+    ordering = ('session', 'phase_name', 'start_date', 'end_date')
 
     def get_phase(self, obj):
         return obj.get_phase() or 'N/A'

@@ -8,6 +8,7 @@ from ctf.services.docker_service import DockerService
 logger = logging.getLogger(__name__)
 
 
+# TODO: rewrite based on new points logic (blue and red points with score calculated)
 class FlagService:
     def __init__(self, docker_service=None):
         self.docker_service = docker_service or DockerService()

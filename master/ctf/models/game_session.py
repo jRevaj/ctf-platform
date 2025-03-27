@@ -1,13 +1,19 @@
+from datetime import timedelta
+
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils import timezone
 
+from ctf.models import GamePhase
 from ctf.models.enums import GameSessionStatus, TeamRole
 from ctf.models.team import Team
 
 
 class GameSession(models.Model):
     name = models.CharField(max_length=128, unique=True, help_text="Descriptive name for this game session")
-    template = models.ForeignKey("ctf.ChallengeTemplate", null=True, on_delete=models.PROTECT, related_name="game_sessions")
+    template = models.ForeignKey("ctf.ChallengeTemplate", null=True, on_delete=models.PROTECT,
+                                 related_name="game_sessions")
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     rotation_period = models.IntegerField(help_text="Period in days")
@@ -44,8 +50,8 @@ class GameSession(models.Model):
 
 class TeamAssignment(models.Model):
     session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="team_assignments")
-    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="team_assignments")
-    deployment = models.ForeignKey("ctf.ChallengeDeployment", on_delete=models.CASCADE, related_name="team_assignments")
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="assignments")
+    deployment = models.ForeignKey("ctf.ChallengeDeployment", on_delete=models.CASCADE, related_name="assignments")
     role = models.CharField(max_length=8, choices=TeamRole, default=TeamRole.BLUE)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
@@ -63,3 +69,21 @@ class TeamAssignment(models.Model):
         """Check if this assignment is currently active"""
         now = timezone.now()
         return self.start_date <= now <= self.end_date
+
+
+@receiver(post_save, sender=GameSession)
+def create_related_models(sender, instance, created, **kwargs):
+    if created:
+        GamePhase.objects.create(
+            session=instance,
+            status=instance.status,
+            start_date=instance.start_date,
+            end_date=instance.end_date,
+        )
+        GamePhase.objects.create(
+            session=instance,
+            status=instance.status,
+            phase_name=TeamRole.RED,
+            start_date=instance.start_date + timedelta(days=instance.rotation_period),
+            end_date=instance.start_date + timedelta(days=instance.rotation_period),
+        )

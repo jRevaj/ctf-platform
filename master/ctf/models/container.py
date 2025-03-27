@@ -66,7 +66,7 @@ class GameContainerManager(models.Manager):
 
 class GameContainer(models.Model):
     name = models.CharField(max_length=128, unique=True)
-    template_name = models.CharField(max_length=128, null=True, blank=True)
+    template_name = models.CharField(max_length=128, default="", blank=True)
     docker_id = models.CharField(max_length=128, unique=True)
     status = models.CharField(max_length=16, choices=ContainerStatus)
     port = models.IntegerField(null=True, blank=True)
@@ -75,7 +75,8 @@ class GameContainer(models.Model):
     blue_team = models.ForeignKey(
         'ctf.Team',
         related_name="blue_containers",
-        null=True, blank=True,
+        null=True,
+        blank=True,
         on_delete=models.SET_NULL
     )
     red_team = models.ForeignKey(
@@ -138,7 +139,7 @@ class ContainerAccess(models.Model):
     end_time = models.DateTimeField(null=True, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     session_length = models.DurationField(null=True, blank=True, help_text="Duration of session if applicable")
-    commands_executed = models.TextField(null=True, blank=True, help_text="Commands executed during session")
+    commands_executed = models.TextField(default="", blank=True, help_text="Commands executed during session")
 
     class Meta:
         ordering = ["-start_time"]

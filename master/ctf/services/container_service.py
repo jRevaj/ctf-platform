@@ -20,17 +20,12 @@ class ContainerService:
     def create_related_containers(self, template, temp_dir, session, blue_team):
         """Batch create related containers"""
         try:
-            dockerfiles = []
             containers = []
             template_path = Path(temp_dir) if temp_dir else template.get_full_template_path()
             for filepath in template_path.rglob("*"):
                 if filepath.is_file():
                     if filepath.name == 'Dockerfile' or filepath.name.startswith('Dockerfile.'):
-                        dockerfiles.append(filepath)
-
-            for dockerfile in dockerfiles:
-                container = self.create_game_container(template, temp_dir, session, blue_team, dockerfile)
-                containers.append(container)
+                        containers.append(self.create_game_container(template, temp_dir, session, blue_team, filepath))
 
             logger.info(f"Created {len(containers)} related containers: {containers}")
             return containers
@@ -166,7 +161,7 @@ class ContainerService:
             docker_container = self.docker.get_container(container.docker_id)
             if not docker_container:
                 container.status = ContainerStatus.ERROR
-                container.save()
+                container.save(update_fields=['status'])
                 return False
 
             status_map = {
@@ -178,7 +173,7 @@ class ContainerService:
             new_status = status_map.get(docker_container.status, ContainerStatus.ERROR)
             if new_status != container.status:
                 container.status = new_status
-                container.save()
+                container.save(update_fields=['status'])
             return True
         except Exception as e:
             logger.error(f"Failed to sync container status: {e}")

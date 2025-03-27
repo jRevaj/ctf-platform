@@ -11,9 +11,9 @@ class ChallengeTemplate(models.Model):
     folder = models.CharField(max_length=128, unique=True, null=True,
                               help_text="Folder name in game-templates directory")
     name = models.CharField(max_length=64)
-    title = models.CharField(max_length=256, null=True, blank=True)
-    description = models.TextField(null=True, blank=True)
-    docker_compose = models.TextField(null=True, blank=True)
+    title = models.CharField(max_length=256, default="")
+    description = models.TextField(default="", blank=True)
+    docker_compose = models.TextField(default="", blank=True)
     containers_config = models.JSONField(default=dict, null=True, blank=True)
     networks_config = models.JSONField(default=dict, null=True, blank=True)
 
@@ -28,7 +28,7 @@ class ChallengeTemplate(models.Model):
 
 
 class ChallengeNetworkConfig(models.Model):
-    name = models.CharField(max_length=128, null=True, blank=True)
+    name = models.CharField(max_length=128, default="")
     subnet = models.GenericIPAddressField()
     template = models.ForeignKey('ctf.ChallengeTemplate', on_delete=models.PROTECT)
     deployment = models.ForeignKey('ctf.ChallengeDeployment', related_name="networks", on_delete=models.CASCADE)

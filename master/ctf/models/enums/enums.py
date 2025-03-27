@@ -18,8 +18,3 @@ class GameSessionStatus(models.TextChoices):
     PLANNED = "planned"
     ACTIVE = "active"
     COMPLETED = "completed"
-
-
-class PhaseNumber(models.TextChoices):
-    FIRST = "1", "Blue"
-    SECOND = "2", "Red"

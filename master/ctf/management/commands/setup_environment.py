@@ -39,7 +39,6 @@ class Command(BaseCommand):
             logger.info("Creating test teams")
             teams = create_teams(run_id, 2)
             blue_team, red_team = teams[0], teams[1]
-            red_team.rotate_role()
 
             logger.info("Creating test users with SSH keys")
             create_users_with_key(run_id, blue_team, red_team)

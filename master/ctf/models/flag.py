@@ -42,8 +42,8 @@ class FlagManager(models.Manager):
 class Flag(models.Model):
     value = models.CharField(max_length=128, unique=True)
     points = models.IntegerField(default=100)
-    placeholder = models.CharField(max_length=128, null=True)
-    hint = models.TextField(null=True)
+    placeholder = models.CharField(max_length=128, default="", blank=True)
+    hint = models.TextField(default="", blank=True)
     container = models.ForeignKey(
         "ctf.GameContainer",
         related_name="flags",
@@ -79,11 +79,6 @@ class Flag(models.Model):
 
     def __str__(self):
         return self.value
-
-    def assign_owner(self, team):
-        """Assign ownership of the flag to a team"""
-        self.owner = team
-        self.save()
 
     def capture(self, team):
         """Mark the flag as captured"""
