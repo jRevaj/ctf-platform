@@ -3,11 +3,10 @@ import random
 from datetime import timedelta
 from typing import List, Tuple
 
-from django.db.models import Q
 from django.utils import timezone
 
 from ctf.models import Team, GameSession, TeamAssignment, GamePhase
-from ctf.models.enums import TeamRole
+from ctf.models.enums import TeamRole, GameSessionStatus
 from ctf.services.challenge_service import ChallengeService
 from ctf.services.container_service import ContainerService
 
@@ -59,13 +58,13 @@ class MatchmakingService:
         """
         try:
             logger.info("Creating random red team assignments")
-            start_date = phase.start_date + timedelta(days=session.rotation_period)
-            end_date = start_date + timedelta(days=session.rotation_period)
+            start_date = phase.start_date
+            end_date = phase.end_date
 
             blue_assignments = TeamAssignment.objects.filter(
                 session=session,
                 role=TeamRole.BLUE,
-                start_date__gte=phase.start_date
+                start_date__gte=phase.start_date - timedelta(days=session.rotation_period)
             ).select_related('deployment', 'team')
 
             team_assignments = {
@@ -76,39 +75,32 @@ class MatchmakingService:
             teams_to_assign = list(teams)
             random.shuffle(teams_to_assign)
             available_targets = list(teams)
-
             for attacking_team in teams_to_assign:
                 valid_targets = [t for t in available_targets if t != attacking_team]
 
                 if not valid_targets:
-                    logger.error(f"No valid targets found for team {attacking_team.name}")
                     raise Exception(f"No valid targets found for team {attacking_team.name}")
 
-                target_team = random.choice(valid_targets)
-                available_targets.remove(target_team)
+                non_recent_targets = [target for target in valid_targets if
+                                      not self._attacked_target_recently(session, attacking_team, target)]
+                logger.debug(f"Non-recent targets: {non_recent_targets}")
 
+                if non_recent_targets:
+                    target_team = random.choice(non_recent_targets)
+                else:
+                    target_team = random.choice(valid_targets)
+
+                available_targets.remove(target_team)
                 target_assignment = team_assignments.get(target_team)
                 if not target_assignment:
-                    logger.error(f"No week 1 assignment found for target team {target_team.name}")
                     raise Exception(f"No week 1 assignment found for target team {target_team.name}")
 
                 logger.info(f"Assigning team {attacking_team.name} to attack {target_team.name}'s deployment")
-                containers = target_assignment.deployment.containers.all()
-                for container in containers:
-                    if container.is_entrypoint:
-                        logger.info(f"Swapping SSH access for {attacking_team.name} to {container.name}")
-                        self.container_service.swap_ssh_access(container, attacking_team)
-                    container.red_team = attacking_team
-                    container.save()
+                assignment = self._assign_team(session, target_assignment.deployment, attacking_team, start_date,
+                                               end_date)
+                if not assignment:
+                    raise Exception(f"Failed to assign team {attacking_team.name} to team {target_team.name}")
 
-                TeamAssignment.objects.create(
-                    session=session,
-                    team=attacking_team,
-                    deployment=target_assignment.deployment,
-                    role=TeamRole.RED,
-                    start_date=start_date,
-                    end_date=end_date
-                )
                 logger.info(f"Successfully created random assignment: {attacking_team.name} -> {target_team.name}")
 
             return True
@@ -116,61 +108,108 @@ class MatchmakingService:
             logger.error(f"Error creating random red assignments: {e}")
             return False
 
-    def create_swiss_assignments(self, session: GameSession, teams: List[Team]) -> bool:
+    def create_swiss_assignments(self, session: GameSession, phase: GamePhase, teams: List[Team],
+                                 number_of_tiers: int) -> bool:
         """
-        Create red team assignments based on Swiss system pairing
+        Create red team assignments based on Swiss system (divide into tiers and then randomly assign within them).
         Teams will attack containers that their opponents secured in week 1
         """
         try:
             logger.info("Creating swiss system assignments")
             logger.info("Sorting teams by score")
             sorted_teams = sorted(teams, key=lambda t: t.score, reverse=True)
-            total_teams = len(sorted_teams)
+            if len(sorted_teams) < number_of_tiers * 2:
+                logger.warning("Not enough teams for Swiss system assignments! Running random assignments instead.")
+                return self.create_random_red_assignments(session, phase, teams)
 
-            logger.info("Dividing teams into thirds")
-            third_size = total_teams // 3
-            top_third = sorted_teams[:third_size]
-            middle_third = sorted_teams[third_size:2 * third_size]
-            bottom_third = sorted_teams[2 * third_size:]
+            tiers = self._create_tiers(sorted_teams, number_of_tiers)
+            logger.info(f"Created {len(tiers)} tiers with sizes: {[len(tier) for tier in tiers]}")
+            logger.info("Tier score ranges:")
+            for i, tier in enumerate(tiers):
+                if tier:
+                    logger.info(f"Tier {i + 1}: {tier[0].score} - {tier[-1].score}")
 
-            assignments = []
+            assignments: list[tuple[Team, Team]] = []
+            for tier in tiers:
+                assignments.extend(self._create_tier_assignments(session, tier))
 
-            logger.info("Matching teams within their respective tiers")
-            assignments.extend(self._create_tier_assignments(session, top_third))
-            assignments.extend(self._create_tier_assignments(session, middle_third))
-            assignments.extend(self._create_tier_assignments(session, bottom_third))
+            blue_assignments = TeamAssignment.objects.filter(
+                session=session,
+                role=TeamRole.BLUE,
+                start_date__gte=phase.start_date - timedelta(days=session.rotation_period)
+            ).select_related('deployment', 'team')
 
-            logger.info("Handling any remaining teams (if total teams not divisible by 3)")
-            remaining_teams = sorted_teams[3 * third_size:]
-            if remaining_teams:
-                assignments.extend(self._create_tier_assignments(session, remaining_teams))
+            team_assignments = {
+                assignment.team: assignment
+                for assignment in blue_assignments
+            }
 
-            logger.info("Persisting red team assignments to db")
+            logger.info(f"Persisting following assignments from tiers: {assignments}")
             start_date = timezone.now()
             end_date = start_date + timedelta(days=session.rotation_period)
+            for attacking_team, target_team in assignments:
+                target_assignment = team_assignments.get(target_team)
+                if not target_assignment:
+                    raise Exception(f"No week 1 assignment found for target team {target_team.name}")
 
-            for blue_team, red_team in assignments:
-                blue_containers = TeamAssignment.objects.filter(
-                    session=session,
-                    team=blue_team,
-                    role=TeamRole.BLUE,
-                    start_date__gte=start_date - timedelta(days=session.rotation_period)
-                ).select_related('deployment')
+                assignment = self._assign_team(session, target_assignment.deployment, attacking_team, start_date,
+                                               end_date)
+                if not assignment:
+                    raise Exception(f"Failed to assign team {attacking_team.name} to team {target_team.name}")
 
-                for blue_assignment in blue_containers:
-                    TeamAssignment.objects.create(
-                        session=session,
-                        team=red_team,
-                        deployment=blue_assignment.deployment,
-                        role=TeamRole.RED,
-                        start_date=start_date,
-                        end_date=end_date
-                    )
+                logger.info(
+                    f"Successfully created assignment: {attacking_team.name} -> {target_team.name}")
 
             return True
         except Exception as e:
             logger.error(f"Error creating Swiss system assignments: {e}")
             return False
+
+    @staticmethod
+    def _create_tiers(sorted_teams: list[Team], number_of_tiers: int) -> list[list[Team]]:
+        """Create tiers from teams sorted by score"""
+        logger.info("Creating tiers")
+        base_size = len(sorted_teams) // number_of_tiers
+        remainder = len(sorted_teams) % number_of_tiers
+
+        tiers = []
+        start_idx = 0
+        for i in range(number_of_tiers):
+            tier = sorted_teams[start_idx:start_idx + base_size]
+            if tier:
+                tiers.append(tier)
+            start_idx += base_size
+
+        if remainder > 0:
+            remaining_teams = sorted_teams[start_idx:]
+            for team in remaining_teams:
+                tier_boundaries = []
+                for tier in tiers:
+                    if tier:
+                        tier_boundaries.append({
+                            'min': tier[-1].score,
+                            'max': tier[0].score,
+                            'tier_idx': len(tier_boundaries)
+                        })
+
+                team_score = team.score
+                best_tier_idx = 0
+                min_distance = float('inf')
+
+                for boundary in tier_boundaries:
+                    distance_to_min = abs(team_score - boundary['min'])
+                    distance_to_max = abs(team_score - boundary['max'])
+                    avg_distance = (distance_to_min + distance_to_max) / 2
+
+                    if avg_distance < min_distance:
+                        min_distance = avg_distance
+                        best_tier_idx = boundary['tier_idx']
+
+                tiers[best_tier_idx].append(team)
+                tiers[best_tier_idx].sort(key=lambda t: t.score, reverse=True)
+                logger.info(f"Assigned team {team.name} (score: {team_score}) to tier {best_tier_idx + 1}")
+
+        return tiers
 
     def _create_tier_assignments(self, session: GameSession, teams: List[Team]) -> List[Tuple[Team, Team]]:
         """
@@ -178,47 +217,73 @@ class MatchmakingService:
         """
         logger.info("Creating tier assignments")
         assignments = []
-        teams_copy = teams.copy()
 
-        while len(teams_copy) >= 2:
-            team1 = teams_copy.pop(0)
+        if len(teams) < 2:
+            return assignments
 
-            opponent = None
-            for team2 in teams_copy:
-                if not self._have_teams_met_recently(session, team1, team2):
-                    opponent = team2
-                    teams_copy.remove(team2)
-                    break
+        teams_to_assign = list(teams)
+        random.shuffle(teams_to_assign)
+        available_targets = list(teams)
+        for attacking_team in teams_to_assign:
+            valid_targets = [t for t in available_targets if t != attacking_team]
 
-            if not opponent and teams_copy:
-                opponent = teams_copy.pop(0)
+            if not valid_targets:
+                logger.warning(f"No valid targets found for team {attacking_team.name} in tier")
+                continue
 
-            if opponent:
-                assignments.append((team1, opponent))
+            non_recent_targets = [target for target in valid_targets if
+                                  not self._attacked_target_recently(session, attacking_team, target)]
+
+            if non_recent_targets:
+                target_team = random.choice(non_recent_targets)
+            else:
+                target_team = random.choice(valid_targets)
+
+            logger.debug(f"Found target team for {attacking_team}: {target_team.name}")
+            available_targets.remove(target_team)
+            assignments.append((attacking_team, target_team))
 
         return assignments
 
+    def _assign_team(self, session, target_deployment, red_team, start_date, end_date):
+        for container in target_deployment.containers.all():
+            if container.is_entrypoint:
+                logger.info(f"Swapping SSH access for {red_team.name} to {container.name}")
+                self.container_service.swap_ssh_access(container, red_team)
+            container.red_team = red_team
+            container.save()
+
+        return TeamAssignment.objects.create(
+            session=session,
+            team=red_team,
+            deployment=target_deployment,
+            role=TeamRole.RED,
+            start_date=start_date,
+            end_date=end_date
+        )
+
     @staticmethod
-    def _have_teams_met_recently(session: GameSession, team1: Team, team2: Team, lookback_days: int = 14) -> bool:
+    def _attacked_target_recently(session: GameSession, attacker: Team, target: Team) -> bool:
         """
-        Check if two teams have faced each other recently
+        Check if team attacked selected target in previous game session.
+        This ensures teams don't attack the same opponent twice in a row.
         """
-        cutoff_date = timezone.now() - timedelta(days=lookback_days)
+        previous_session = GameSession.objects.filter(
+            start_date__lt=session.start_date,
+            status=GameSessionStatus.COMPLETED
+        ).order_by('-start_date').first()
 
-        recent_match1 = TeamAssignment.objects.filter(
-            Q(session=session) &
-            Q(team=team1) &
-            Q(role=TeamRole.RED) &
-            Q(container__blue_team=team2) &
-            Q(start_date__gte=cutoff_date)
+        if not previous_session:
+            return False
+
+        previous_target_deployment = previous_session.team_assignments.filter(
+            team=target,
+            role=TeamRole.BLUE
+        ).first().deployment
+
+        return TeamAssignment.objects.filter(
+            session=previous_session,
+            team=attacker,
+            role=TeamRole.RED,
+            deployment=previous_target_deployment
         ).exists()
-
-        recent_match2 = TeamAssignment.objects.filter(
-            Q(session=session) &
-            Q(team=team2) &
-            Q(role=TeamRole.RED) &
-            Q(container__blue_team=team1) &
-            Q(start_date__gte=cutoff_date)
-        ).exists()
-
-        return recent_match1 or recent_match2
