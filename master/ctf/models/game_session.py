@@ -15,7 +15,7 @@ class GameSession(models.Model):
     template = models.ForeignKey("ctf.ChallengeTemplate", null=True, on_delete=models.PROTECT,
                                  related_name="game_sessions")
     start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
+    end_date = models.DateTimeField(null=True)
     rotation_period = models.IntegerField(help_text="Period in days")
     status = models.CharField(max_length=16, choices=GameSessionStatus, default=GameSessionStatus.PLANNED)
 
@@ -74,16 +74,19 @@ class TeamAssignment(models.Model):
 @receiver(post_save, sender=GameSession)
 def create_related_models(sender, instance, created, **kwargs):
     if created:
+        instance.end_date = instance.start_date + timedelta(days=instance.rotation_period * 2)
+        instance.save(update_fields=['end_date'])
+
         GamePhase.objects.create(
             session=instance,
             status=instance.status,
             start_date=instance.start_date,
-            end_date=instance.end_date,
+            end_date=instance.start_date + timedelta(days=instance.rotation_period),
         )
         GamePhase.objects.create(
             session=instance,
             status=instance.status,
             phase_name=TeamRole.RED,
             start_date=instance.start_date + timedelta(days=instance.rotation_period),
-            end_date=instance.start_date + timedelta(days=instance.rotation_period),
+            end_date=instance.start_date + timedelta(days=instance.rotation_period * 2),
         )

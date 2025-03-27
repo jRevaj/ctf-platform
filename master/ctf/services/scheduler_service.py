@@ -5,7 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from ctf.models import GameSession, GamePhase
-from ctf.models.enums import PhaseNumber
+from ctf.models.enums import TeamRole
 from ctf.services.matchmaking_service import MatchmakingService
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class SchedulerService:
                     start_date=start_date,
                 )
 
-                logger.info(f"Scheduled phase {phase.get_phase_number_display()} for session {session.name}")
+                logger.info(f"Scheduled phase {phase.get_phase_name_display()} for session {session.name}")
                 return phase
         except Exception as e:
             logger.error(f"Error scheduling round: {e}")
@@ -61,16 +61,16 @@ class SchedulerService:
         """Process rounds for a specific session"""
         try:
             # TODO: rounds does not exist on session object
-            active_round = session.rounds.filter(status='active').first()
+            phase = session.phases.filter(status='active').first()
 
-            if active_round:
-                if active_round.get_phase() == 'blue' and timezone.now() >= active_round.start_date + timedelta(
+            if phase:
+                if phase == 'blue' and timezone.now() >= phase.start_date + timedelta(
                         days=session.rotation_period):
-                    self._handle_red_phase_transition(session, active_round)
-                elif timezone.now() >= active_round.start_date + timedelta(days=session.rotation_period * 2):
-                    self._complete_round(active_round)
+                    self._handle_red_phase_transition(session, phase)
+                elif timezone.now() >= phase.start_date + timedelta(days=session.rotation_period * 2):
+                    self._complete_round(phase)
 
-            planned_round = session.rounds.filter(status='planned', start_date__lte=timezone.now()).first()
+            planned_round = session.phases.filter(status='planned', start_date__lte=timezone.now()).first()
 
             if planned_round:
                 self._start_round(planned_round)
@@ -83,9 +83,9 @@ class SchedulerService:
             teams = session.get_teams()
 
             if phase.is_second_phase():
-                success = self.matchmaking_service.create_random_red_assignments(session, teams, phase)
+                success = self.matchmaking_service.create_random_red_assignments(session, phase, teams)
             else:
-                success = self.matchmaking_service.create_swiss_assignments(session, teams)
+                success = self.matchmaking_service.create_swiss_assignments(session, phase, teams, 3)
 
             if not success:
                 logger.error(f"Failed to create red phase assignments for round {phase.get_phase_number_display()}")
@@ -103,7 +103,7 @@ class SchedulerService:
 
                 if success:
                     phase.status = 'active'
-                    phase.save()
+                    phase.save(update_fields=['status'])
                     logger.info(f"Started round {phase.get_phase_number_display()} for session {session.name}")
                 else:
                     logger.error(f"Failed to create assignments for round {phase.get_phase_number_display()}")
@@ -117,7 +117,7 @@ class SchedulerService:
         try:
             with transaction.atomic():
                 phase.status = 'completed'
-                phase.save()
+                phase.save(update_fields=['status'])
                 logger.info(f"Completed round {phase.get_phase_number_display()} for session {phase.session.name}")
 
         except Exception as e:
@@ -139,7 +139,7 @@ class SchedulerService:
                 session=session,
                 template=template,
                 status='planned',
-                phase_number=PhaseNumber.FIRST if not current_phase else PhaseNumber.SECOND,
+                phase_number=TeamRole.BLUE if not current_phase else TeamRole.RED,
                 start_date=start_date,
             )
 
