@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from ctf.models import GameContainer, Team
+from ctf.models import GameContainer, Team, GameSession
 from ctf.models.constants import DockerConstants
 from ctf.models.enums import ContainerStatus
 from ctf.models.exceptions import ContainerOperationError
@@ -13,9 +13,13 @@ logger = logging.getLogger(__name__)
 
 class ContainerService:
     """Business logic for container operations"""
+    _instance = None
 
-    def __init__(self, docker_service=None):
-        self.docker = docker_service or DockerService()
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(ContainerService, cls).__new__(cls)
+            cls._instance.docker = DockerService()
+        return cls._instance
 
     def create_related_containers(self, template, temp_dir, session, blue_team):
         """Batch create related containers"""
@@ -207,6 +211,18 @@ class ContainerService:
             return False
         except Exception as e:
             logger.error(f"Failed to start container {container.docker_id}: {e}")
+            return False
+
+    def stop_session_containers(self, session: GameSession) -> bool:
+        """Stop all session containers"""
+        try:
+            for container in session.get_containers():
+                stopped = self.stop_container(container)
+                if not stopped:
+                    logger.warning(f"Failed to stop container {container.name}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to stop session containers: {e}")
             return False
 
     def stop_container(self, container: GameContainer) -> bool:
