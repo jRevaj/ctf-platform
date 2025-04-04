@@ -85,11 +85,11 @@ class Flag(models.Model):
         self.is_captured = True
         self.captured_by = team
         self.captured_at = datetime.now(timezone.utc)
-        self.save()
+        self.save(update_fields=["is_captured", "captured_by", "captured_at"])
 
     def release(self):
         """Release the flag"""
         self.is_captured = False
         self.captured_by = None
         self.captured_at = None
-        self.save()
+        self.save(update_fields=["is_captured", "captured_by", "captured_at"])
