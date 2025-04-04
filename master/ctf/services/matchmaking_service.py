@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from ctf.models import Team, GameSession, TeamAssignment, GamePhase
 from ctf.models.enums import TeamRole, GameSessionStatus
-from ctf.services.challenge_service import ChallengeService
+from ctf.services import ChallengeService
 from ctf.services.container_service import ContainerService
 
 logger = logging.getLogger(__name__)
