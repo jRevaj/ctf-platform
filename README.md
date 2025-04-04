@@ -38,7 +38,7 @@ The command will output connection information for all created containers, inclu
 
 ### `test_matchmaking`
 
-This command tests matchmaking service.
+This command tests the matchmaking system by simulating game rounds. It supports both random and Swiss-system matchmaking.
 
 ### Usage
 
