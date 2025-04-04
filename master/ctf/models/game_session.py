@@ -7,7 +7,6 @@ from django.utils import timezone
 
 from ctf.models import GamePhase
 from ctf.models.enums import GameSessionStatus, TeamRole
-from ctf.models.team import Team
 
 
 class GameSession(models.Model):
@@ -34,41 +33,18 @@ class GameSession(models.Model):
     def get_containers(self):
         """Get all containers associated with this session via team assignments"""
         from ctf.models.container import GameContainer
-        container_ids = self.team_assignments.values_list('container_id', flat=True).distinct()
-        return GameContainer.objects.filter(id__in=container_ids)
+        deployment_ids = self.team_assignments.values_list('deployment_id', flat=True).distinct()
+        return GameContainer.objects.filter(deployment_id__in=deployment_ids)
 
     def get_teams(self):
         """Get all teams participating in this session"""
-        team_ids = self.team_assignments.values_list('team_id', flat=True).distinct()
-        return Team.objects.filter(id__in=team_ids)
+        from ctf.models import Team
+        return Team.objects.filter(assignments__session=self).distinct()
 
     def get_active_assignments(self):
         """Get currently active team assignments"""
         now = timezone.now()
         return self.team_assignments.filter(start_date__lte=now, end_date__gte=now)
-
-
-class TeamAssignment(models.Model):
-    session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="team_assignments")
-    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="assignments")
-    deployment = models.ForeignKey("ctf.ChallengeDeployment", on_delete=models.CASCADE, related_name="assignments")
-    role = models.CharField(max_length=8, choices=TeamRole, default=TeamRole.BLUE)
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
-
-    class Meta:
-        ordering = ["-start_date"]
-        indexes = [models.Index(fields=["session", "team"]), models.Index(fields=["session", "deployment"])]
-        verbose_name = "Team Assignment"
-        verbose_name_plural = "Team Assignments"
-
-    def __str__(self):
-        return f"{self.team.name} as {self.role} on {self.deployment.pk}"
-
-    def is_active(self):
-        """Check if this assignment is currently active"""
-        now = timezone.now()
-        return self.start_date <= now <= self.end_date
 
 
 @receiver(post_save, sender=GameSession)
@@ -88,5 +64,38 @@ def create_related_models(sender, instance, created, **kwargs):
             status=instance.status,
             phase_name=TeamRole.RED,
             start_date=instance.start_date + timedelta(days=instance.rotation_period),
-            end_date=instance.start_date + timedelta(days=instance.rotation_period * 2),
+            end_date=instance.end_date,
         )
+
+
+@receiver(post_save, sender=GameSession)
+def handle_completed_session(sender, instance, created, **kwargs):
+    """Handle cleanup when a game session is marked as completed"""
+    update_fields = kwargs.get('update_fields', None)
+    if update_fields and 'status' in update_fields and instance.status == GameSessionStatus.COMPLETED:
+        from ctf.services import ContainerService
+        instance.phases.all().update(status=GameSessionStatus.COMPLETED)
+        ContainerService().stop_session_containers(instance)
+
+
+class TeamAssignment(models.Model):
+    session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="team_assignments")
+    team = models.ForeignKey("ctf.Team", on_delete=models.CASCADE, related_name="assignments")
+    deployment = models.ForeignKey("ctf.ChallengeDeployment", on_delete=models.CASCADE, related_name="assignments")
+    role = models.CharField(max_length=8, choices=TeamRole, default=TeamRole.BLUE)
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+
+    class Meta:
+        ordering = ["-start_date"]
+        indexes = [models.Index(fields=["session", "team"]), models.Index(fields=["session", "deployment"])]
+        verbose_name = "Team Assignment"
+        verbose_name_plural = "Team Assignments"
+
+    def __str__(self):
+        return f"{self.team.name} as {self.role} on {self.deployment.pk}"
+
+    def is_active(self):
+        """Check if this assignment is currently active"""
+        now = timezone.now()
+        return self.start_date <= now <= self.end_date
