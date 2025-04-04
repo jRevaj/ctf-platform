@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Welcome to CTF Platform</h1>
+    {% if user.is_authenticated %}
+        <p>You are logged in. Start exploring challenges!</p>
+    {% else %}
+        <p>Please log in or register to start playing.</p>
+    {% endif %}
+{% endblock %} 
