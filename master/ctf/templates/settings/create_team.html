@@ -1,0 +1,27 @@
+{% extends 'settings/base.html' %}
+
+{% block settings_content %}
+    <div class="mb-5">
+        <h2 class="h4 mb-4">Create Team</h2>
+        <form method="post" action="{% url 'create_team' %}" class="needs-validation" novalidate>
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="id_name" class="form-label">Team Name</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-people-fill"></i>
+                    </span>
+                    <input type="text" class="form-control {% if form.name.errors %}is-invalid{% endif %}" 
+                           id="id_name" name="name" value="{{ form.name.value|default:'' }}" 
+                           placeholder="Enter team name" required>
+                    {% if form.name.errors %}
+                        <div class="invalid-feedback">
+                            {{ form.name.errors.0 }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Team</button>
+        </form>
+    </div>
+{% endblock %} 

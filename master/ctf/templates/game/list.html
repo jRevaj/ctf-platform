@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="card-title mb-0">Games</h2>
+                {% if user.is_staff %}
+                    <a href="{% url 'create_game' %}" class="btn btn-primary">Create New Game</a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for game in games %}
+                                <tr>
+                                    <td>{{ game.name }}</td>
+                                    <td>
+                                        {% if game.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% elif game.is_upcoming %}
+                                            <span class="badge bg-warning">Upcoming</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Ended</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ game.start_time|date:"Y-m-d H:i" }}</td>
+                                    <td>{{ game.end_time|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        {% if game.is_active or game.is_upcoming %}
+                                            <a href="{% url 'game_detail' game.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                                        {% else %}
+                                            <a href="{% url 'game_detail' game.id %}" class="btn btn-sm btn-outline-secondary">View Results</a>
+                                        {% endif %}
+                                        {% if user.is_staff %}
+                                            <a href="{% url 'edit_game' game.id %}" class="btn btn-sm btn-outline-warning">Edit</a>
+                                            <a href="{% url 'delete_game' game.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No games available</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

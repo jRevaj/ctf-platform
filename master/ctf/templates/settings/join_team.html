@@ -1,0 +1,28 @@
+{% extends 'settings/base.html' %}
+
+{% block settings_content %}
+    <div class="mb-5">
+        <h2 class="h4 mb-4">Join Team</h2>
+        <form method="post" action="{% url 'join_team' %}" class="needs-validation" novalidate>
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="id_join_key" class="form-label">Team Join Key</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-key-fill"></i>
+                    </span>
+                    <input type="text" class="form-control {% if form.join_key.errors %}is-invalid{% endif %}" 
+                           id="id_join_key" name="join_key" value="{{ form.join_key.value|default:'' }}" 
+                           placeholder="Enter team join key" required>
+                    {% if form.join_key.errors %}
+                        <div class="invalid-feedback">
+                            {{ form.join_key.errors.0 }}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="form-text">Enter the join key provided by your team leader</div>
+            </div>
+            <button type="submit" class="btn btn-primary">Join Team</button>
+        </form>
+    </div>
+{% endblock %} 

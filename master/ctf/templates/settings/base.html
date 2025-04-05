@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="min-vh-100 d-flex">
+    <div class="container-fluid">
+        <div class="row g-0">
+            <!-- Left Sidebar Menu -->
+            <div class="col-md-3">
+                <div class="h-100 p-4 border-end">
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{% url 'settings' %}" class="btn btn-link text-decoration-none text-start {% if request.resolver_match.url_name == 'settings' %}active bg-primary text-white{% else %}text-body{% endif %}">
+                            <i class="bi bi-gear-fill me-2"></i>Account Settings
+                        </a>
+                        {% if user_team %}
+                            {% if user_team.created_by == user %}
+                                <a href="{% url 'team_details' %}" class="btn btn-link text-decoration-none text-start {% if request.resolver_match.url_name == 'team_details' %}active bg-primary text-white{% else %}text-body{% endif %}">
+                                    <i class="bi bi-shield-lock-fill me-2"></i>Manage Team
+                                </a>
+                            {% else %}
+                                <a href="{% url 'team_details' %}" class="btn btn-link text-decoration-none text-start {% if request.resolver_match.url_name == 'team_details' %}active bg-primary text-white{% else %}text-body{% endif %}">
+                                    <i class="bi bi-people-fill me-2"></i>Team Details
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <a href="{% url 'create_team' %}" class="btn btn-link text-decoration-none text-start {% if request.resolver_match.url_name == 'create_team' %}active bg-primary text-white{% else %}text-body{% endif %}">
+                                <i class="bi bi-plus-circle me-2"></i>Create Team
+                            </a>
+                            <a href="{% url 'join_team' %}" class="btn btn-link text-decoration-none text-start {% if request.resolver_match.url_name == 'join_team' %}active bg-primary text-white{% else %}text-body{% endif %}">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Join Team
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Content Area -->
+            <div class="col-md-9">
+                <div class="p-4">
+                    {% block settings_content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

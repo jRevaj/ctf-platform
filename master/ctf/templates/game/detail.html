@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="card-title mb-0">{{ game.name }}</h2>
+                {% if user.is_staff %}
+                    <div>
+                        <a href="{% url 'edit_game' game.id %}" class="btn btn-warning">Edit Game</a>
+                        <a href="{% url 'delete_game' game.id %}" class="btn btn-danger">Delete Game</a>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h3 class="h5">Game Information</h3>
+                        <dl class="row">
+                            <dt class="col-sm-4">Status</dt>
+                            <dd class="col-sm-8">
+                                {% if game.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% elif game.is_upcoming %}
+                                    <span class="badge bg-warning">Upcoming</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Ended</span>
+                                {% endif %}
+                            </dd>
+                            <dt class="col-sm-4">Start Time</dt>
+                            <dd class="col-sm-8">{{ game.start_time|date:"Y-m-d H:i" }}</dd>
+                            <dt class="col-sm-4">End Time</dt>
+                            <dd class="col-sm-8">{{ game.end_time|date:"Y-m-d H:i" }}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <h3 class="h5">Team Status</h3>
+                        {% if user_team %}
+                            {% if user_team.is_in_game %}
+                                <div class="alert alert-success">
+                                    Your team is participating in this game
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    Your team is not participating in this game
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="alert alert-danger">
+                                You need to be in a team to participate in games
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if game.is_active or game.is_upcoming %}
+                    <div class="row">
+                        <div class="col-12">
+                            <h3 class="h5">Challenges</h3>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Category</th>
+                                            <th>Points</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for challenge in challenges %}
+                                            <tr>
+                                                <td>{{ challenge.name }}</td>
+                                                <td>{{ challenge.category }}</td>
+                                                <td>{{ challenge.points }}</td>
+                                                <td>
+                                                    {% if challenge.is_solved %}
+                                                        <span class="badge bg-success">Solved</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Unsolved</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <a href="{% url 'challenge_detail' game.id challenge.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                                                </td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center">No challenges available</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="row">
+                        <div class="col-12">
+                            <h3 class="h5">Final Results</h3>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Team</th>
+                                            <th>Score</th>
+                                            <th>Challenges Solved</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for result in results %}
+                                            <tr>
+                                                <td>{{ forloop.counter }}</td>
+                                                <td>{{ result.team.name }}</td>
+                                                <td>{{ result.score }}</td>
+                                                <td>{{ result.solved_count }}</td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="4" class="text-center">No results available</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
