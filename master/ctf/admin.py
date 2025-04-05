@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.forms import Select
 from django.shortcuts import redirect
 from django.utils.html import format_html
@@ -7,6 +9,7 @@ from django.utils.safestring import mark_safe
 from ctf.forms.admin_forms import GameContainerForm
 from ctf.models import *
 from ctf.models.enums import ContainerStatus
+from ctf.models.settings import GlobalSettings
 from ctf.services import DockerService, ContainerService
 
 
@@ -25,10 +28,26 @@ class TeamAdmin(admin.ModelAdmin):
     list_display = ("name", "score", "red_points", "blue_points")
 
 
-class UserAdmin(admin.ModelAdmin):
-    list_display = ("username", "email", "team", "is_active")
-    list_filter = ("is_active", "is_staff", "team")
-    search_fields = ("username", "email")
+class UserAdmin(BaseUserAdmin):
+    form = UserChangeForm
+    add_form = UserCreationForm
+    list_display = ('username', 'email', 'team', 'is_staff', 'is_active')
+    list_filter = ('is_staff', 'is_active', 'team')
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        ('Personal info', {'fields': ('email', 'ssh_public_key')}),
+        ('Team info', {'fields': ('team',)}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+    )
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('username', 'email', 'password1', 'password2'),
+        }),
+    )
+    search_fields = ('username', 'email')
+    ordering = ('username',)
+    filter_horizontal = ('groups', 'user_permissions',)
 
 
 class FlagInline(admin.TabularInline):
@@ -332,8 +351,29 @@ class GamePhaseAdmin(admin.ModelAdmin):
     get_phase.short_description = 'Current Phase'
 
 
+@admin.register(GlobalSettings)
+class GlobalSettingsAdmin(admin.ModelAdmin):
+    list_display = ('max_team_size', 'allow_team_changes')
+    readonly_fields = ('id',)
+
+    def has_add_permission(self, request):
+        # Only allow one settings instance
+        return not GlobalSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion of settings
+        return False
+
+
+@admin.register(Team)
+class TeamAdmin(admin.ModelAdmin):
+    list_display = ('name', 'score', 'created_at', 'is_in_game')
+    readonly_fields = ('join_key', 'created_at')
+    search_fields = ('name',)
+    list_filter = ('is_in_game',)
+
+
 admin.site.register(ChallengeTemplate, ChallengeTemplateAdmin)
-admin.site.register(Team, TeamAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(GameContainer, GameContainerAdmin)
 admin.site.register(GameSession, GameSessionAdmin)
