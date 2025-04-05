@@ -22,6 +22,35 @@ def handle_action_redirect(request, container_id):
 
 class ChallengeTemplateAdmin(admin.ModelAdmin):
     list_display = ("folder", "name", "description")
+    actions = ["sync_templates"]
+    change_list_template = "admin/ctf/challengetemplate/change_list.html"
+
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "sync/",
+                self.admin_site.admin_view(self.sync_templates_view),
+                name="challengetemplate-sync",
+            ),
+        ]
+        return custom_urls + urls
+
+    def sync_templates_view(self, request):
+        """View to handle template sync"""
+        from django.core.management import call_command
+        try:
+            call_command("sync_templates")
+            self.message_user(request, "Templates synced successfully.")
+        except Exception as e:
+            self.message_user(request, f"Error syncing templates: {str(e)}", level="ERROR")
+        return redirect("admin:ctf_challengetemplate_changelist")
+
+    def sync_templates(self, request, queryset):
+        """Action to sync templates"""
+        return self.sync_templates_view(request)
+    sync_templates.short_description = "Sync templates from filesystem"
 
 
 class TeamAdmin(admin.ModelAdmin):

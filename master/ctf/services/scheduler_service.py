@@ -11,6 +11,7 @@ from ctf.services.matchmaking_service import MatchmakingService
 logger = logging.getLogger(__name__)
 
 
+# TODO: test this service
 class SchedulerService:
     """Service for managing round scheduling and automatic rotations"""
 
@@ -23,12 +24,12 @@ class SchedulerService:
         try:
             with transaction.atomic():
                 # TODO: fix rounds does not exist on session model
-                current_round_number = session.rounds.count()
+                current_round_number = session.phases.count()
                 next_round_number = current_round_number + 1
 
                 if not start_date:
                     if current_round_number > 0:
-                        current_round = session.rounds.latest('round_number')
+                        current_round = session.phases.latest('round_number')
                         start_date = current_round.start_date + timedelta(days=session.rotation_period * 2)
                     else:
                         start_date = timezone.now()
@@ -82,13 +83,13 @@ class SchedulerService:
         try:
             teams = session.get_teams()
 
-            if phase.is_second_phase():
+            if phase.is_red_phase():
                 success = self.matchmaking_service.create_random_red_assignments(session, phase, teams)
             else:
                 success = self.matchmaking_service.create_swiss_assignments(session, phase, teams, 3)
 
             if not success:
-                logger.error(f"Failed to create red phase assignments for round {phase.get_phase_number_display()}")
+                logger.error(f"Failed to create red phase assignments for round {phase.get_phase_name_display()}")
         except Exception as e:
             logger.error(f"Error handling red phase transition: {e}")
 
@@ -104,9 +105,9 @@ class SchedulerService:
                 if success:
                     phase.status = 'active'
                     phase.save(update_fields=['status'])
-                    logger.info(f"Started round {phase.get_phase_number_display()} for session {session.name}")
+                    logger.info(f"Started {phase.get_phase_name_display()} round for session {session.name}")
                 else:
-                    logger.error(f"Failed to create assignments for round {phase.get_phase_number_display()}")
+                    logger.error(f"Failed to create assignments for {phase.get_phase_name_display()} round")
 
         except Exception as e:
             logger.error(f"Error starting round: {e}")
@@ -118,7 +119,7 @@ class SchedulerService:
             with transaction.atomic():
                 phase.status = 'completed'
                 phase.save(update_fields=['status'])
-                logger.info(f"Completed round {phase.get_phase_number_display()} for session {phase.session.name}")
+                logger.info(f"Completed {phase.get_phase_name_display()} round for session {phase.session.name}")
 
         except Exception as e:
             logger.error(f"Error completing round: {e}")
@@ -143,7 +144,7 @@ class SchedulerService:
                 start_date=start_date,
             )
 
-            logger.info(f"Scheduled phase {phase.get_phase_number_display()} for session {session.name}")
+            logger.info(f"Scheduled {phase.get_phase_name_display()} phase for session {session.name}")
             return phase
         except Exception as e:
             logger.error(f"Error scheduling next phase for session {session.name}: {str(e)}")
