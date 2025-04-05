@@ -10,6 +10,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from ctf.forms.auth_forms import UserRegistrationForm, UserLoginForm, UserSettingsForm
 from ctf.forms.team_forms import CreateTeamForm, JoinTeamForm
 from ctf.models import User
+from ctf.models.settings import GlobalSettings
 
 
 def home(request):
@@ -84,7 +85,7 @@ def create_team_view(request):
                 request.user.team = team
                 request.user.save()
             messages.success(request, f"Team {team.name} created successfully!")
-            return redirect("settings")
+            return redirect("team_details")
     else:
         form = CreateTeamForm()
 
@@ -104,6 +105,9 @@ def join_team_view(request):
             with transaction.atomic():
                 request.user.team = team
                 request.user.save()
+                if team.users.count() == GlobalSettings.get_settings().max_team_size:
+                    team.is_in_game = True
+                    team.save()
             messages.success(request, f"Successfully joined team {team.name}!")
             return redirect("team_details")
     else:

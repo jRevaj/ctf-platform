@@ -23,6 +23,10 @@
             </div>
         </div>
         <div class="mb-3">
+            <span class="text-muted">Can play:</span>
+            <span class="ms-2 fw-medium text-{{ user_team.is_in_game|yesno:'success,danger' }}">{{ user_team.is_in_game|yesno:"Yes,No" }}</span>
+        </div>
+        <div class="mb-3">
             <span class="text-muted">Created:</span>
             <span class="ms-2 fw-medium">{{ user_team.created_at|date:"F j, Y" }}</span>
         </div>
@@ -138,7 +142,7 @@
                 <div class="d-flex align-items-center gap-2">
                     {% if member == user_team.created_by %}
                     <span class="badge bg-primary">Creator</span>
-                    {% elif user_team.created_by == user and member != user %}
+                    {% elif not user_team.is_in_game and user_team.created_by == user and member != user %}
                     <form
                         method="post"
                         action="{% url 'remove_team_member' member.id %}"
@@ -159,7 +163,7 @@
             {% endfor %}
         </div>
 
-        {% if user_team.is_in_game %}
+        {% if user_team.created_by == user and user_team.is_in_game %}
         <div class="alert alert-warning">
             <i class="bi bi-exclamation-triangle me-2"></i>
             Your team is currently in a game. Team changes are not allowed
