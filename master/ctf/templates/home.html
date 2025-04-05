@@ -1,10 +1,33 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>Welcome to CTF Platform</h1>
-    {% if user.is_authenticated %}
-        <p>You are logged in. Start exploring challenges!</p>
-    {% else %}
-        <p>Please log in or register to start playing.</p>
-    {% endif %}
+<div class="row justify-content-center align-items-center" style="min-height: calc(100vh - 200px);">
+    <div class="col-md-8">
+        <div class="container">
+            <div class="text-center">
+                <h1 class="card-title mb-4">Welcome to CTF Game</h1>
+                {% if user.is_authenticated %}
+                    <p class="lead">You are logged in as {{ user.username }}</p>
+                    {% if user.team %}
+                        <p>Your team: <strong>{{ user.team.name }}</strong></p>
+                        <div class="btn-group">
+                            <a href="{% url 'team_details' %}" class="btn btn-primary">Show team details</a>
+                        </div>
+                    {% else %}
+                        <p>You are not in a team yet.</p>
+                        <div class="btn-group">
+                            <a href="{% url 'join_team' %}" class="btn btn-primary">Join or Create Team</a>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <p class="lead">Please login or register to start playing.</p>
+                    <div class="btn-group">
+                        <a href="{% url 'login' %}" class="btn btn-primary">Login</a>
+                        <a href="{% url 'register' %}" class="btn btn-outline-primary">Register</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %} 
