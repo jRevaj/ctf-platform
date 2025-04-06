@@ -105,9 +105,8 @@ def join_team_view(request):
             with transaction.atomic():
                 request.user.team = team
                 request.user.save()
-                if team.users.count() == GlobalSettings.get_settings().max_team_size:
-                    team.is_in_game = True
-                    team.save()
+                team.clean()
+                team.save()
             messages.success(request, f"Successfully joined team {team.name}!")
             return redirect("team_details")
     else:

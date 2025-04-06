@@ -23,17 +23,17 @@
                 </div>
             </div>
             <div class="mb-4">
-                <label for="id_ssh_key" class="form-label">SSH Public Key</label>
+                <label for="id_ssh_public_key" class="form-label">SSH Public Key</label>
                 <div class="input-group">
                     <span class="input-group-text">
                         <i class="bi bi-key-fill"></i>
                     </span>
-                    <textarea class="form-control {% if form.ssh_key.errors %}is-invalid{% endif %}" 
-                              id="id_ssh_key" name="ssh_key" rows="3" 
-                              placeholder="Enter your SSH public key">{{ form.ssh_key.value|default:user.ssh_public_key }}</textarea>
-                    {% if form.ssh_key.errors %}
+                    <textarea class="form-control {% if form.ssh_public_key.errors %}is-invalid{% endif %}" 
+                              id="id_ssh_public_key" name="ssh_public_key" rows="3" 
+                              placeholder="Enter your SSH public key">{{ form.ssh_public_key.value|default:user.ssh_public_key }}</textarea>
+                    {% if form.ssh_public_key.errors %}
                         <div class="invalid-feedback">
-                            {{ form.ssh_key.errors.0 }}
+                            {{ form.ssh_public_key.errors.0 }}
                         </div>
                     {% endif %}
                 </div>
