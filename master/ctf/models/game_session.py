@@ -8,7 +8,6 @@ from django.utils import timezone
 from ctf.models import GamePhase
 from ctf.models.enums import GameSessionStatus, TeamRole
 
-
 class GameSession(models.Model):
     name = models.CharField(max_length=128, unique=True, help_text="Descriptive name for this game session")
     template = models.ForeignKey("ctf.ChallengeTemplate", null=True, on_delete=models.PROTECT,
@@ -61,7 +60,7 @@ def create_related_models(sender, instance, created, **kwargs):
         )
         GamePhase.objects.create(
             session=instance,
-            status=instance.status,
+            status=GameSessionStatus.PLANNED,
             phase_name=TeamRole.RED,
             start_date=instance.start_date + timedelta(days=instance.rotation_period),
             end_date=instance.end_date,
