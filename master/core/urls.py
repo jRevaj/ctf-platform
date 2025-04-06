@@ -21,12 +21,13 @@ from django.urls import path, include
 from ctf.views import (
     home, register_view, login_view, logout_view, settings_view,
     create_team_view, join_team_view, remove_team_member_view, team_management_view,
-    regenerate_team_key_view,
+    regenerate_team_key_view, challenges_view,
 )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),
+    path('challenges/', challenges_view, name='challenges'),
     path('auth/', include([
         path('register/', register_view, name='register'),
         path('login/', login_view, name='login'),

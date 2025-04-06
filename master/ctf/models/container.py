@@ -37,7 +37,6 @@ class GameContainerManager(models.Manager):
                 docker_id=docker_container.id,
                 status=ContainerStatus.RUNNING,
                 blue_team=blue_team,
-                access_rotation_date=session.end_date,
                 is_entrypoint=is_entrypoint
             )
         except Exception as e:
@@ -87,13 +86,11 @@ class GameContainer(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
     )
-    access_rotation_date = models.DateTimeField()
     is_entrypoint = models.BooleanField(default=False)
 
     objects = GameContainerManager()
 
     class Meta:
-        ordering = ["-access_rotation_date"]
         indexes = [
             models.Index(fields=["docker_id"]),
             models.Index(fields=["status"]),

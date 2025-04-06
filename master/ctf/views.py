@@ -6,14 +6,33 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 
 from ctf.forms.auth_forms import UserRegistrationForm, UserLoginForm, UserSettingsForm
 from ctf.forms.team_forms import CreateTeamForm, JoinTeamForm
-from ctf.models import User
+from ctf.models import User, GameSession, TeamAssignment
+from ctf.models.enums import GameSessionStatus
+from ctf.services.container_service import ContainerService
 
 
+# noinspection PyUnresolvedReferences
 def home(request):
-    return render(request, "home.html")
+    active_assignments = None
+    container_service = ContainerService()
+    if request.user.is_authenticated and request.user.team:
+        active_assignments = TeamAssignment.objects.filter(
+            team=request.user.team,
+            start_date__lte=timezone.now(),
+            end_date__gte=timezone.now()
+        ).select_related('session', 'deployment', 'deployment__template').prefetch_related('deployment__containers')
+        
+        # Add connection strings to each container
+        for assignment in active_assignments:
+            for container in assignment.deployment.containers.all():
+                if container.is_entrypoint:
+                    container.connection_string = container_service.get_ssh_connection_string(container)
+    
+    return render(request, "home.html", {"active_assignments": active_assignments})
 
 
 def register_view(request):
@@ -173,3 +192,21 @@ def regenerate_team_key_view(request):
 
     messages.success(request, "Team join key has been regenerated.")
     return redirect("team_details")
+
+
+@login_required
+def challenges_view(request):
+    container_service = ContainerService()
+    active_assignments = TeamAssignment.objects.filter(
+        team=request.user.team,
+        start_date__lte=timezone.now(),
+        end_date__gte=timezone.now()
+    ).select_related('session', 'deployment', 'deployment__containers')
+    
+    # Add connection strings to each container
+    for assignment in active_assignments:
+        for container in assignment.deployment.containers.all():
+            if container.is_entrypoint:
+                container.connection_string = container_service.get_ssh_connection_string(container)
+    
+    return render(request, "challenges.html", {"active_assignments": active_assignments})

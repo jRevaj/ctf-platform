@@ -107,7 +107,7 @@ class GameContainerAdmin(admin.ModelAdmin):
             'fields': ('name', 'template_name', 'docker_id', 'status')
         }),
         ('Team Assignment', {
-            'fields': ('blue_team', 'red_team', 'access_rotation_date')
+            'fields': ('blue_team', 'red_team')
         }),
         ('Services', {
             'fields': ('services',)
