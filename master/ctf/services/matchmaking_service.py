@@ -20,30 +20,45 @@ class MatchmakingService:
         self.container_service = container_service or ContainerService()
         self.challenge_service = challenge_service or ChallengeService(container_service=self.container_service)
 
-    def create_round_assignments(self, session: GameSession, teams: List[Team]) -> bool:
+    def create_round_assignments(self, session: GameSession, teams: list[Team]) -> bool:
         """
         Create assignments for a round using the challenge preparation system
         """
         try:
-            logger.info("Creating round assignments")
-            start_date = timezone.now()
-            end_date = start_date + timedelta(days=session.rotation_period)
+            if not teams:
+                logger.warning("No teams provided for round assignments")
+                return False
+
+            logger.info(f"Creating round assignments for {len(teams)} teams")
+
+            current_phase = session.phases.filter(status=session.status).first()
+            if not current_phase:
+                logger.error("No active phase found for session")
+                return False
+
+            start_date = current_phase.start_date
+            end_date = current_phase.end_date
 
             logger.info("Preparing containers for each team")
             for team in teams:
-                deployment = self.challenge_service.prepare_challenge(session, team)
-                if not deployment:
-                    logger.error(f"Failed to prepare challenge for team {team.name}")
-                    continue
+                try:
+                    deployment = self.challenge_service.prepare_challenge(session, team)
+                    if not deployment:
+                        logger.error(f"Failed to prepare challenge for team {team.name}")
+                        continue
 
-                TeamAssignment.objects.create(
-                    session=session,
-                    team=team,
-                    deployment=deployment,
-                    role=TeamRole.BLUE,
-                    start_date=start_date,
-                    end_date=end_date
-                )
+                    TeamAssignment.objects.create(
+                        session=session,
+                        team=team,
+                        deployment=deployment,
+                        role=TeamRole.BLUE,
+                        start_date=start_date,
+                        end_date=end_date
+                    )
+                    logger.info(f"Created assignment for team {team.name}")
+                except Exception as e:
+                    logger.error(f"Error creating assignment for team {team.name}: {e}")
+                    continue
 
             return True
         except Exception as e:
