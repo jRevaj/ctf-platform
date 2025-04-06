@@ -101,9 +101,9 @@ class Command(BaseCommand):
                     logger.info(f"Session {new_session.name} completed successfully")
             else:
                 if system == "random":
-                    self._test_random_assignment(session, session.phases.filter(phase_name=TeamRole.RED), teams)
+                    self._test_random_assignment(session, session.phases.filter(phase_name=TeamRole.RED).first(), teams)
                 elif system == "swiss":
-                    self._test_swiss_assignment(session, session.phases.filter(phase_name=TeamRole.RED), teams)
+                    self._test_swiss_assignment(session, session.phases.filter(phase_name=TeamRole.RED).first(), teams)
                 else:
                     raise Exception(f"Unknown system: {system}")
 
@@ -133,8 +133,7 @@ class Command(BaseCommand):
 
             return template, session, teams
         except ChallengeTemplate.DoesNotExist as e:
-            logger.error(f"Error getting session or template: {e}")
-            return
+            raise Exception(f"Error getting session or template: {e}")
 
     def _handle_first_round(self, session: GameSession, teams: list[Team]) -> None:
         phases = session.phases.all()
