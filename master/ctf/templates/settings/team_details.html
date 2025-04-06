@@ -25,6 +25,11 @@
         <div class="mb-3">
             <span class="text-muted">Can play:</span>
             <span class="ms-2 fw-medium text-{{ user_team.is_in_game|yesno:'success,danger' }}">{{ user_team.is_in_game|yesno:"Yes,No" }}</span>
+            {% if not user_team.is_in_game %}
+            <div class="text-secondary text-opacity-50">
+                Team must be full and all members must have SSH keys set up!
+            </div>
+            {% endif %}
         </div>
         <div class="mb-3">
             <span class="text-muted">Created:</span>
@@ -99,29 +104,25 @@
         </div>
 
         <script>
-            // Initialize tooltips
             document.addEventListener("DOMContentLoaded", function () {
-                var tooltipTriggerList = [].slice.call(
+                const tooltipTriggerList = [].slice.call(
                     document.querySelectorAll('[data-bs-toggle="tooltip"]')
                 );
-                var tooltipList = tooltipTriggerList.map(function (
+                const tooltipList = tooltipTriggerList.map(function (
                     tooltipTriggerEl
                 ) {
                     return new bootstrap.Tooltip(tooltipTriggerEl);
                 });
             });
 
-            // Copy to clipboard function with toast notification
             function copyToClipboard(text) {
                 navigator.clipboard.writeText(text).then(function () {
-                    // Show toast
-                    var toast = new bootstrap.Toast(
+                    const toast = new bootstrap.Toast(
                         document.getElementById("copyToast")
                     );
                     toast.show();
 
-                    // Hide tooltip
-                    var tooltip = bootstrap.Tooltip.getInstance(
+                    const tooltip = bootstrap.Tooltip.getInstance(
                         document.querySelector('[data-bs-toggle="tooltip"]')
                     );
                     if (tooltip) {

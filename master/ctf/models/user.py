@@ -50,3 +50,34 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.username
+
+    def get_dirty_fields(self):
+        """Get fields that have changed since the last save"""
+        if not self.pk:
+            return {}
+        dirty_fields = {}
+        for field in self._meta.fields:
+            if field.name == 'id':
+                continue
+            original_value = getattr(self, f'_original_{field.name}', None)
+            current_value = getattr(self, field.name)
+            if original_value != current_value:
+                dirty_fields[field.name] = current_value
+        return dirty_fields
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self._meta.fields:
+            if field.name == 'id':
+                continue
+            setattr(self, f'_original_{field.name}', getattr(self, field.name))
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.team and 'ssh_public_key' in self.get_dirty_fields():
+            self.team.clean()
+            self.team.save()
+        for field in self._meta.fields:
+            if field.name == 'id':
+                continue
+            setattr(self, f'_original_{field.name}', getattr(self, field.name))

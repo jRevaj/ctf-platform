@@ -44,6 +44,16 @@ class Team(models.Model):
             return False
         return user == self.created_by
 
+    def all_members_have_ssh_keys(self):
+        """Check if all team members have SSH keys set up"""
+        return all(user.ssh_public_key.strip() for user in self.users.all())
+
+    def should_be_in_game(self):
+        """Check if team should be set as in game"""
+        settings = GlobalSettings.get_settings()
+        return (self.users.count() == settings.max_team_size and 
+                self.all_members_have_ssh_keys())
+
     def remove_member(self, user, member_to_remove):
         """Remove a member from the team"""
         if not self.can_manage_members(user):
@@ -64,10 +74,11 @@ class Team(models.Model):
     def clean(self):
         """Validate team size"""
         settings = GlobalSettings.get_settings()
-        # Only check team size if the team is already saved
         if self.pk:
             if self.users.count() > settings.max_team_size:
                 raise ValidationError(f"Team cannot have more than {settings.max_team_size} members")
+            if self.should_be_in_game():
+                self.is_in_game = True
 
     class Meta:
         ordering = ['-score', 'name']
