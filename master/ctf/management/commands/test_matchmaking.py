@@ -12,7 +12,6 @@ from ctf.models import GameSession, TeamAssignment, ChallengeTemplate, GamePhase
 from ctf.models.enums import TeamRole, GameSessionStatus
 from ctf.services import DockerService, ContainerService
 from ctf.services.matchmaking_service import MatchmakingService
-from ctf.services.scheduler_service import SchedulerService
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,6 @@ class Command(BaseCommand):
         self.docker_service = DockerService()
         self.container_service = ContainerService(self.docker_service)
         self.matchmaking_service = MatchmakingService(self.container_service)
-        self.scheduler_service = SchedulerService(self.matchmaking_service)
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -83,7 +81,8 @@ class Command(BaseCommand):
                 for i in range(num_of_rounds):
                     if i == 0:
                         new_session = session
-                        self._test_random_assignment(new_session, new_session.phases.filter(phase_name=TeamRole.RED).first(), teams)
+                        self._test_random_assignment(new_session,
+                                                     new_session.phases.filter(phase_name=TeamRole.RED).first(), teams)
                     else:
                         new_session = GameSession.objects.create(
                             name=f"{session_name} {run_id} {i}",
@@ -114,7 +113,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def _prepare_objects(run_id: uuid.UUID, session_name: str, template_name: str, number_of_teams: int) -> tuple[
-            ChallengeTemplate, GameSession, list[Team]]:
+        ChallengeTemplate, GameSession, list[Team]]:
         try:
             logger.info("Preparing necessary objects")
             template = ChallengeTemplate.objects.get(name=template_name)

@@ -3,7 +3,6 @@ from .container_service import ContainerService
 from .docker_service import DockerService
 from .flag_service import FlagService
 from .matchmaking_service import MatchmakingService
-from .scheduler_service import SchedulerService
 
 __all__ = [
     'DockerService',
@@ -11,5 +10,4 @@ __all__ = [
     'FlagService',
     'ChallengeService',
     'MatchmakingService',
-    'SchedulerService',
 ]
