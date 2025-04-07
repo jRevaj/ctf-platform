@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 
@@ -67,14 +67,29 @@ def create_related_models(sender, instance, created, **kwargs):
         )
 
 
+@receiver(pre_save, sender=GameSession)
+def track_status_change(sender, instance, **kwargs):
+    """Track if status is changing to COMPLETED"""
+    if instance.pk:
+        try:
+            old_instance = GameSession.objects.get(pk=instance.pk)
+            instance._old_status = old_instance.status
+        except GameSession.DoesNotExist:
+            instance._old_status = None
+    else:
+        instance._old_status = None
+
+
 @receiver(post_save, sender=GameSession)
 def handle_completed_session(sender, instance, created, **kwargs):
     """Handle cleanup when a game session is marked as completed"""
-    update_fields = kwargs.get('update_fields', None)
-    if update_fields and 'status' in update_fields and instance.status == GameSessionStatus.COMPLETED:
-        from ctf.services import ContainerService
-        instance.phases.all().update(status=GameSessionStatus.COMPLETED)
-        ContainerService().stop_session_containers(instance)
+    if instance.status == GameSessionStatus.COMPLETED:
+        old_status = getattr(instance, '_old_status', None)
+        if old_status != GameSessionStatus.COMPLETED:
+            # TODO: distribute the remaining points of flags that was not captured to blue teams
+            from ctf.services import ContainerService
+            instance.phases.all().update(status=GameSessionStatus.COMPLETED)
+            ContainerService().stop_session_containers(instance)
 
 
 class TeamAssignment(models.Model):
