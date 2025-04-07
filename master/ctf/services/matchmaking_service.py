@@ -261,6 +261,10 @@ class MatchmakingService:
         return assignments
 
     def _assign_team(self, session, target_deployment, red_team, start_date, end_date):
+        """
+        Assign a red team to a target deployment
+        """
+        # TODO: make sure that the containers are running in order to swap SSH access
         for container in target_deployment.containers.all():
             if container.is_entrypoint:
                 logger.info(f"Swapping SSH access for {red_team.name} to {container.name}")

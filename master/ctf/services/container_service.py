@@ -148,16 +148,20 @@ class ContainerService:
         try:
             docker_container = self.docker.get_container(container.docker_id)
             if not docker_container:
-                return None
+                return "Container not available"
+
+            # Check if container is running
+            if docker_container.status != "running":
+                return "Container not running"
 
             port = self.docker.get_container_port(docker_container, "22/tcp")
             if not port:
-                return None
+                return "Container port not available"
 
             return f"ssh -p {port} ctf-user@localhost"
         except Exception as e:
-            logger.error(f"Failed to get SSH connection string: {e}")
-            return None
+            logger.error(f"Failed to get SSH connection string for container {container.docker_id}: {e}")
+            return "Error getting connection information"
 
     def sync_container_status(self, container) -> bool:
         """Sync container status with Docker"""

@@ -75,6 +75,7 @@ def process_phases():
             ).first()
 
             if not blue_phase:
+                logger.info(f"No overdue blue phase found for session: {session.name}")
                 continue
 
             logger.info(f"Processing phase transition for session: {session.name}")

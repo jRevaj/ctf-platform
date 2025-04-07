@@ -71,10 +71,20 @@ class DockerService:
     def get_container_port(container: Container, port: str) -> Optional[str]:
         """Get published port mapping"""
         try:
-            port_info = container.attrs["NetworkSettings"]["Ports"][port][0]
+            ports = container.attrs["NetworkSettings"]["Ports"]
+            
+            # Check if the port mapping exists
+            if port not in ports or not ports[port]:
+                logger.warning(f"No port mapping for {port} in container {container.id}")
+                return None
+            
+            port_info = ports[port][0]
             return port_info["HostPort"]
+        except (KeyError, IndexError) as e:
+            logger.error(f"Failed to get port mapping for container {container.id}: '{port}'")
+            return None
         except Exception as e:
-            logger.error(f"Failed to get port mapping for container {container.id}: {e}")
+            logger.error(f"Unexpected error getting port for container {container.id}: {e}")
             return None
 
     def list_all_containers(self) -> list[Container]:
