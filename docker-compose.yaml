@@ -3,52 +3,63 @@
 services:
   db:
     image: postgres:latest
+    container_name: db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_PORT=${POSTGRES_PORT}
+    env_file:
+      - .env
     ports:
       - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h ${POSTGRES_HOST} -p ${POSTGRES_PORT}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h ${POSTGRES_HOST} -p ${POSTGRES_PORT}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
   master:
-    build: 
+    build:
       context: ./master
       dockerfile: Dockerfile
+    container_name: master
     ports:
       - "8000:8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./master:/app
-    user: root
-    environment:
-      - DJANGO_SETTINGS_MODULE=core.settings
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - TEST_BLUE_SSH_PUBLIC_KEY=${TEST_BLUE_SSH_PUBLIC_KEY}
-      - TEST_RED_SSH_PUBLIC_KEY=${TEST_RED_SSH_PUBLIC_KEY}
-      - TEST_SSH_PUBLIC_KEY_0=${TEST_SSH_PUBLIC_KEY_0}
-      - TEST_SSH_PUBLIC_KEY_1=${TEST_SSH_PUBLIC_KEY_1}
-      - TEST_SSH_PUBLIC_KEY_2=${TEST_SSH_PUBLIC_KEY_2}
-      - TEST_SSH_PUBLIC_KEY_3=${TEST_SSH_PUBLIC_KEY_3}
-      - TEST_SSH_PUBLIC_KEY_4=${TEST_SSH_PUBLIC_KEY_4}
-      - TEST_SSH_PUBLIC_KEY_5=${TEST_SSH_PUBLIC_KEY_5}
-      - TEST_SSH_PUBLIC_KEY_6=${TEST_SSH_PUBLIC_KEY_6}
-      - TEST_SSH_PUBLIC_KEY_7=${TEST_SSH_PUBLIC_KEY_7}
-      - TEST_SSH_PUBLIC_KEY_8=${TEST_SSH_PUBLIC_KEY_8}
+    user: root # TODO: Resolve this in production
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery:
+    build:
+      context: ./master
+      dockerfile: Dockerfile
+    container_name: celery
+    command: [ "celery", "-A", "core", "worker", "--loglevel=info", "--concurrency=4", "-E", "-B" ]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    user: root # TODO: Resolve this in production
+    depends_on:
+      - master
+      - redis
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
