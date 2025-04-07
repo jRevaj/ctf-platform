@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
-from ctf.forms.admin_forms import GameContainerForm
+from ctf.forms.admin_forms import GameContainerForm, GameSessionForm
 from ctf.models import *
 from ctf.models.enums import ContainerStatus, GameSessionStatus
 from ctf.models.settings import GlobalSettings
@@ -396,7 +396,7 @@ class ContainerAccessAdmin(admin.ModelAdmin):
 
 @admin.register(GameSession)
 class GameSessionAdmin(admin.ModelAdmin):
-    """Enhanced admin interface for game sessions"""
+    form = GameSessionForm
     list_display = ('name', 'status', 'template', 'start_date', 'end_date', 'is_active')
     list_filter = ('status',)
     search_fields = ('name',)
@@ -414,7 +414,6 @@ class GameSessionAdmin(admin.ModelAdmin):
             if not change:
                 if obj.status == GameSessionStatus.ACTIVE:
                     obj.start_date = timezone.now()
-
                     super().save_model(request, obj, form, change)
 
                     matchmaking_service = MatchmakingService()
@@ -431,19 +430,14 @@ class GameSessionAdmin(admin.ModelAdmin):
                         self.message_user(request,
                                           f"No teams found for session {obj.name}. Add teams to the game before assigning them.",
                                           level="WARNING")
-
-                    return
-                elif obj.status == GameSessionStatus.PLANNED and obj.start_date <= timezone.now():
-                    self.message_user(request, "Planned sessions must have a future start date", level="ERROR")
-                    return
-
-                super().save_model(request, obj, form, change)
+                else:
+                    super().save_model(request, obj, form, change)
             else:
                 super().save_model(request, obj, form, change)
         except Exception as e:
             logger.error(f"Error creating game session: {e}")
             self.message_user(request, f"Failed to create session: {str(e)}", level="ERROR")
-            if not change:
+            if not change and obj.id is not None:
                 obj.delete()
 
 
