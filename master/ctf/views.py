@@ -5,34 +5,20 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from django.utils import timezone
 
 from ctf.forms.auth_forms import UserRegistrationForm, UserLoginForm, UserSettingsForm
 from ctf.forms.team_forms import CreateTeamForm, JoinTeamForm
-from ctf.models import User, GameSession, TeamAssignment
-from ctf.models.enums import GameSessionStatus
-from ctf.services.container_service import ContainerService
+from ctf.models import User, TeamAssignment, Flag
+from ctf.services.flag_service import FlagService
+from ctf.utils import get_user_challenges
+from ctf.forms.flag_forms import FlagSubmissionForm
 
 
-# noinspection PyUnresolvedReferences
 def home(request):
-    active_assignments = None
-    container_service = ContainerService()
-    if request.user.is_authenticated and request.user.team:
-        active_assignments = TeamAssignment.objects.filter(
-            team=request.user.team,
-            start_date__lte=timezone.now(),
-            end_date__gte=timezone.now()
-        ).select_related('session', 'deployment', 'deployment__template').prefetch_related('deployment__containers')
-        
-        # Add connection strings to each container
-        for assignment in active_assignments:
-            for container in assignment.deployment.containers.all():
-                if container.is_entrypoint:
-                    container.connection_string = container_service.get_ssh_connection_string(container)
-    
-    return render(request, "home.html", {"active_assignments": active_assignments})
+    context = get_user_challenges(request.user)
+    return render(request, "home.html", context)
 
 
 def register_view(request):
@@ -186,7 +172,6 @@ def regenerate_team_key_view(request):
         messages.error(request, "Cannot regenerate team key while in a game.")
         return redirect("team_details")
 
-    # Generate a new UUID for the join key
     request.user.team.join_key = uuid.uuid4()
     request.user.team.save()
 
@@ -194,19 +179,54 @@ def regenerate_team_key_view(request):
     return redirect("team_details")
 
 
-@login_required
 def challenges_view(request):
-    container_service = ContainerService()
-    active_assignments = TeamAssignment.objects.filter(
-        team=request.user.team,
-        start_date__lte=timezone.now(),
-        end_date__gte=timezone.now()
-    ).select_related('session', 'deployment', 'deployment__containers')
-    
-    # Add connection strings to each container
-    for assignment in active_assignments:
-        for container in assignment.deployment.containers.all():
-            if container.is_entrypoint:
-                container.connection_string = container_service.get_ssh_connection_string(container)
-    
-    return render(request, "challenges.html", {"active_assignments": active_assignments})
+    context = get_user_challenges(request.user)
+    return render(request, "challenges.html", context)
+
+
+@login_required
+def submit_flag_view(request, challenge_id):
+    try:
+        challenge = TeamAssignment.objects.get(id=challenge_id)
+        
+        if not request.user.team:
+            messages.error(request, "You must be in a team to submit flags")
+            return redirect('challenges')
+            
+        if challenge.role != 'red':
+            messages.error(request, "You can only submit flags in red team phase")
+            return redirect('challenges')
+        
+        if request.method == "POST":
+            form = FlagSubmissionForm(request.POST, challenge=challenge, team=request.user.team)
+            if form.is_valid():
+                try:
+                    flag = form.cleaned_data['flag_object']
+                    FlagService.capture_and_award(flag, request.user.team)
+                    messages.success(request, "Flag captured successfully!")
+                    if not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return redirect('challenges')
+                except Exception as e:
+                    messages.error(request, str(e))
+        else:
+            form = FlagSubmissionForm(challenge=challenge, team=request.user.team)
+            
+        context = get_user_challenges(request.user)
+        context['form'] = form
+        context['current_challenge_id'] = challenge_id
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return render(request, 'partials/challenge_card.html', {
+                'challenge': challenge,
+                'form': form,
+                'completed': False
+            })
+        
+        return render(request, 'challenges.html', context)
+        
+    except TeamAssignment.DoesNotExist:
+        messages.error(request, "Challenge not found")
+        return redirect('challenges')
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('challenges')

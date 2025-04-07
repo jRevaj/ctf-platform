@@ -1,0 +1,180 @@
+<div class="col">
+    <div class="card h-100 border-5 bg-body-tertiary {% if completed %}border-success{% elif challenge.role == 'red' %}border-danger{% elif challenge.role == 'blue' %}border-primary{% endif %} hover-card">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div class="d-flex gap-2 justify-content-center align-items-center">
+                <h5 class="card-title mb-0">
+                    {{ challenge.deployment.template.name }}
+                </h5>
+                {% if completed %}
+                    <i class="bi bi-check-circle text-success"></i>
+                {% else %}
+                    <i class="bi bi-play-circle text-warning"></i>
+                {% endif %}
+            </div>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#challengeModal{{ challenge.id }}">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for challenge -->
+<div class="modal fade" id="challengeModal{{ challenge.id }}" tabindex="-1" aria-labelledby="challengeModalLabel{{ challenge.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-5 {% if completed %}border-success{% elif challenge.role == 'red' %}border-danger{% elif challenge.role == 'blue' %}border-primary{% endif %}">
+            <div class="modal-header">
+                <h5 class="modal-title" id="challengeModalLabel{{ challenge.id }}">
+                    {{ challenge.deployment.template.name }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="card-text text-muted">
+                    Phase: 
+                    <span class="text-capitalize {% if completed %}text-success{% elif challenge.role == 'red' %}text-danger{% elif challenge.role == 'blue' %}text-primary{% endif %}">
+                        {% if completed %}Completed{% else %}{{ challenge.role }}{% endif %}
+                    </span>
+                </p>
+                {% if not completed %}
+                    <p class="card-text text-muted">
+                        Phase ends: {{ challenge.end_date|date:"d.m.Y" }}
+                    </p>
+                    {% for container in challenge.deployment.containers.all %}
+                        {% if container.is_entrypoint %}
+                            <div class="mb-4">
+                                <label for="connectionString{{ challenge.id }}" class="form-label">Connection Information</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control {% if 'not' in container.connection_string %}bg-light text-muted{% endif %}" value="{{ container.connection_string }}" readonly />
+                                    {% if 'not' not in container.connection_string %}
+                                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="tooltip" title="Copy to clipboard" onclick="copyToClipboard('{{ container.connection_string }}', 'connectionToast')">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-outline-secondary" type="button" disabled>
+                                            <i class="bi bi-clipboard-x"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                                {% if 'not' in container.connection_string %}
+                                    <small class="text-muted">
+                                        <i class="bi bi-info-circle"></i> 
+                                        The container is currently unavailable. It may be stopped or in maintenance.
+                                    </small>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                    {% if challenge.role == 'red' %}
+                        <hr/>
+                        <h6>Submit Flag</h6>
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} mb-3">
+                                    <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-circle{% endif %} me-2"></i>
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        <form method="post" action="{% url 'submit_flag' challenge.id %}" class="flag-submit-form">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="flagValue{{ challenge.id }}" class="form-label">Flag Value</label>
+                                <input type="text" class="form-control {% if form and form.flag.errors %}is-invalid{% endif %}" 
+                                       id="flagValue{{ challenge.id }}" name="flag" required 
+                                       value="{% if form %}{{ form.flag.value }}{% endif %}" />
+                                {% if form and form.flag.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.flag.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                Submit Flag
+                            </button>
+                        </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] .hover-card:hover {
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.flag-submit-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitButton = this.querySelector('button[type="submit"]');
+            const modalBody = this.closest('.modal-body');
+            
+            // Disable submit button while processing
+            submitButton.disabled = true;
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                // Find the form in the response
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newForm = doc.querySelector('.flag-submit-form');
+                const successMessage = doc.querySelector('.alert-success');
+                const errorMessage = doc.querySelector('.alert-danger');
+                
+                // Clear any existing messages
+                const existingMessages = modalBody.querySelectorAll('.alert');
+                existingMessages.forEach(msg => msg.remove());
+                
+                if (successMessage) {
+                    // Add success message
+                    modalBody.insertBefore(successMessage.cloneNode(true), this);
+                    // Reset the form
+                    this.reset();
+                } else if (errorMessage) {
+                    // Add error message
+                    modalBody.insertBefore(errorMessage.cloneNode(true), this);
+                }
+                
+                if (newForm) {
+                    // Replace the old form with the new one
+                    this.innerHTML = newForm.innerHTML;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Add error alert to the modal
+                const errorAlert = document.createElement('div');
+                errorAlert.className = 'alert alert-danger mb-3';
+                errorAlert.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>An error occurred while submitting the flag.';
+                modalBody.insertBefore(errorAlert, this);
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+            });
+        });
+    });
+});
+</script> 

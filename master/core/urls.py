@@ -21,7 +21,7 @@ from django.urls import path, include
 from ctf.views import (
     home, register_view, login_view, logout_view, settings_view,
     create_team_view, join_team_view, remove_team_member_view, team_management_view,
-    regenerate_team_key_view, challenges_view,
+    regenerate_team_key_view, challenges_view, submit_flag_view,
 )
 
 urlpatterns = [
@@ -41,5 +41,6 @@ urlpatterns = [
         path('team/remove-member/<int:member_id>/', login_required(remove_team_member_view), name='remove_team_member'),
         path('team/regenerate-key/', login_required(regenerate_team_key_view), name='regenerate_team_key'),
     ])),
+    path('submit_flag/<int:challenge_id>/', login_required(submit_flag_view), name='submit_flag'),
     path('__reload__/', include('django_browser_reload.urls')),
 ]

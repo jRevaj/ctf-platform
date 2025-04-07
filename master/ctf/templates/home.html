@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
     <div class="container">
@@ -32,90 +33,43 @@
             </div>
         </div>
 
-        {% if user.is_authenticated and user.team and active_assignments %}
-            <h2 class="mb-4">Active Challenges</h2>
-            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                {% for assignment in active_assignments %}
-                    <div class="col">
-                        <div class="card h-100 border-5 {% if assignment.role == 'RED' %}border-danger{% else %}border-primary{% endif %}">
-                            <div class="card-body d-flex justify-content-between align-items-center">
-                                <div class="d-flex gap-2 justify-content-center align-items-center">
-                                    <h5 class="card-title mb-0">
-                                        {{ assignment.deployment.template.name }}
-                                    </h5>
-                                    {% if assignment.session.status == 'active' %}
-                                        <i class="bi bi-play-circle text-warning"></i>
-                                    {% elif assignment.session.status == 'completed' %}
-                                        <i class="bi bi-check-circle text-success"></i>
-                                    {% endif %}
-                                </div>
-                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignmentModal{{ assignment.id }}">
-                                    <i class="bi bi-eye"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+        {% if user.is_authenticated and user.team %}
+            <h2 class="mb-4">Challenges</h2>
+            
+            {% if active_challenges %}
+                <h3 class="mb-3">Active Challenges</h3>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
+                    {% for challenge in active_challenges %}
+                        {% include "partials/challenge_card.html" with challenge=challenge completed=False %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            {% if completed_challenges %}
+                <h3 class="mb-3">Completed Challenges</h3>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    {% for challenge in completed_challenges %}
+                        {% include "partials/challenge_card.html" with challenge=challenge completed=True %}
+                    {% endfor %}
+                </div>
+            {% endif %}
 
-                    <!-- Modal for each assignment -->
-                    <div class="modal fade" id="assignmentModal{{ assignment.id }}" tabindex="-1" aria-labelledby="assignmentModalLabel{{ assignment.id }}" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content border-5 {% if assignment.role == 'RED' %}border-danger{% else %}border-primary{% endif %}">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="assignmentModalLabel{{ assignment.id }}">
-                                        {{ assignment.deployment.template.name }}
-                                    </h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <p class="card-text text-muted">
-                                        Current phase: 
-                                        <span class=" text-capitalize {% if assignment.role == 'RED' %}text-danger{% else %}text-primary{% endif %}">{{ assignment.role }}</span>
-                                    </p>
-                                    <p class="card-text text-muted">
-                                        Current phase ends: {{ assignment.end_date|date:"d.m.Y" }}
-                                    </p>
-                                    {% for container in assignment.deployment.containers.all %}
-                                        {% if container.is_entrypoint %}
-                                            <div class="mb-4">
-                                                <label for="connectionString{{ assignment.id }}" class="form-label">Connection Information</label>
-                                                <div class="input-group">
-                                                    <input type="text" class="form-control" value="{{ container.connection_string }}" readonly />
-                                                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="tooltip" title="Copy to clipboard" onclick="copyToClipboard('{{ container.connection_string }}', 'connectionToast')">
-                                                        <i class="bi bi-clipboard"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                    {% if assignment.role == 'RED' %}
-                                        <hr/>
-                                        <h6>Submit Flag</h6>
-                                        <form id="flagForm{{ assignment.id }}" class="flag-submit-form">
-                                            {% csrf_token %}
-                                            <div class="mb-3">
-                                                <label for="flagValue{{ assignment.id }}" class="form-label">Flag Value</label>
-                                                <input type="text" class="form-control" id="flagValue{{ assignment.id }}" name="flag" required />
-                                            </div>
-                                            <button type="submit" class="btn btn-primary">
-                                                Submit Flag
-                                            </button>
-                                        </form>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
+            {% if not active_challenges and not completed_challenges %}
+                <div class="alert alert-info text-center">
+                    <p>No active or completed challenges found.</p>
+                </div>
+            {% endif %}
 
             <!-- Toast notification -->
             <div class="toast-container position-fixed bottom-0 end-0 p-3">
-                <div id="connectionToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div id="connectionToast" class="toast align-items-center text-bg-success border-0" role="alert"
+                     aria-live="assertive" aria-atomic="true">
                     <div class="d-flex">
                         <div class="toast-body">
                             <i class="bi bi-check-circle me-2"></i>Connection string copied to clipboard!
                         </div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                                aria-label="Close"></button>
                     </div>
                 </div>
             </div>
@@ -124,43 +78,11 @@
 
     {% if user.is_authenticated %}
         <script>
-            document.addEventListener("DOMContentLoaded", function () {
+            document.addEventListener('DOMContentLoaded', function () {
                 // Initialize tooltips
-                const tooltipTriggerList = [].slice.call(
-                    document.querySelectorAll('[data-bs-toggle="tooltip"]')
-                );
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
                 const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
                     return new bootstrap.Tooltip(tooltipTriggerEl);
-                });
-
-                // Handle flag submission
-                document.querySelectorAll(".flag-submit-form").forEach((form) => {
-                    form.addEventListener("submit", function (e) {
-                        e.preventDefault();
-                        const formData = new FormData(this);
-                        const assignmentId = this.id.replace("flagForm", "");
-
-                        fetch("/api/flags/submit/", {
-                            method: "POST",
-                            body: formData,
-                            headers: {
-                                "X-CSRFToken": formData.get("csrfmiddlewaretoken"),
-                            },
-                        })
-                            .then((response) => response.json())
-                            .then((data) => {
-                                if (data.success) {
-                                    alert("Flag submitted successfully!");
-                                    this.reset();
-                                } else {
-                                    alert("Invalid flag!");
-                                }
-                            })
-                            .catch((error) => {
-                                console.error("Error:", error);
-                                alert("An error occurred while submitting the flag.");
-                            });
-                    });
                 });
             });
 
@@ -178,4 +100,14 @@
                 });
             }
         </script>
-    {% endif %} {% endblock %}
+    {% endif %}
+
+    {% if messages and current_challenge_id %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const modal = new bootstrap.Modal(document.getElementById('challengeModal{{ current_challenge_id }}'));
+                modal.show();
+            });
+        </script>
+    {% endif %}
+{% endblock %}
