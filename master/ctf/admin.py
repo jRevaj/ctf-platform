@@ -205,9 +205,9 @@ class GameContainerAdmin(admin.ModelAdmin):
         return custom_urls + urls
 
     def start_container_view(self, request, container_id):
-        game_container = self.model.objects.get(pk=container_id)
+        game_container: GameContainer = self.model.objects.get(pk=container_id)
         self.container_service.sync_container_status(game_container)
-        if game_container.status == ContainerStatus.RUNNING:
+        if game_container.is_running():
             self.message_user(request, f"Container {game_container.name} is already running.", level="WARNING")
         elif self.container_service.start_container(game_container):
             self.message_user(request, f"Container {game_container.name} started successfully.")
@@ -218,7 +218,7 @@ class GameContainerAdmin(admin.ModelAdmin):
     def stop_container_view(self, request, container_id):
         game_container = self.model.objects.get(pk=container_id)
         self.container_service.sync_container_status(game_container)
-        if game_container.status == ContainerStatus.STOPPED:
+        if game_container.is_stopped():
             self.message_user(request, f"Container {game_container.name} is already stopped.", level="WARNING")
         elif self.container_service.stop_container(game_container):
             self.message_user(request, f"Container {game_container.name} stopped successfully.")

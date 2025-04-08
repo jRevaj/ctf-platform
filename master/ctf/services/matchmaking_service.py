@@ -6,7 +6,7 @@ from typing import List, Tuple
 from django.utils import timezone
 
 from ctf.models import Team, GameSession, TeamAssignment, GamePhase
-from ctf.models.enums import TeamRole, GameSessionStatus
+from ctf.models.enums import TeamRole, GameSessionStatus, ContainerStatus
 from ctf.services import ChallengeService
 from ctf.services.container_service import ContainerService
 
@@ -260,12 +260,18 @@ class MatchmakingService:
 
         return assignments
 
-    def _assign_team(self, session, target_deployment, red_team, start_date, end_date):
+    def _assign_team(self, session, target_deployment, red_team, start_date, end_date) -> TeamAssignment:
         """
         Assign a red team to a target deployment
         """
-        # TODO: make sure that the containers are running in order to swap SSH access
         for container in target_deployment.containers.all():
+            if not container.is_running():
+                logger.warning(f"Container {container.name} is not running, starting it...")
+                self.container_service.start_container(container)
+                if not container.is_running():
+                    logger.error(f"Failed to start container {container.name}")
+                    continue
+
             if container.is_entrypoint:
                 logger.info(f"Swapping SSH access for {red_team.name} to {container.name}")
                 self.container_service.swap_ssh_access(container, red_team)

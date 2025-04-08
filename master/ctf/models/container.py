@@ -123,6 +123,14 @@ class GameContainer(models.Model):
         """Check if team has access to the container"""
         return self.blue_team == team or self.red_team == team
 
+    def is_running(self):
+        """Check if container is running"""
+        return self.status == ContainerStatus.RUNNING
+
+    def is_stopped(self):
+        """Check if container is stopped"""
+        return self.status == ContainerStatus.STOPPED
+
     def get_connection_string(self):
         """Get container connection string"""
         return f"ssh -p {self.port} ctf-user@localhost"
@@ -130,13 +138,12 @@ class GameContainer(models.Model):
     def cleanup_docker_container(self):
         """Clean up the associated Docker container"""
         from ctf.services import ContainerService
-        from ctf.models.enums import ContainerStatus
         
         container_service = ContainerService()
         try:
             container_service.sync_container_status(self)
             
-            if self.status == ContainerStatus.RUNNING:
+            if self.is_running():
                 if not container_service.stop_container(self):
                     logger.error(f"Failed to stop container {self.docker_id} before deletion")
                 container_service.sync_container_status(self)
