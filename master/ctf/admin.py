@@ -470,7 +470,7 @@ class GamePhaseAdmin(admin.ModelAdmin):
 
 @admin.register(GlobalSettings)
 class GlobalSettingsAdmin(admin.ModelAdmin):
-    list_display = ('max_team_size', 'allow_team_changes')
+    list_display = ('max_team_size', 'number_of_tiers', 'allow_team_changes')
     readonly_fields = ('id',)
 
     def has_add_permission(self, request):
