@@ -10,6 +10,7 @@ from django.utils import timezone
 from ctf.management.commands.utils import create_teams, create_users
 from ctf.models import GameSession, TeamAssignment, ChallengeTemplate, GamePhase, Team
 from ctf.models.enums import TeamRole, GameSessionStatus
+from ctf.models.settings import GlobalSettings
 from ctf.services import DockerService, ContainerService
 from ctf.services.matchmaking_service import MatchmakingService
 
@@ -190,7 +191,8 @@ class Command(BaseCommand):
             team.score = random.randint(0, 1000)
             team.save(update_fields=['score'])
 
-        success = self.matchmaking_service.create_swiss_assignments(session, phase, teams, 3)
+        settings = GlobalSettings.get_settings()
+        success = self.matchmaking_service.create_swiss_assignments(session, phase, teams, settings.number_of_tiers)
         if not success:
             raise Exception("Failed to create Swiss assignments")
 

@@ -7,6 +7,10 @@ class GlobalSettings(models.Model):
         default=4,
         help_text="Maximum number of players allowed in a team"
     )
+    number_of_tiers = models.PositiveIntegerField(
+        default=3,
+        help_text="Number of tiers to use in matchmaking"
+    )
     allow_team_changes = models.BooleanField(
         default=True,
         help_text="Whether players can change teams outside of games"
@@ -15,10 +19,11 @@ class GlobalSettings(models.Model):
     def clean(self):
         if self.max_team_size < 1:
             raise ValidationError("Maximum team size must be at least 1")
+        if self.number_of_tiers < 1:
+            raise ValidationError("Number of tiers must be at least 1")
 
     def save(self, *args, **kwargs):
         self.full_clean()
-        # Ensure only one settings instance exists
         if not self.pk and GlobalSettings.objects.exists():
             raise ValidationError("Only one settings instance can exist")
         super().save(*args, **kwargs)

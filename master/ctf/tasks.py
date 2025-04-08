@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from ctf.models import GameSession, Team, GamePhase
 from ctf.models.enums import GameSessionStatus, TeamRole
+from ctf.models.settings import GlobalSettings
 from ctf.services.matchmaking_service import MatchmakingService
 from ctf.utils import is_first_session_for_teams
 
@@ -93,7 +94,8 @@ def process_phases():
                     success = matchmaking_service.create_random_red_assignments(session, red_phase, teams)
                 else:
                     logger.info(f"Using Swiss matching for subsequent session: {session.name}")
-                    success = matchmaking_service.create_swiss_assignments(session, red_phase, teams, 3)
+                    settings = GlobalSettings.get_settings()
+                    success = matchmaking_service.create_swiss_assignments(session, red_phase, teams, settings.number_of_tiers)
 
                 if success:
                     blue_phase.status = GameSessionStatus.COMPLETED
