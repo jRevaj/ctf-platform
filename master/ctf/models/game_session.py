@@ -86,9 +86,9 @@ def handle_completed_session(sender, instance, created, **kwargs):
     if instance.status == GameSessionStatus.COMPLETED:
         old_status = getattr(instance, '_old_status', None)
         if old_status != GameSessionStatus.COMPLETED:
-            # TODO: distribute the remaining points of flags that was not captured to blue teams
-            from ctf.services import ContainerService
+            from ctf.services import ContainerService, FlagService
             instance.phases.all().update(status=GameSessionStatus.COMPLETED)
+            FlagService.distribute_uncaptured_flags_points(instance)
             ContainerService().stop_session_containers(instance)
 
 
