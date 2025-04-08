@@ -96,7 +96,7 @@ class FlagInline(admin.TabularInline):
 @admin.register(GameContainer)
 class GameContainerAdmin(admin.ModelAdmin):
     form = GameContainerForm
-    list_display = ("name", "status", "blue_team", "red_team", "container_actions")
+    list_display = ("name", "status", "blue_team", "red_team", "is_entrypoint", "container_actions")
     list_filter = ("status",)
     actions = ["sync_status", "start_containers", "stop_containers"]
     inlines = [FlagInline]

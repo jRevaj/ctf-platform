@@ -67,7 +67,7 @@ class GameContainer(models.Model):
     name = models.CharField(max_length=128, unique=True)
     template_name = models.CharField(max_length=128, default="", blank=True)
     docker_id = models.CharField(max_length=128, unique=True)
-    status = models.CharField(max_length=16, choices=ContainerStatus)
+    status = models.CharField(max_length=16, choices=ContainerStatus, default=ContainerStatus.CREATED)
     port = models.IntegerField(null=True, blank=True)
     services = models.JSONField(default=list)
     deployment = models.ForeignKey('ctf.ChallengeDeployment', null=True, blank=True, related_name="containers",
@@ -87,6 +87,8 @@ class GameContainer(models.Model):
         on_delete=models.SET_NULL,
     )
     is_entrypoint = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects = GameContainerManager()
 
@@ -124,6 +126,29 @@ class GameContainer(models.Model):
     def get_connection_string(self):
         """Get container connection string"""
         return f"ssh -p {self.port} ctf-user@localhost"
+
+    def cleanup_docker_container(self):
+        """Clean up the associated Docker container"""
+        from ctf.services import ContainerService
+        from ctf.models.enums import ContainerStatus
+        
+        container_service = ContainerService()
+        try:
+            container_service.sync_container_status(self)
+            
+            if self.status == ContainerStatus.RUNNING:
+                if not container_service.stop_container(self):
+                    logger.error(f"Failed to stop container {self.docker_id} before deletion")
+                container_service.sync_container_status(self)
+            
+            container_service.delete_game_container(self)
+        except Exception as e:
+            logger.error(f"Failed to delete Docker container {self.docker_id} during model deletion: {e}")
+
+    def delete(self, *args, **kwargs):
+        """Override delete to ensure Docker container is also deleted"""
+        self.cleanup_docker_container()
+        super().delete(*args, **kwargs)
 
 
 class ContainerAccess(models.Model):
