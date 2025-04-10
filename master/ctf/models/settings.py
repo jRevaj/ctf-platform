@@ -4,7 +4,7 @@ from django.db import models
 
 class GlobalSettings(models.Model):
     max_team_size = models.PositiveIntegerField(
-        default=4,
+        default=3,
         help_text="Maximum number of players allowed in a team"
     )
     number_of_tiers = models.PositiveIntegerField(
