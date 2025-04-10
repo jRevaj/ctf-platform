@@ -69,6 +69,18 @@ def process_phases():
         matchmaking_service = MatchmakingService()
 
         for session in active_sessions:
+            red_phase = session.phases.filter(
+                status=GameSessionStatus.ACTIVE,
+                phase_name=TeamRole.RED,
+                end_date__lte=timezone.now(),
+            ).first()
+
+            if red_phase:
+                logger.info(f"Red phase overdue for session: {session.name}, completing session")
+                session.status = GameSessionStatus.COMPLETED
+                session.save(update_fields=["status"])
+                continue
+
             blue_phase = session.phases.filter(
                 status=GameSessionStatus.ACTIVE,
                 phase_name=TeamRole.BLUE,
