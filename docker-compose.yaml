@@ -37,7 +37,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./master:/app
-    user: root # TODO: Resolve this in production
+    user: root
     env_file:
       - .env
     depends_on:
@@ -70,7 +70,7 @@ services:
       "
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    user: root # TODO: Resolve this in production
+    user: root
     depends_on:
       - master
       - redis
