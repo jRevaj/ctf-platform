@@ -5,7 +5,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
 from ctf.forms.auth_forms import UserRegistrationForm, UserLoginForm, UserSettingsForm
@@ -15,6 +15,8 @@ from ctf.services.flag_service import FlagService
 from ctf.utils import get_user_challenges
 from ctf.forms.flag_forms import FlagSubmissionForm
 
+def health_check(request):
+    return HttpResponse("OK")
 
 def home(request):
     context = get_user_challenges(request.user)

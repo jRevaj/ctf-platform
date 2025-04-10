@@ -45,13 +45,29 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    command: >
+      sh -c "
+        python manage.py migrate &&
+        python manage.py init_admin &&
+        python manage.py populate_test_users &&
+        python manage.py runserver 0.0.0.0:8000
+      "
 
   celery:
     build:
       context: ./master
       dockerfile: Dockerfile
     container_name: celery
-    command: [ "celery", "-A", "core", "worker", "--loglevel=info", "--concurrency=4", "-E", "-B" ]
+    command: >
+      sh -c "
+        echo 'Waiting for Django to be ready...' &&
+        while ! curl -s http://master:8000/health/ > /dev/null; do
+          echo 'Django is not ready yet...' &&
+          sleep 5
+        done &&
+        echo 'Django is ready! Starting Celery...' &&
+        celery -A core worker --loglevel=info --concurrency=4 -E -B
+      "
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     user: root # TODO: Resolve this in production
