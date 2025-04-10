@@ -220,10 +220,20 @@ class ContainerService:
     def stop_session_containers(self, session: GameSession) -> bool:
         """Stop all session containers"""
         try:
-            for container in session.get_containers():
-                stopped = self.stop_container(container)
-                if not stopped:
-                    logger.warning(f"Failed to stop container {container.name}")
+            containers = session.get_containers()
+            logger.info(f"Stopping {len(containers)} containers for session {session.name}")
+            
+            for container in containers:
+                self.sync_container_status(container)
+                
+                if container.is_running():
+                    logger.info(f"Stopping container {container.name}")
+                    stopped = self.stop_container(container)
+                    if not stopped:
+                        logger.warning(f"Failed to stop container {container.name}")
+                else:
+                    logger.info(f"Container {container.name} is already stopped (status: {container.status})")
+            
             return True
         except Exception as e:
             logger.error(f"Failed to stop session containers: {e}")
