@@ -88,7 +88,7 @@ def handle_completed_session(sender, instance, created, **kwargs):
         if old_status != GameSessionStatus.COMPLETED:
             from ctf.services import ContainerService, FlagService
             instance.phases.all().update(status=GameSessionStatus.COMPLETED)
-            FlagService.distribute_uncaptured_flags_points(instance)
+            FlagService().distribute_uncaptured_flags_points(instance)
             ContainerService().stop_session_containers(instance)
 
 
