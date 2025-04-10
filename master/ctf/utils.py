@@ -1,97 +1,73 @@
 from django.db.models import Count
-from django.utils import timezone
 
-from ctf.models import GameSession, TeamAssignment, Team
+from ctf.models import TeamAssignment, Team
 from ctf.models.enums import GameSessionStatus, TeamRole
 from ctf.services import ContainerService
 
 
 def get_user_challenges(user):
     """
-    Get challenges for a user's team, showing only one entry per session
-    with priority: active red > active blue > completed
+    Get all challenges for a user's team, ordered by session start date.
+    Phase logic:
+    - If blue phase is active = show blue phase only
+    - If blue is completed and red active = show red phase only
+    - If both completed = pass the last active phase with appended is_completed = True
     """
-    active_challenges = []
-    completed_challenges = []
+    challenges = []
     container_service = ContainerService()
 
     if user.is_authenticated and user.team:
-        now = timezone.now()
+        assignments = TeamAssignment.objects.filter(
+            team=user.team
+        ).select_related('session', 'deployment', 'deployment__template').prefetch_related(
+            'deployment__containers',
+            'session__phases'
+        ).order_by('session__start_date')
 
-        sessions = GameSession.objects.filter(
-            team_assignments__team=user.team
-        ).distinct()
+        session_assignments = {}
+        for assignment in assignments:
+            session_id = assignment.session.id
+            if session_id not in session_assignments:
+                session_assignments[session_id] = []
+            session_assignments[session_id].append(assignment)
 
-        processed_session_ids = set()
+        for session_id, session_challenges in session_assignments.items():
+            session = session_challenges[0].session
+            blue_phase = session.phases.filter(phase_name=TeamRole.BLUE).first()
+            red_phase = session.phases.filter(phase_name=TeamRole.RED).first()
 
-        for session in sessions:
-            if session.id in processed_session_ids:
-                continue
+            blue_completed = blue_phase and blue_phase.status == GameSessionStatus.COMPLETED
+            red_completed = red_phase and red_phase.status == GameSessionStatus.COMPLETED
 
-            processed_session_ids.add(session.id)
+            display_assignment = None
 
-            if session.status == GameSessionStatus.COMPLETED:
-                assignment = TeamAssignment.objects.filter(
-                    team=user.team,
-                    session=session
-                ).select_related(
-                    'session',
-                    'deployment',
-                    'deployment__template'
-                ).prefetch_related(
-                    'deployment__containers'
-                ).order_by('-end_date').first()
+            blue_assignment = None
+            red_assignment = None
+            for challenge in session_challenges:
+                if challenge.role == TeamRole.BLUE:
+                    blue_assignment = challenge
+                elif challenge.role == TeamRole.RED:
+                    red_assignment = challenge
 
-                if assignment:
-                    completed_challenges.append(assignment)
-                continue
+            if blue_phase and blue_phase.status == GameSessionStatus.ACTIVE and blue_assignment:
+                display_assignment = blue_assignment
+            elif blue_completed and red_phase and red_phase.status == GameSessionStatus.ACTIVE and red_assignment:
+                display_assignment = red_assignment
+            elif blue_completed and red_completed and red_assignment:
+                display_assignment = red_assignment
 
-            if session.status == GameSessionStatus.ACTIVE:
-                red_assignment = TeamAssignment.objects.filter(
-                    team=user.team,
-                    session=session,
-                    role=TeamRole.RED,
-                    start_date__lte=now,
-                    end_date__gte=now
-                ).select_related(
-                    'session',
-                    'deployment',
-                    'deployment__template'
-                ).prefetch_related(
-                    'deployment__containers'
-                ).first()
-
-                if red_assignment:
-                    active_challenges.append(red_assignment)
-                    continue
-
-                blue_assignment = TeamAssignment.objects.filter(
-                    team=user.team,
-                    session=session,
-                    role=TeamRole.BLUE,
-                    start_date__lte=now,
-                    end_date__gte=now
-                ).select_related(
-                    'session',
-                    'deployment',
-                    'deployment__template'
-                ).prefetch_related(
-                    'deployment__containers'
-                ).first()
-
-                if blue_assignment:
-                    active_challenges.append(blue_assignment)
-
-        active_challenges.sort(key=lambda x: x.start_date)
-        for challenge_list in [active_challenges, completed_challenges]:
-            for challenge in challenge_list:
-                for container in challenge.deployment.containers.all():
+            if display_assignment:
+                for container in display_assignment.deployment.containers.all():
                     if container.is_entrypoint:
                         container.connection_string = container_service.get_ssh_connection_string(container)
 
+                display_assignment.is_completed = blue_completed and red_completed
+                challenges.append(display_assignment)
+
+        challenges.sort(key=lambda x: x.session.start_date)
+
     return {
-        "active_challenges": active_challenges,
-        "completed_challenges": completed_challenges
+        "challenges": challenges
     }
 
 

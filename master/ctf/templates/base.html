@@ -96,7 +96,7 @@
 <body>
 <nav class="navbar navbar-expand-lg">
     <div class="container">
-        <a class="navbar-brand" href="{% url 'home' %}">CTF Platform</a>
+        <a class="navbar-brand" href="{% url 'home' %}">FEI CTF</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -105,6 +105,12 @@
                 {% if user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'challenges' %}">Challenges</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'challenges' %}">Teams</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'challenges' %}">Scoreboard</a>
                     </li>
                 {% endif %}
             </ul>
@@ -154,7 +160,15 @@
 
 <footer class="footer mt-auto py-3">
     <div class="container text-center">
-        <span class="text-secondary text-opacity-50">© {% now "Y" %} CTF Platform | Juraj Revaj</span>
+        <span class="text-secondary text-opacity-50">© {% now "Y" %} FEI CTF | Juraj Revaj</span>
+        <div class="mt-2">
+            <a href="https://github.com/jrevaj/ctf-platform" target="_blank" class="text-secondary text-opacity-50 me-3">
+                <i class="bi bi-github"></i> GitHub
+            </a>
+            <a href="https://www.linkedin.com/in/juraj-revaj" target="_blank" class="text-secondary text-opacity-50">
+                <i class="bi bi-linkedin"></i> LinkedIn
+            </a>
+        </div>
     </div>
 </footer>
 

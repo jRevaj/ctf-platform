@@ -6,7 +6,7 @@
         <div class="row justify-content-center align-items-center mb-5 {% if not user.is_authenticated %}full-height-row{% endif %}">
             <div class="col-md-8">
                 <div class="text-center">
-                    <h1 class="card-title mb-4">Welcome to CTF Game</h1>
+                    <h1 class="card-title mb-4">Welcome to FEI CTF</h1>
                     {% if user.is_authenticated %}
                         <p class="lead">You are logged in as {{ user.username }}</p>
                         {% if user.team %}
@@ -35,29 +35,17 @@
 
         {% if user.is_authenticated and user.team %}
             <h2 class="mb-4">Challenges</h2>
-            
-            {% if active_challenges %}
-                <h3 class="mb-3">Active Challenges</h3>
-                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
-                    {% for challenge in active_challenges %}
-                        {% include "partials/challenge_card.html" with challenge=challenge completed=False %}
-                    {% endfor %}
-                </div>
-            {% endif %}
-            
-            {% if completed_challenges %}
-                <h3 class="mb-3">Completed Challenges</h3>
-                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                    {% for challenge in completed_challenges %}
-                        {% include "partials/challenge_card.html" with challenge=challenge completed=True %}
-                    {% endfor %}
-                </div>
-            {% endif %}
 
-            {% if not active_challenges and not completed_challenges %}
-                <div class="alert alert-info text-center">
-                    <p>No active or completed challenges found.</p>
+            {% if challenges %}
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    {% for challenge in challenges %}
+                        {% include "partials/challenge_card.html" with challenge=challenge completed=challenge.is_completed %}
+                    {% endfor %}
                 </div>
+            {% else %}
+                <p class="alert alert-info text-center">
+                    No challenges found.
+                </p>
             {% endif %}
 
             <!-- Toast notification -->
@@ -104,7 +92,7 @@
 
     {% if messages and current_challenge_id %}
         <script>
-            document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function () {
                 const modal = new bootstrap.Modal(document.getElementById('challengeModal{{ current_challenge_id }}'));
                 modal.show();
             });
