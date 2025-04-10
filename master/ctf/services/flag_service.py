@@ -22,13 +22,17 @@ class FlagService:
     @staticmethod
     def award_blue_points(flags: list[Flag]) -> None:
         """Award blue points for flags secured by the blue team"""
-        if len(set(flag.owner for flag in flags)) != 1 or len(set(flag.session for flag in flags)) != 1:
-            raise ValueError("Flags must belong to the same team and session")
+        if not flags:
+            return
 
-        owner = flags[0].owner
+        if len(set(flag.owner for flag in flags)) != 1:
+            raise ValueError("All flags must belong to the same team")
+
+        team = flags[0].owner
         total_points = sum(flag.points for flag in flags)
-        owner.blue_points += total_points
-        owner.update_score()
+        team.blue_points += total_points
+        team.update_score()
+        logger.info(f"Awarded {total_points} blue points to team {team.name}")
 
     @staticmethod
     def calculate_points(flag: Flag) -> int:
@@ -45,15 +49,17 @@ class FlagService:
 
     def distribute_uncaptured_flags_points(self, session: GameSession) -> None:
         """Distribute points for uncaptured flags to corresponding blue teams"""
+        deployments = session.team_assignments.values_list('deployment', flat=True).distinct()
+
         uncaptured_flags = Flag.objects.filter(
-            container__deployment__assignments__session=session,
+            container__deployment__in=deployments,
             is_captured=False
-        ).select_related('container__deployment__assignments__team')
+        ).select_related('container', 'container__deployment')
 
         flags_by_team = {}
         for flag in uncaptured_flags:
-            blue_assignment = flag.container.deployment.assignments.filter(
-                session=session,
+            blue_assignment = session.team_assignments.filter(
+                deployment=flag.container.deployment,
                 role=TeamRole.BLUE
             ).first()
 
