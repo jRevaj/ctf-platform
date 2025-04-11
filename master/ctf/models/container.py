@@ -135,28 +135,6 @@ class GameContainer(models.Model):
         """Get container connection string"""
         return f"ssh -p {self.port} ctf-user@localhost"
 
-    def cleanup_docker_container(self):
-        """Clean up the associated Docker container"""
-        from ctf.services import ContainerService
-        
-        container_service = ContainerService()
-        try:
-            container_service.sync_container_status(self)
-            
-            if self.is_running():
-                if not container_service.stop_container(self):
-                    logger.error(f"Failed to stop container {self.docker_id} before deletion")
-                container_service.sync_container_status(self)
-            
-            container_service.delete_game_container(self)
-        except Exception as e:
-            logger.error(f"Failed to delete Docker container {self.docker_id} during model deletion: {e}")
-
-    def delete(self, *args, **kwargs):
-        """Override delete to ensure Docker container is also deleted"""
-        self.cleanup_docker_container()
-        super().delete(*args, **kwargs)
-
 
 class ContainerAccess(models.Model):
     container = models.ForeignKey(GameContainer, related_name="access_records", on_delete=models.CASCADE)

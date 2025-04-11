@@ -72,6 +72,7 @@ class ContainerService:
 
     def delete_game_container(self, container: GameContainer) -> bool:
         """Delete a game container and its Docker container"""
+        # TODO: fix - move the object deletion to override delete method
         container_pk = container.pk
         try:
             self.docker.remove_container(container.docker_id, force=True)
