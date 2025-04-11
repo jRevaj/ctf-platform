@@ -13,11 +13,11 @@ django.setup()
 from ctf.models import User
 
 
-def populate_users():
+def populate_users(stdout=sys.stdout):
     credentials_file = project_root / 'test-users.txt'
 
     if not credentials_file.exists():
-        sys.stderr(f"Credentials file not found at {credentials_file}")
+        stdout.write(f"Credentials file not found at {credentials_file}\n")
         return
 
     with open(credentials_file, 'r') as f:
@@ -27,13 +27,13 @@ def populate_users():
 
             parts = line.strip().split(',')
             if len(parts) != 4:
-                sys.stdout(f"Skipping invalid line: {line.strip()}")
+                stdout.write(f"Skipping invalid line: {line.strip()}\n")
                 continue
 
             username, email, password, ssh_key = parts
 
             if User.objects.filter(username=username).exists():
-                sys.stdout(f"User {username} already exists, skipping...")
+                stdout.write(f"User {username} already exists, skipping...\n")
                 continue
 
             try:
@@ -43,12 +43,13 @@ def populate_users():
                     password=password,
                     ssh_public_key=ssh_key
                 )
-                sys.stdout(f"Created user: {user.username}")
+                stdout.write(f"Created user: {user.username}\n")
             except Exception as e:
-                sys.stdout(f"Error creating user {username}: {str(e)}")
+                stdout.write(f"Error creating user {username}: {str(e)}\n")
 
 
 if __name__ == '__main__':
-    sys.stdout("Starting test users import...")
-    populate_users()
-    sys.stdout("Test users import completed.")
+    stdout = sys.stdout
+    stdout.write("Starting test users import...\n")
+    populate_users(stdout)
+    stdout.write("Test users import completed.\n")

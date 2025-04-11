@@ -11,6 +11,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if User.objects.filter(is_staff=False).count() == 0:
-            populate_users()
+            populate_users(stdout=self.stdout)
         else:
             self.stdout.write("Test users can only be imported if no regular users exist")
