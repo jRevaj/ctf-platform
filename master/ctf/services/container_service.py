@@ -70,19 +70,6 @@ class ContainerService:
             logger.error(f"Failed to create game container: {e}")
             return None
 
-    def delete_game_container(self, container: GameContainer) -> bool:
-        """Delete a game container and its Docker container"""
-        # TODO: fix - move the object deletion to override delete method
-        container_pk = container.pk
-        try:
-            self.docker.remove_container(container.docker_id, force=True)
-            container.delete()
-            logger.info(f"Container {container_pk} successfully deleted")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to delete container {container_pk}: {e}")
-            return False
-
     def swap_ssh_access(self, container: GameContainer, new_team: Team) -> bool:
         """Swap SSH access for the given container to the new team"""
         try:

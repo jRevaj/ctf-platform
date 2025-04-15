@@ -293,7 +293,7 @@ class GameContainerAdmin(admin.ModelAdmin):
 
     def delete_model(self, request, obj):
         """Override delete_model to ensure proper cleanup"""
-        if self.container_service.delete_game_container(obj):
+        if obj.delete():
             self.message_user(request, f"Container {obj.name} successfully deleted.")
         else:
             self.message_user(request, f"Failed to delete container {obj.name}. Check logs for details.", level="ERROR")
@@ -446,7 +446,7 @@ class TeamAssignmentAdmin(admin.ModelAdmin):
     """Enhanced admin interface for team assignments"""
     list_display = ('team', 'deployment', 'role', 'session', 'start_date', 'end_date', 'is_active')
     list_filter = ('role', 'session')
-    search_fields = ('team__name', 'deployment__pk')
+    search_fields = ('team__name', 'deployment_pk')
 
     def is_active(self, obj):
         return obj.is_active()
@@ -537,7 +537,7 @@ class TeamAdmin(admin.ModelAdmin):
 
 @admin.register(ChallengeDeployment)
 class ChallengeDeploymentAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'get_template_name')
+    list_display = ('id', 'get_template_name')
     list_filter = ('template',)
 
     def get_template_name(self, obj):
