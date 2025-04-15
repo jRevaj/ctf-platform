@@ -1,7 +1,5 @@
 import logging
 
-from django.utils import timezone
-
 from ctf.models import Flag, Team, GameSession
 from ctf.models.enums import TeamRole
 
@@ -13,9 +11,6 @@ class FlagService:
     def capture_and_award(flag: Flag, captured_by: Team) -> None:
         """Handle flag capture"""
         flag.capture(captured_by)
-        # TODO: good idea??
-        # Calculate points based on time taken
-        # points = self._calculate_points(flag)
         captured_by.red_points += flag.points
         captured_by.update_score()
 
@@ -33,19 +28,6 @@ class FlagService:
         team.blue_points += total_points
         team.update_score()
         logger.info(f"Awarded {total_points} blue points to team {team.name}")
-
-    @staticmethod
-    def calculate_points(flag: Flag) -> int:
-        """Calculate points based on time since flag creation"""
-        # TODO: decide if we want this
-        base_points = flag.points
-        time_factor = 1.0
-
-        hours_since_creation = (timezone.now() - flag.created_at).total_seconds() / 3600
-        if hours_since_creation > 24:
-            time_factor = max(0.5, 1 - (hours_since_creation - 24) / 48)
-
-        return int(base_points * time_factor)
 
     def distribute_uncaptured_flags_points(self, session: GameSession) -> None:
         """Distribute points for uncaptured flags to corresponding blue teams"""
