@@ -10,7 +10,7 @@
                 {% endif %}
                 <div class="">
                     <h5 class="card-title mb-0">
-                        {{ challenge.deployment.template.name }}
+                        {{ challenge.session.name }}
                     </h5>
                     <div class="card-text text-muted">
                         {% if completed %} Ended: {% else %} Ends: {% endif %}
@@ -35,7 +35,7 @@
         <div class="modal-content border-5 {% if completed %}border-success{% elif challenge.role == 'red' %}border-danger{% elif challenge.role == 'blue' %}border-primary{% endif %}">
             <div class="modal-header">
                 <h5 class="modal-title" id="challengeModalLabel{{ challenge.id }}">
-                    {{ challenge.deployment.template.name }}
+                    {{ challenge.session.name }}
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
