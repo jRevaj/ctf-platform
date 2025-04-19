@@ -1,4 +1,5 @@
 from datetime import timedelta
+import uuid
 
 from django.db import models
 from django.db.models.signals import post_save, pre_save
@@ -93,6 +94,7 @@ def handle_completed_session(sender, instance, created, **kwargs):
 
 
 class TeamAssignment(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="team_assignments")
     team = models.ForeignKey("ctf.Team", on_delete=models.CASCADE, related_name="assignments")
     deployment = models.ForeignKey("ctf.ChallengeDeployment", on_delete=models.CASCADE, related_name="assignments")
