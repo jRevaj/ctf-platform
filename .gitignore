@@ -68,3 +68,6 @@ out/
 
 # Custom
 master/temp/
+
+*.log.*
+/master/debug.log.1
