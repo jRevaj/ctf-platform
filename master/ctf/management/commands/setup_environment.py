@@ -34,7 +34,7 @@ class Command(BaseCommand):
             logger.info("Verifying environment")
             validate_environment()
             template = self._get_template(template_name)
-            session = create_session(template)
+            session = create_session(template, run_id)
 
             logger.info("Creating test teams")
             teams = create_teams(run_id, 2)

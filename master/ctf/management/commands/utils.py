@@ -53,8 +53,9 @@ def create_users_with_key(run_id: uuid.UUID, blue_team: Team, red_team: Team) ->
     )
 
 
-def create_session(template: ChallengeTemplate) -> GameSession:
+def create_session(template: ChallengeTemplate, run_id: uuid.UUID) -> GameSession:
     return GameSession.objects.create(
+        name=f"{template.name}-{run_id}",
         template=template,
         start_date=localtime(),
         end_date=localtime() + timedelta(days=1),
