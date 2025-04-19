@@ -104,7 +104,7 @@ class GameContainerAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (None, {
-            'fields': ('name', 'template_name', 'docker_id', 'status')
+            'fields': ('name', 'template_name', 'docker_id', 'status', 'port')
         }),
         ('Team Assignment', {
             'fields': ('blue_team', 'red_team')
@@ -384,14 +384,22 @@ class FlagAdmin(admin.ModelAdmin):
         return queryset.select_related('container', 'owner', 'captured_by')
 
 
-@admin.register(ContainerAccess)
-class ContainerAccessAdmin(admin.ModelAdmin):
-    """Admin interface for container access logs"""
-    list_display = ('user', 'container', 'access_type', 'start_time', 'ip_address', 'session_length')
-    list_filter = ('access_type', 'container', 'user')
-    search_fields = ('user__username', 'container__name', 'ip_address')
+@admin.register(DeploymentAccess)
+class DeploymentAccessAdmin(admin.ModelAdmin):
+    list_display = ('id', 'deployment', 'team', 'access_type', 'start_time', 'end_time', 'is_active',
+                    'duration_display')
+    list_filter = ('is_active', 'access_type', 'team')
+    search_fields = ('deployment__id', 'session_id', 'team__name')
     date_hierarchy = 'start_time'
-    readonly_fields = ('start_time',)
+    readonly_fields = ('duration_display',)
+
+    def duration_display(self, obj):
+        duration = obj.duration
+        minutes, seconds = divmod(duration, 60)
+        hours, minutes = divmod(minutes, 60)
+        return f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
+
+    duration_display.short_description = "Duration"
 
 
 @admin.register(GameSession)
@@ -470,7 +478,8 @@ class GamePhaseAdmin(admin.ModelAdmin):
 
 @admin.register(GlobalSettings)
 class GlobalSettingsAdmin(admin.ModelAdmin):
-    list_display = ('max_team_size', 'number_of_tiers', 'allow_team_changes')
+    list_display = ('max_team_size', 'number_of_tiers', 'allow_team_changes', 'inactive_container_timeout',
+                    'enable_auto_container_shutdown')
     readonly_fields = ('id',)
 
     def has_add_permission(self, request):
@@ -537,13 +546,184 @@ class TeamAdmin(admin.ModelAdmin):
 
 @admin.register(ChallengeDeployment)
 class ChallengeDeploymentAdmin(admin.ModelAdmin):
-    list_display = ('id', 'get_template_name')
-    list_filter = ('template',)
+    list_display = ('template', 'last_activity', 'has_active_connections', 'deployment_actions')
+    list_filter = ('has_active_connections',)
+    actions = ['start_containers', 'stop_containers', 'sync_container_status']
+    change_list_template = "admin/ctf/challengedeployment/change_list.html"
 
-    def get_template_name(self, obj):
-        return obj.template.name if obj.template else "No template"
+    def deployment_actions(self, obj):
+        return format_html(
+            '<a class="button" href="{}">Start</a>&nbsp;'
+            '<a class="button" href="{}">Stop</a>&nbsp;'
+            '<a class="button" href="{}">Sync</a>',
+            f"/admin/ctf/challengedeployment/{obj.pk}/start/",
+            f"/admin/ctf/challengedeployment/{obj.pk}/stop/",
+            f"/admin/ctf/challengedeployment/{obj.pk}/sync/",
+        )
 
-    get_template_name.short_description = "Template"
+    deployment_actions.short_description = "Actions"
+
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "<int:deployment_id>/start/",
+                self.admin_site.admin_view(self.start_deployment_view),
+                name="challengedeployment-start",
+            ),
+            path(
+                "<int:deployment_id>/stop/",
+                self.admin_site.admin_view(self.stop_deployment_view),
+                name="challengedeployment-stop",
+            ),
+            path(
+                "<int:deployment_id>/sync/",
+                self.admin_site.admin_view(self.sync_deployment_view),
+                name="challengedeployment-sync",
+            ),
+            path(
+                "start_all/",
+                self.admin_site.admin_view(self.start_all_view),
+                name="challengedeployment-start-all",
+            ),
+            path(
+                "stop_all/",
+                self.admin_site.admin_view(self.stop_all_view),
+                name="challengedeployment-stop-all",
+            ),
+            path(
+                "sync_all/",
+                self.admin_site.admin_view(self.sync_all_view),
+                name="challengedeployment-sync-all",
+            ),
+        ]
+        return custom_urls + urls
+
+    def start_deployment_view(self, request, deployment_id):
+        deployment = self.model.objects.get(pk=deployment_id)
+        if deployment.start_containers():
+            self.message_user(request, f"Deployment {deployment.pk} containers started successfully.")
+        else:
+            self.message_user(request, f"Failed to start containers for deployment {deployment.pk}.", level="ERROR")
+        return handle_action_redirect(request, deployment_id)
+
+    def stop_deployment_view(self, request, deployment_id):
+        deployment = self.model.objects.get(pk=deployment_id)
+        if deployment.stop_containers():
+            self.message_user(request, f"Deployment {deployment.pk} containers stopped successfully.")
+        else:
+            self.message_user(request, f"Failed to stop containers for deployment {deployment.pk}.", level="ERROR")
+        return handle_action_redirect(request, deployment_id)
+
+    def sync_deployment_view(self, request, deployment_id):
+        deployment = self.model.objects.get(pk=deployment_id)
+        if deployment.sync_container_status():
+            self.message_user(request, f"Deployment {deployment.pk} container status synced successfully.")
+        else:
+            self.message_user(request, f"Failed to sync container status for deployment {deployment.pk}.",
+                              level="ERROR")
+        return handle_action_redirect(request, deployment_id)
+
+    def start_all_view(self, request):
+        started = 0
+        failed = 0
+        for deployment in self.model.objects.all():
+            if deployment.start_containers():
+                started += 1
+            else:
+                failed += 1
+
+        if failed:
+            self.message_user(request,
+                              f"Started containers for {started} deployments. Failed to start containers for {failed} deployments.",
+                              level="WARNING")
+        else:
+            self.message_user(request, f"Successfully started containers for {started} deployments.")
+        return redirect("admin:ctf_challengedeployment_changelist")
+
+    def stop_all_view(self, request):
+        stopped = 0
+        failed = 0
+        for deployment in self.model.objects.all():
+            if deployment.stop_containers():
+                stopped += 1
+            else:
+                failed += 1
+
+        if failed:
+            self.message_user(request,
+                              f"Stopped containers for {stopped} deployments. Failed to stop containers for {failed} deployments.",
+                              level="WARNING")
+        else:
+            self.message_user(request, f"Successfully stopped containers for {stopped} deployments.")
+        return redirect("admin:ctf_challengedeployment_changelist")
+
+    def sync_all_view(self, request):
+        synced = 0
+        failed = 0
+        for deployment in self.model.objects.all():
+            if deployment.sync_container_status():
+                synced += 1
+            else:
+                failed += 1
+
+        if failed:
+            self.message_user(request,
+                              f"Synced containers for {synced} deployments. Failed to sync containers for {failed} deployments.",
+                              level="WARNING")
+        else:
+            self.message_user(request, f"Successfully synced containers for {synced} deployments.")
+        return redirect("admin:ctf_challengedeployment_changelist")
+
+    def start_containers(self, request, queryset):
+        started = 0
+        failed = 0
+        for deployment in queryset:
+            if deployment.start_containers():
+                started += 1
+            else:
+                failed += 1
+        if failed:
+            self.message_user(request,
+                              f"Started containers for {started} deployments. Failed to start containers for {failed} deployments.",
+                              level="WARNING")
+        else:
+            self.message_user(request, f"Successfully started containers for {started} deployments.")
+
+    def stop_containers(self, request, queryset):
+        stopped = 0
+        failed = 0
+        for deployment in queryset:
+            if deployment.stop_containers():
+                stopped += 1
+            else:
+                failed += 1
+        if failed:
+            self.message_user(request,
+                              f"Stopped containers for {stopped} deployments. Failed to stop containers for {failed} deployments.",
+                              level="WARNING")
+        else:
+            self.message_user(request, f"Successfully stopped containers for {stopped} deployments.")
+
+    def sync_container_status(self, request, queryset):
+        synced = 0
+        failed = 0
+        for deployment in queryset:
+            if deployment.sync_container_status():
+                synced += 1
+            else:
+                failed += 1
+        if failed:
+            self.message_user(request,
+                              f"Synced containers for {synced} deployments. Failed to sync containers for {failed} deployments.",
+                              level="WARNING")
+        else:
+            self.message_user(request, f"Successfully synced containers for {synced} deployments.")
+
+    start_containers.short_description = "Start containers for selected deployments"
+    stop_containers.short_description = "Stop containers for selected deployments"
+    sync_container_status.short_description = "Sync container status for selected deployments"
 
 
 @admin.register(ChallengeNetworkConfig)

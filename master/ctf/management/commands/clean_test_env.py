@@ -5,7 +5,7 @@ import shutil
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from ctf.models import GameContainer, GameSession, Team, Flag, GamePhase, ChallengeDeployment, TeamAssignment, ContainerAccess
+from ctf.models import GameContainer, GameSession, Team, Flag, GamePhase, ChallengeDeployment, TeamAssignment
 from ctf.models.exceptions import ContainerOperationError, DockerOperationError
 from ctf.services import DockerService, ContainerService
 
@@ -57,10 +57,10 @@ class Command(BaseCommand):
         ChallengeDeployment.objects.all().delete()
         TeamAssignment.objects.all().delete()
         teams = Team.objects.all()
-        
+
         for team in teams:
             for user in team.users.all():
                 user.delete()
             team.delete()
-        
+
         Flag.objects.all().delete()

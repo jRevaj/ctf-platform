@@ -1,8 +1,10 @@
 import logging
+import uuid
 from pathlib import Path
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +41,72 @@ class ChallengeNetworkConfig(models.Model):
 
 
 class ChallengeDeployment(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     template = models.ForeignKey('ctf.ChallengeTemplate', related_name="deployments", on_delete=models.PROTECT)
+    last_activity = models.DateTimeField(default=timezone.now)
+    has_active_connections = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Deployment {self.template.name} ({self.template.pk})"
+
+    def update_activity(self):
+        self.last_activity = timezone.now()
+        self.save(update_fields=['last_activity'])
+
+    def start_containers(self) -> bool:
+        """Start all containers in this deployment"""
+        from ctf.services import DeploymentService
+        return DeploymentService().start_deployment(self)
+
+    def stop_containers(self) -> bool:
+        """Stop all containers in this deployment"""
+        from ctf.services import DeploymentService
+        return DeploymentService().stop_deployment(self)
+
+    def sync_container_status(self) -> bool:
+        """Sync status of all containers in this deployment"""
+        from ctf.services import DeploymentService
+        return DeploymentService().sync_deployment_status(self)
+
+    def is_running(self) -> bool:
+        """Check if any container in this deployment is running"""
+        containers = self.containers.all()
+        if not containers:
+            return False
+        return any(container.is_running() for container in containers)
+
+
+class DeploymentAccess(models.Model):
+    deployment = models.ForeignKey(ChallengeDeployment, related_name="access_records", on_delete=models.CASCADE)
+    team = models.ForeignKey("ctf.Team", on_delete=models.CASCADE)
+    session_id = models.CharField(max_length=256, null=True, blank=True)
+    access_type = models.CharField(max_length=50)
+    start_time = models.DateTimeField(default=timezone.now)
+    end_time = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    containers = models.JSONField(default=list, help_text="List of container IDs accessed during this session")
+
+    class Meta:
+        ordering = ['-start_time']
+        indexes = [
+            models.Index(fields=['deployment', 'is_active']),
+        ]
+
+    def save(self, *args, **kwargs):
+        """Override save to update deployment activity"""
+        super().save(*args, **kwargs)
+        self.deployment.update_activity()
+
+    def end_session(self):
+        """End the current session"""
+        self.end_time = timezone.now()
+        self.is_active = False
+        self.save(update_fields=['end_time', 'is_active'])
+
+    @property
+    def duration(self):
+        """Get session duration in seconds"""
+        if self.end_time:
+            return (self.end_time - self.start_time).total_seconds()
+        return (timezone.now() - self.start_time).total_seconds()
