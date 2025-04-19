@@ -1,4 +1,5 @@
 import logging
+import socket
 from typing import Optional, Dict
 
 import docker
@@ -282,3 +283,197 @@ class DockerService:
         except Exception as e:
             logger.error(f"Failed to disconnect container {container.name} from bridge network: {e}")
             return False
+
+    def check_active_ssh_sessions(self, container_id: str) -> list:
+        """Check if there are any active SSH sessions in the container and return session IDs
+        
+        Returns a list of session IDs for active SSH connections, or an empty list if none.
+        This method tries multiple approaches to support different Linux distributions
+        including Ubuntu, Alpine, and other common distros.
+        
+        The session IDs are designed to be stable across multiple checks so that
+        the same connection is identified with the same ID in subsequent checks.
+        """
+        try:
+            logger.debug(f"Checking active SSH sessions for container {container_id}")
+            container = self.get_container(container_id)
+            if not container or container.status != "running":
+                logger.warning(f"Container {container_id} not running")
+                return []
+
+            # Method 1: Look for child sshd processes that indicate client connections
+            # This pattern explicitly excludes the main sshd daemon
+            try:
+                # Get both PID and connection details for stability
+                result = container.exec_run(
+                    ["sh", "-c", "ps aux | grep -E 'sshd: [a-zA-Z0-9]+@' | grep -v grep"],
+                    privileged=True
+                )
+                if result.exit_code == 0 and result.output.strip():
+                    output = result.output.decode('utf-8').strip()
+                    # Create more stable IDs that include the connection details
+                    session_ids = []
+                    for line in output.split('\n'):
+                        if not line.strip():
+                            continue
+                        # Extract PID (usually 2nd column in ps output)
+                        parts = line.split()
+                        if len(parts) > 1 and parts[1].isdigit():
+                            # Hash the whole line to create a stable ID
+                            connection_hash = hash(line) % 10000000
+                            session_ids.append(f"ssh-pid-{parts[1]}-{connection_hash}")
+
+                    if session_ids:
+                        logger.debug(f"Found SSH sessions with stable IDs: {session_ids}")
+                        return session_ids
+            except Exception as e:
+                logger.error(f"Error in method 1 (ps): {e}")
+
+            # Method 2: Check established connections on port 22 using netstat
+            # Get actual IP:port details for stable session IDs
+            try:
+                result = container.exec_run(
+                    ["sh", "-c", "netstat -tn 2>/dev/null | grep ':22' | grep 'ESTABLISHED'"],
+                    privileged=True
+                )
+                if result.exit_code == 0 and result.output.strip():
+                    output = result.output.decode('utf-8').strip()
+                    session_ids = []
+
+                    for line in output.split('\n'):
+                        if not line.strip():
+                            continue
+                        # Create a hash from the connection details to ensure stable IDs
+                        connection_hash = hash(line) % 10000000
+                        session_ids.append(f"ssh-net-{connection_hash}")
+
+                    if session_ids:
+                        logger.debug(f"Found {len(session_ids)} SSH connections with netstat")
+                        return session_ids
+            except Exception as e:
+                logger.error(f"Error in method 2 (netstat): {e}")
+
+            # Method 3: Try with ss command (newer alternative to netstat in some distros)
+            try:
+                result = container.exec_run(
+                    ["sh", "-c", "command -v ss >/dev/null 2>&1 && ss -tn | grep ':22' | grep 'ESTABLISHED'"],
+                    privileged=True
+                )
+                if result.exit_code == 0 and result.output.strip():
+                    output = result.output.decode('utf-8').strip()
+                    session_ids = []
+
+                    for line in output.split('\n'):
+                        if not line.strip():
+                            continue
+                        # Create a hash from the connection details to ensure stable IDs
+                        connection_hash = hash(line) % 10000000
+                        session_ids.append(f"ssh-ss-{connection_hash}")
+
+                    if session_ids:
+                        logger.debug(f"Found {len(session_ids)} SSH connections with ss command")
+                        return session_ids
+            except Exception as e:
+                logger.error(f"Error in method 3 (ss): {e}")
+
+            # Method 4: Check for established TCP connections on port 22 in /proc/net/tcp
+            # 0016 is port 22 in hex, 01 indicates ESTABLISHED state
+            try:
+                # First verify there's an actual remote connection by checking the source IP isn't localhost
+                # This avoids counting internal connections from the daemon itself
+                result = container.exec_run(
+                    ["sh", "-c", "cat /proc/net/tcp 2>/dev/null | grep ':0016' | grep ' 01 ' | grep -v '0100007F'"],
+                    privileged=True
+                )
+                if result.exit_code == 0 and result.output.strip():
+                    output = result.output.decode('utf-8').strip()
+
+                    # Double-check with netstat/ss to confirm these are really external connections
+                    verify_result = container.exec_run(
+                        ["sh", "-c",
+                         "command -v netstat >/dev/null && netstat -tn | grep ':22' | grep 'ESTABLISHED' | grep -v '127.0.0.1' || echo ''"],
+                        privileged=True
+                    )
+
+                    if verify_result.exit_code == 0 and verify_result.output.strip():
+                        session_ids = []
+                        for line in output.split('\n'):
+                            if not line.strip():
+                                continue
+                            # Extract remote addr field for stable hash
+                            parts = line.split()
+                            if len(parts) > 2:
+                                remote_addr = parts[2]
+                                session_ids.append(f"ssh-proc-{remote_addr}")
+
+                        if session_ids:
+                            logger.debug(f"Found {len(session_ids)} verified SSH connections via /proc/net/tcp")
+                            return session_ids
+                    else:
+                        logger.debug(f"Found potential SSH connections in /proc/net/tcp but verification failed")
+            except Exception as e:
+                logger.error(f"Error in method 4 (/proc/net/tcp): {e}")
+
+            # Method 5: Look specifically for client connections by checking for username pattern
+            # This avoids detecting the main sshd process
+            try:
+                result = container.exec_run(
+                    ["sh", "-c", "ps aux | grep -E 'sshd: .+@' | grep -v grep"],
+                    privileged=True
+                )
+                if result.exit_code == 0 and result.output.strip():
+                    output = result.output.decode('utf-8').strip()
+                    session_ids = []
+
+                    for line in output.split('\n'):
+                        if not line.strip():
+                            continue
+                        # Create a stable ID based on the username and connection details
+                        connection_hash = hash(line) % 10000000
+
+                        # Try to extract the username pattern for more stable ID
+                        import re
+                        match = re.search(r'sshd: ([^@]+)@', line)
+                        username = match.group(1) if match else f"user-{connection_hash}"
+
+                        session_ids.append(f"ssh-user-{username}-{connection_hash}")
+
+                    if session_ids:
+                        logger.debug(f"Found {len(session_ids)} client SSH connections via ps")
+                        return session_ids
+            except Exception as e:
+                logger.error(f"Error in method 5 (ps grep): {e}")
+
+            # Method 6: Last resort - use 'who' command to check logged in users
+            try:
+                result = container.exec_run(
+                    ["who"],
+                    privileged=True
+                )
+                if result.exit_code == 0 and result.output.strip():
+                    output = result.output.decode('utf-8')
+                    session_ids = []
+
+                    for line in output.split('\n'):
+                        if not line.strip():
+                            continue
+                        # Extract username and PTY for stable connection ID
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            username = parts[0]
+                            pts = parts[1]
+                            session_ids.append(f"ssh-who-{username}-{pts}")
+
+                    if session_ids:
+                        logger.debug(f"Found {len(session_ids)} users logged in with 'who' command")
+                        return session_ids
+            except Exception as e:
+                logger.error(f"Error in method 6 (who): {e}")
+
+            # No active SSH sessions found
+            logger.debug(f"No active SSH sessions found for container {container_id}")
+            return []
+        except Exception as e:
+            logger.error(f"Failed to check SSH sessions for container {container_id}: {e}")
+            # Return empty list on error instead of error messages that could be mistaken for session IDs
+            return []

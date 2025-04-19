@@ -20,10 +20,18 @@ app.autodiscover_tasks()
 app.conf.beat_schedule = {
     'process_sessions': {
         'task': 'ctf.tasks.process_sessions',
-        'schedule': crontab(minute='*/2'),
+        'schedule': crontab(minute=0, hour=0), # Daily at midnight
     },
     'process_phases': {
         'task': 'ctf.tasks.process_phases',
-        'schedule': crontab(minute='*/3'),
-    }
+        'schedule': crontab(minute=0, hour=1), # Daily at 1:00 AM
+    },
+    'check_inactive_deployments': {
+        'task': 'ctf.tasks.check_inactive_deployments',
+        'schedule': crontab(minute='*/15'), # Every 15 minutes
+    },
+    'monitor_ssh_connections': {
+        'task': 'ctf.tasks.monitor_ssh_connections',
+        'schedule': crontab(minute='1-59/2'), # Every 2 minutes
+    },
 }
