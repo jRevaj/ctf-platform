@@ -1,0 +1,21 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+<li>
+    <a href="{% url 'admin:challengedeployment-start-all' %}" class="btn btn-success">
+        Start All Deployments
+    </a>
+</li>
+<li>
+    <a href="{% url 'admin:challengedeployment-stop-all' %}" class="btn btn-danger">
+        Stop All Deployments
+    </a>
+</li>
+<li>
+    <a href="{% url 'admin:challengedeployment-sync-all' %}" class="btn btn-info">
+        Sync All Deployments
+    </a>
+</li>
+{{ block.super }}
+{% endblock %} 

@@ -21,7 +21,8 @@ from django.urls import path, include
 from ctf.views import (
     health_check, home, register_view, login_view, logout_view, settings_view,
     create_team_view, join_team_view, remove_team_member_view, team_management_view,
-    regenerate_team_key_view, challenges_view, submit_flag_view,
+    regenerate_team_key_view, challenges_view, submit_flag_view, start_deployment_view,
+    check_deployment_status,
 )
 
 urlpatterns = [
@@ -41,7 +42,9 @@ urlpatterns = [
         path('team/remove-member/<int:member_id>/', login_required(remove_team_member_view), name='remove_team_member'),
         path('team/regenerate-key/', login_required(regenerate_team_key_view), name='regenerate_team_key'),
     ])),
-    path('submit_flag/<int:challenge_id>/', login_required(submit_flag_view), name='submit_flag'),
+    path('submit_flag/<uuid:challenge_uuid>/', login_required(submit_flag_view), name='submit_flag'),
+    path('start_deployment/<uuid:challenge_uuid>/', login_required(start_deployment_view), name='start_deployment'),
+    path('check_deployment/<uuid:challenge_uuid>/', login_required(check_deployment_status), name='check_deployment_status'),
     path('__reload__/', include('django_browser_reload.urls')),
     path('health/', health_check, name='health_check'),
 ]

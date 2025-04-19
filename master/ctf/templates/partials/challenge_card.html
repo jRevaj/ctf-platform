@@ -1,5 +1,6 @@
 <div class="col">
-    <div data-bs-toggle="modal" data-bs-target="#challengeModal{{ challenge.id }}" class="card h-100 border-5 bg-body-tertiary {% if completed %}border-success pe-none{% elif challenge.role == 'red' %}border-danger{% elif challenge.role == 'blue' %}border-primary{% endif %} hover-card">
+    <div data-bs-toggle="modal" data-bs-target="#challengeModal{{ challenge.id }}"
+         class="card h-100 border-5 bg-body-tertiary {% if completed %}border-success pe-none{% elif challenge.role == 'red' %}border-danger{% elif challenge.role == 'blue' %}border-primary{% endif %} hover-card">
         <div class="card-body d-flex justify-content-between align-items-center">
             <div class="d-flex ps-2 gap-2 justify-content-center align-items-center">
                 {% if completed %}
@@ -18,16 +19,18 @@
                 </div>
             </div>
             {% if not completed %}
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#challengeModal{{ challenge.id }}">
-                <i class="bi bi-eye"></i>
-            </button>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                        data-bs-target="#challengeModal{{ challenge.id }}">
+                    <i class="bi bi-eye"></i>
+                </button>
             {% endif %}
         </div>
     </div>
 </div>
 
 <!-- Modal for challenge -->
-<div class="modal fade" id="challengeModal{{ challenge.id }}" tabindex="-1" aria-labelledby="challengeModalLabel{{ challenge.id }}" aria-hidden="true">
+<div class="modal fade" id="challengeModal{{ challenge.id }}" tabindex="-1"
+     aria-labelledby="challengeModalLabel{{ challenge.id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-5 {% if completed %}border-success{% elif challenge.role == 'red' %}border-danger{% elif challenge.role == 'blue' %}border-primary{% endif %}">
             <div class="modal-header">
@@ -38,7 +41,7 @@
             </div>
             <div class="modal-body">
                 <p class="card-text text-muted">
-                    Phase: 
+                    Phase:
                     <span class="text-capitalize {% if completed %}text-success{% elif challenge.role == 'red' %}text-danger{% elif challenge.role == 'blue' %}text-primary{% endif %}">
                         {% if completed %}Completed{% else %}{{ challenge.role }}{% endif %}
                     </span>
@@ -47,31 +50,73 @@
                     <p class="card-text text-muted">
                         Phase ends: {{ challenge.end_date|date:"d.m.Y" }}
                     </p>
-                    {% for container in challenge.deployment.containers.all %}
-                        {% if container.is_entrypoint %}
-                            <div class="mb-4">
-                                <label for="connectionString{{ challenge.id }}" class="form-label">Connection Information</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control {% if 'not' in container.connection_string %}bg-light text-muted{% endif %}" value="{{ container.connection_string }}" readonly />
-                                    {% if 'not' not in container.connection_string %}
-                                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="tooltip" title="Copy to clipboard" onclick="copyToClipboard('{{ container.connection_string }}', 'connectionToast')">
-                                            <i class="bi bi-clipboard"></i>
-                                        </button>
-                                    {% else %}
-                                        <button class="btn btn-outline-secondary" type="button" disabled>
-                                            <i class="bi bi-clipboard-x"></i>
-                                        </button>
-                                    {% endif %}
+
+                    {% csrf_token %}
+
+                    {% if deployment_starting %}
+                        <div class="deployment-status" data-challenge-uuid="{{ challenge.uuid }}">
+                            <div class="text-center mb-4">
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Loading...</span>
                                 </div>
-                                {% if 'not' in container.connection_string %}
-                                    <small class="text-muted">
-                                        <i class="bi bi-info-circle"></i> 
-                                        The container is currently unavailable. It may be stopped or in maintenance.
-                                    </small>
-                                {% endif %}
+                                <p class="text-muted">Starting deployment, please wait...</p>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar" style="width: 100%"></div>
+                                </div>
                             </div>
-                        {% endif %}
-                    {% endfor %}
+                        </div>
+                    {% elif not challenge.deployment.is_running %}
+                        <div class="">
+                            <p class="text-muted">
+                                <i class="bi bi-info-circle"></i>
+                                This challenge is currently stopped. Start it to get connection information and connect
+                                to the challenge.
+                            </p>
+                            <div class="d-flex justify-content-center mt-4">
+                                <button type="button" class="btn btn-primary start-deployment-btn"
+                                        data-challenge-uuid="{{ challenge.uuid }}"
+                                        data-url="{% url 'start_deployment' challenge.uuid %}">
+                                    <i class="bi bi-play-fill"></i> Start challenge
+                                </button>
+                            </div>
+                        </div>
+                    {% else %}
+                        {% for container in challenge.deployment.containers.all %}
+                            {% if container.is_entrypoint %}
+                                <div class="mb-4">
+                                    <label for="connectionString{{ challenge.id }}" class="form-label">Connection
+                                        Information</label>
+                                    <div class="input-group">
+                                        {% with connection_string=container.get_connection_string %}
+                                            <input type="text"
+                                                   class="form-control {% if 'not' in connection_string %}text-muted{% endif %}"
+                                                   value="{{ connection_string }}" readonly/>
+                                            {% if 'not' not in connection_string %}
+                                                <button class="btn btn-outline-secondary" type="button"
+                                                        data-bs-toggle="tooltip" title="Copy to clipboard"
+                                                        onclick="copyToClipboard('{{ connection_string }}', 'connectionToast')">
+                                                    <i class="bi bi-clipboard"></i>
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-outline-secondary" type="button" disabled>
+                                                    <i class="bi bi-clipboard-x"></i>
+                                                </button>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                    {% with connection_string=container.get_connection_string %}
+                                        {% if 'not' in connection_string %}
+                                            <small class="text-muted">
+                                                <i class="bi bi-info-circle"></i>
+                                                The container is currently unavailable. It may be stopped or in maintenance.
+                                            </small>
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
                     {% if challenge.role == 'red' %}
                         <hr/>
                         <h6>Submit Flag</h6>
@@ -83,13 +128,14 @@
                                 </div>
                             {% endfor %}
                         {% endif %}
-                        <form method="post" action="{% url 'submit_flag' challenge.id %}" class="flag-submit-form">
+                        <form method="post" action="{% url 'submit_flag' challenge.uuid %}" class="flag-submit-form">
                             {% csrf_token %}
                             <div class="mb-3">
                                 <label for="flagValue{{ challenge.id }}" class="form-label">Flag Value</label>
-                                <input type="text" class="form-control {% if form and form.flag.errors %}is-invalid{% endif %}" 
-                                       id="flagValue{{ challenge.id }}" name="flag" required 
-                                       value="{% if form %}{{ form.flag.value }}{% endif %}" />
+                                <input type="text"
+                                       class="form-control {% if form and form.flag.errors %}is-invalid{% endif %}"
+                                       id="flagValue{{ challenge.id }}" name="flag" required
+                                       value="{% if form %}{{ form.flag.value }}{% endif %}"/>
                                 {% if form and form.flag.errors %}
                                     <div class="invalid-feedback">
                                         {{ form.flag.errors.0 }}
@@ -108,81 +154,237 @@
 </div>
 
 <style>
-.hover-card {
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
+    .hover-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
 
-.hover-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
 
-[data-bs-theme="dark"] .hover-card:hover {
-    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
-}
+    [data-bs-theme="dark"] .hover-card:hover {
+        box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+    }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.flag-submit-form').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const submitButton = this.querySelector('button[type="submit"]');
-            const modalBody = this.closest('.modal-body');
-            
-            // Disable submit button while processing
-            submitButton.disabled = true;
-            
-            fetch(this.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+    document.addEventListener('DOMContentLoaded', function () {
+        initFlagSubmitHandlers();
+        initDeploymentStartHandlers();
+        initDeploymentStatusChecks();
+
+        window.copyToClipboard = function (text, toastId) {
+            navigator.clipboard.writeText(text).then(
+                function () {
+                    const toast = new bootstrap.Toast(document.getElementById(toastId));
+                    toast.show();
                 }
-            })
-            .then(response => response.text())
-            .then(html => {
-                // Find the form in the response
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const newForm = doc.querySelector('.flag-submit-form');
-                const successMessage = doc.querySelector('.alert-success');
-                const errorMessage = doc.querySelector('.alert-danger');
+            );
+        };
+    });
+
+    function initFlagSubmitHandlers() {
+        document.querySelectorAll('.flag-submit-form').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
                 
-                // Clear any existing messages
-                const existingMessages = modalBody.querySelectorAll('.alert');
-                existingMessages.forEach(msg => msg.remove());
+                const formData = new FormData(this);
+                const submitButton = this.querySelector('button[type="submit"]');
+                const modalBody = this.closest('.modal-body');
                 
-                if (successMessage) {
-                    // Add success message
-                    modalBody.insertBefore(successMessage.cloneNode(true), this);
-                    // Reset the form
-                    this.reset();
-                } else if (errorMessage) {
-                    // Add error message
-                    modalBody.insertBefore(errorMessage.cloneNode(true), this);
-                }
+                submitButton.disabled = true;
                 
-                if (newForm) {
-                    // Replace the old form with the new one
-                    this.innerHTML = newForm.innerHTML;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                // Add error alert to the modal
-                const errorAlert = document.createElement('div');
-                errorAlert.className = 'alert alert-danger mb-3';
-                errorAlert.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>An error occurred while submitting the flag.';
-                modalBody.insertBefore(errorAlert, this);
-            })
-            .finally(() => {
-                submitButton.disabled = false;
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newForm = doc.querySelector('.flag-submit-form');
+                    const successMessage = doc.querySelector('.alert-success');
+                    const errorMessage = doc.querySelector('.alert-danger');
+                    
+                    const existingMessages = modalBody.querySelectorAll('.alert');
+                    existingMessages.forEach(msg => msg.remove());
+                    
+                    if (successMessage) {
+                        modalBody.insertBefore(successMessage.cloneNode(true), this);
+                        this.reset();
+                    } else if (errorMessage) {
+                        modalBody.insertBefore(errorMessage.cloneNode(true), this);
+                    }
+                    
+                    if (newForm) {
+                        this.innerHTML = newForm.innerHTML;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const errorAlert = document.createElement('div');
+                    errorAlert.className = 'alert alert-danger mb-3';
+                    errorAlert.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>An error occurred while submitting the flag.';
+                    modalBody.insertBefore(errorAlert, this);
+                })
+                .finally(() => {
+                    submitButton.disabled = false;
+                });
             });
         });
-    });
-});
+    }
+
+    function initDeploymentStartHandlers() {
+        document.querySelectorAll('.start-deployment-btn').forEach(button => {
+            button.addEventListener('click', function () {
+                const challengeUuid = this.getAttribute('data-challenge-uuid');
+                const url = this.getAttribute('data-url');
+                const modalBody = this.closest('.modal-body');
+
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                if (!csrfToken) {
+                    console.error('CSRF token not found');
+                    showAlert(modalBody, 'danger', 'Security error: CSRF token not found.');
+                    return;
+                }
+
+                this.disabled = true;
+
+                clearAlerts(modalBody);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.html) {
+                        modalBody.innerHTML = data.html;
+
+                        if (data.challenge_uuid) {
+                            pollDeploymentStatus(data.challenge_uuid, modalBody);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert(modalBody, 'danger', `Error starting deployment: ${error.message}`);
+
+                    this.disabled = false;
+                });
+            });
+        });
+    }
+
+    function initDeploymentStatusChecks() {
+        document.querySelectorAll('.deployment-status').forEach(statusEl => {
+            const challengeUuid = statusEl.getAttribute('data-challenge-uuid');
+            if (challengeUuid) {
+                const modalBody = statusEl.closest('.modal-body');
+                pollDeploymentStatus(challengeUuid, modalBody);
+            }
+        });
+    }
+
+    function pollDeploymentStatus(challengeUuid, modalBody, attempt = 1) {
+        const maxAttempts = 15;  // 15 attempts × 2 seconds = 30 seconds maximum wait
+        const pollInterval = 2000;  // 2 seconds between checks
+
+        if (attempt > maxAttempts) {
+            showAlert(modalBody, 'warning', 'Deployment is taking longer than expected. Please check back later.');
+            return;
+        }
+
+        fetch(`/check_deployment/${challengeUuid}/`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                console.error('Server reported error:', data.error);
+                if (attempt > 5) {
+                    showAlert(modalBody, 'danger', `Server error: ${data.error}`);
+                    return;
+                }
+            }
+
+            if (data.is_running) {
+                fetch(`/challenges/?challenge_uuid=${challengeUuid}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(refreshData => {
+                    if (refreshData.html) {
+                        modalBody.innerHTML = refreshData.html;
+
+                        initFlagSubmitHandlers();
+                        initDeploymentStartHandlers();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error refreshing challenge card:', error);
+                    showAlert(modalBody, 'danger', `Error refreshing challenge data: ${error.message}`);
+                });
+            } else {
+                if (data.connection_info && data.connection_info.length > 0) {
+                    console.warn('Server reports deployment not running but returned connection info');
+                }
+
+                setTimeout(() => {
+                    pollDeploymentStatus(challengeUuid, modalBody, attempt + 1);
+                }, pollInterval);
+            }
+        })
+        .catch(error => {
+            console.error('Error polling deployment status:', error);
+
+            if (attempt % 5 === 0) {
+                showAlert(modalBody, 'danger', `Error checking deployment status: ${error.message}`);
+            }
+
+            if (attempt < maxAttempts) {
+                setTimeout(() => {
+                    pollDeploymentStatus(challengeUuid, modalBody, attempt + 1);
+                }, pollInterval);
+            } else {
+                showAlert(modalBody, 'danger', `Failed to get deployment status after multiple attempts. Please try again later.`);
+            }
+        });
+    }
+
+    function showAlert(container, type, message) {
+        const icon = type === 'success' ? 'bi-check-circle' : 'bi-exclamation-circle';
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} mb-3`;
+        alert.innerHTML = `<i class="bi ${icon} me-2"></i>${message}`;
+        container.prepend(alert);
+    }
+
+    function clearAlerts(container) {
+        const alerts = container.querySelectorAll('.alert');
+        alerts.forEach(alert => alert.remove());
+    }
 </script> 

@@ -1,0 +1,106 @@
+<p class="card-text text-muted">
+    Phase:
+    <span class="text-capitalize {% if completed %}text-success{% elif challenge.role == 'red' %}text-danger{% elif challenge.role == 'blue' %}text-primary{% endif %}">
+        {% if completed %}Completed{% else %}{{ challenge.role }}{% endif %}
+    </span>
+</p>
+{% if not completed %}
+    <p class="card-text text-muted">
+        Phase ends: {{ challenge.end_date|date:"d.m.Y" }}
+    </p>
+
+    {% csrf_token %}
+
+    {% if deployment_starting %}
+        <div class="deployment-status" data-challenge-uuid="{{ challenge.uuid }}">
+            <div class="text-center mb-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted">Starting deployment, please wait...</p>
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                         role="progressbar" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+    {% elif not challenge.deployment.is_running %}
+        <div class="">
+            <p class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                This challenge is currently stopped. Start it to get connection information and connect to the
+                challenge.
+            </p>
+            <div class="d-flex justify-content-center mt-4">
+                <button type="button" class="btn btn-primary start-deployment-btn"
+                        data-challenge-uuid="{{ challenge.uuid }}"
+                        data-url="{% url 'start_deployment' challenge.uuid %}">
+                    <i class="bi bi-play-fill"></i> Start challenge
+                </button>
+            </div>
+        </div>
+    {% else %}
+        {% for container in challenge.deployment.containers.all %}
+            {% if container.is_entrypoint %}
+                <div class="mb-4">
+                    <label for="connectionString{{ challenge.id }}" class="form-label">Connection Information</label>
+                    <div class="input-group">
+                        {% with connection_string=container.get_connection_string %}
+                            <input type="text"
+                                   class="form-control {% if 'not' in connection_string %}text-muted{% endif %}"
+                                   value="{{ connection_string }}" readonly/>
+                            {% if 'not' not in connection_string %}
+                                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="tooltip"
+                                        title="Copy to clipboard"
+                                        onclick="copyToClipboard('{{ connection_string }}', 'connectionToast')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            {% else %}
+                                <button class="btn btn-outline-secondary" type="button" disabled>
+                                    <i class="bi bi-clipboard-x"></i>
+                                </button>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                    {% with connection_string=container.get_connection_string %}
+                        {% if 'not' in connection_string %}
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i>
+                                The container is currently unavailable. It may be stopped or in maintenance.
+                            </small>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+    {% if challenge.role == 'red' %}
+        <hr/>
+        <h6>Submit Flag</h6>
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} mb-3">
+                    <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-circle{% endif %} me-2"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        <form method="post" action="{% url 'submit_flag' challenge.uuid %}" class="flag-submit-form">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="flagValue{{ challenge.id }}" class="form-label">Flag Value</label>
+                <input type="text" class="form-control {% if form and form.flag.errors %}is-invalid{% endif %}"
+                       id="flagValue{{ challenge.id }}" name="flag" required
+                       value="{% if form %}{{ form.flag.value }}{% endif %}"/>
+                {% if form and form.flag.errors %}
+                    <div class="invalid-feedback">
+                        {{ form.flag.errors.0 }}
+                    </div>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary">
+                Submit Flag
+            </button>
+        </form>
+    {% endif %}
+{% endif %} 
