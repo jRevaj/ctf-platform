@@ -35,14 +35,37 @@ class DockerService:
             logger.error(f"Failed to build image {image_tag}: {e}")
             raise
 
-    def create_container(self, container_name: str, image_tag: str) -> Container:
+    def create_container(self, container_name: str, image_tag: str, port: int = None) -> Container:
         """Create and start a new Docker container"""
         try:
-            logger.info(f"Starting new Docker container {container_name}")
-            return self.client.containers.run(image=image_tag, name=container_name, detach=True,
-                                              ports={DockerConstants.SSH_PORT: None})
+            if port:
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.bind(('0.0.0.0', port))
+                except (socket.error, OSError) as e:
+                    logger.error(f"Port {port} is not available for binding: {e}")
+                    raise DockerOperationError(f"Port {port} is not available: {e}")
+
+            container = self.client.containers.run(
+                image=image_tag,
+                name=container_name,
+                detach=True,
+                ports={DockerConstants.SSH_PORT: None} if not port else {DockerConstants.SSH_PORT: port},
+            )
+
+            if port:
+                container.reload()
+                actual_port = self.get_container_port(container, DockerConstants.SSH_PORT)
+                if actual_port and int(actual_port) != port:
+                    logger.warning(f"Container was assigned port {actual_port} instead of requested {port}")
+
+            return container
+        except DockerOperationError:
+            raise
         except Exception as e:
             logger.error(f"Failed to create container {container_name}: {e}")
+            if "Ports are not available" in str(e):
+                raise DockerOperationError(f"Port binding failed, port may be in use: {e}")
             raise DockerOperationError(f"Failed to create container: {e}")
 
     def remove_container(self, container_id: str, force: bool = False) -> bool:
@@ -71,17 +94,20 @@ class DockerService:
     def get_container_port(container: Container, port: str) -> Optional[str]:
         """Get published port mapping"""
         try:
+            container.reload()
             ports = container.attrs["NetworkSettings"]["Ports"]
-            
-            # Check if the port mapping exists
+
+            if '/tcp' not in port:
+                port = f"{port}/tcp"
+
             if port not in ports or not ports[port]:
                 logger.warning(f"No port mapping for {port} in container {container.id}")
                 return None
-            
+
             port_info = ports[port][0]
             return port_info["HostPort"]
         except (KeyError, IndexError) as e:
-            logger.error(f"Failed to get port mapping for container {container.id}: '{port}'")
+            logger.error(f"Failed to get port mapping for container {container.id} - '{port}': {e}")
             return None
         except Exception as e:
             logger.error(f"Unexpected error getting port for container {container.id}: {e}")

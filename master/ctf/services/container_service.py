@@ -18,7 +18,7 @@ class ContainerService:
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super(ContainerService, cls).__new__(cls)
-            cls._instance.docker = DockerService()
+            cls._instance.docker = kwargs.get('docker_service') or DockerService()
         return cls._instance
 
     def create_related_containers(self, template, temp_dir, session, blue_team):
@@ -29,9 +29,17 @@ class ContainerService:
             for filepath in template_path.rglob("*"):
                 if filepath.is_file():
                     if filepath.name == 'Dockerfile' or filepath.name.startswith('Dockerfile.'):
-                        containers.append(self.create_game_container(template, temp_dir, session, blue_team, filepath))
+                        container = self.create_game_container(template, temp_dir, session, blue_team, filepath)
+                        if container:
+                            containers.append(container)
+                        else:
+                            logger.error(f"Failed to create container from {filepath}, skipping")
 
             logger.info(f"Created {len(containers)} related containers: {containers}")
+
+            if not containers:
+                raise ContainerOperationError("Failed to create any containers")
+
             return containers
         except ContainerOperationError as e:
             logger.error(f"Error batch creating containers: {e}")
@@ -138,11 +146,10 @@ class ContainerService:
             if not docker_container:
                 return "Container not available"
 
-            # Check if container is running
             if docker_container.status != "running":
                 return "Container not running"
 
-            port = self.docker.get_container_port(docker_container, "22/tcp")
+            port = self.docker.get_container_port(docker_container, DockerConstants.SSH_PORT)
             if not port:
                 return "Container port not available"
 
@@ -199,6 +206,16 @@ class ContainerService:
         try:
             if self.docker.start_container(container.docker_id):
                 self.sync_container_status(container)
+                container.update_activity()
+
+                if container.port:
+                    docker_container = self.docker.get_container(container.docker_id)
+                    port = self.docker.get_container_port(docker_container, DockerConstants.SSH_PORT)
+                    if port and int(port) != container.port:
+                        logger.warning(f"Container port changed from {container.port} to {port} - updating record")
+                        container.port = int(port)
+                        container.save(update_fields=['port'])
+
                 return True
             return False
         except Exception as e:
@@ -210,10 +227,10 @@ class ContainerService:
         try:
             containers = session.get_containers()
             logger.info(f"Stopping {len(containers)} containers for session {session.name}")
-            
+
             for container in containers:
                 self.sync_container_status(container)
-                
+
                 if container.is_running():
                     logger.info(f"Stopping container {container.name}")
                     stopped = self.stop_container(container)
@@ -221,7 +238,7 @@ class ContainerService:
                         logger.warning(f"Failed to stop container {container.name}")
                 else:
                     logger.info(f"Container {container.name} is already stopped (status: {container.status})")
-            
+
             return True
         except Exception as e:
             logger.error(f"Failed to stop session containers: {e}")

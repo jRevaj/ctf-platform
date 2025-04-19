@@ -1,4 +1,6 @@
 import logging
+import random
+import socket
 from pathlib import Path
 
 from django.db import models
@@ -29,7 +31,8 @@ class GameContainerManager(models.Manager):
             tag = f"{DockerConstants.CONTAINER_PREFIX}-{template_name}-{Path(build_path).name}-{session.pk}-{blue_team.pk}"
 
             docker_service.build_image(build_path, tag)
-            docker_container = docker_service.create_container(container_name=tag, image_tag=tag)
+            port = self.generate_port_number(tag)
+            docker_container = docker_service.create_container(container_name=tag, image_tag=tag, port=port)
 
             return self.create(
                 name=tag,
@@ -37,7 +40,8 @@ class GameContainerManager(models.Manager):
                 docker_id=docker_container.id,
                 status=ContainerStatus.RUNNING,
                 blue_team=blue_team,
-                is_entrypoint=is_entrypoint
+                is_entrypoint=is_entrypoint,
+                port=port
             )
         except Exception as e:
             logger.error(f"Failed to create game container: {e}")
@@ -61,6 +65,44 @@ class GameContainerManager(models.Manager):
             models.Q(blue_team=team) |
             models.Q(red_team=team)
         )
+
+    def generate_port_number(self, tag):
+        """Generate a random port number for new container"""
+        max_attempts = 15
+        restricted_ranges = [
+            (0, 1024),
+            (49152, 65535)
+        ]
+
+        for attempt in range(max_attempts):
+            port = random.randint(30000, 49000)
+
+            in_restricted_range = any(lower <= port <= upper for lower, upper in restricted_ranges)
+            if in_restricted_range:
+                logger.debug(f"Port {port} is in a restricted range, skipping")
+                continue
+
+            if GameContainer.objects.filter(port=port).exists():
+                logger.warning(f"Port {port} is already in use in database, attempt {attempt + 1}/{max_attempts}")
+                continue
+
+            if self._is_port_available(port):
+                logger.info(f"Generated available port {port} for new container {tag}")
+                return port
+            else:
+                logger.warning(f"Port {port} is not available on system, attempt {attempt + 1}/{max_attempts}")
+
+        raise ContainerOperationError(f"Failed to find available port after {max_attempts} attempts")
+
+    @staticmethod
+    def _is_port_available(port):
+        """Check if a port is available to bind"""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(('0.0.0.0', port))
+                return True
+            except (socket.error, OSError):
+                return False
 
 
 class GameContainer(models.Model):
@@ -89,6 +131,7 @@ class GameContainer(models.Model):
     is_entrypoint = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_activity = models.DateTimeField(default=timezone.now)
 
     objects = GameContainerManager()
 
@@ -96,9 +139,18 @@ class GameContainer(models.Model):
         indexes = [
             models.Index(fields=["docker_id"]),
             models.Index(fields=["status"]),
+            models.Index(fields=["last_activity"]),
         ]
         verbose_name = "Game Container"
         verbose_name_plural = "Game Containers"
+
+    def update_activity(self):
+        """Update the last activity timestamp"""
+        self.last_activity = timezone.now()
+        self.save(update_fields=['last_activity'])
+
+        if self.deployment:
+            self.deployment.update_activity()
 
     def __str__(self) -> str:
         return f"{self.name} ({self.status})"
@@ -109,7 +161,13 @@ class GameContainer(models.Model):
 
     def get_access_history(self):
         """Get access history for the container"""
-        return self.access_records.all()
+        if self.deployment:
+            from ctf.models.challenge import DeploymentAccess
+            return DeploymentAccess.objects.filter(
+                deployment=self.deployment,
+                containers__contains=[self.id]
+            )
+        return []
 
     def get_current_role(self, team):
         """Get team's role in the container"""
@@ -151,48 +209,3 @@ class GameContainer(models.Model):
         except Exception as e:
             logger.error(f"Failed to delete container {self.pk}: {e}")
             return False
-
-
-class ContainerAccess(models.Model):
-    container = models.ForeignKey(GameContainer, related_name="access_records", on_delete=models.CASCADE)
-    team = models.ForeignKey('ctf.Team', related_name="container_access_history", on_delete=models.CASCADE)
-    user = models.ForeignKey('ctf.User', related_name="container_access", on_delete=models.CASCADE, null=True,
-                             blank=True)
-    role = models.CharField(max_length=8, choices=TeamRole)
-    access_type = models.CharField(max_length=64)
-    start_time = models.DateTimeField(auto_now_add=True)
-    end_time = models.DateTimeField(null=True, blank=True)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-    session_length = models.DurationField(null=True, blank=True, help_text="Duration of session if applicable")
-    commands_executed = models.TextField(default="", blank=True, help_text="Commands executed during session")
-
-    class Meta:
-        ordering = ["-start_time"]
-        indexes = [
-            models.Index(fields=["container", "start_time"]),
-            models.Index(fields=["team", "start_time"]),
-            models.Index(fields=["user", "start_time"]),
-            models.Index(fields=["access_type"]),
-        ]
-        verbose_name = "Container Access Record"
-        verbose_name_plural = "Container Access Records"
-
-    def __str__(self):
-        if self.access_type == 'SESSION':
-            return f"{self.team.name} - {self.role} access to {self.container.name} from {self.start_time} to {self.end_time or 'ongoing'}"
-        else:
-            return f"{self.user} - {self.access_type} - {self.container.name} at {self.start_time}"
-
-    def calculate_session_length(self):
-        """Calculate and update the session length if end_time is set"""
-        if self.end_time:
-            self.session_length = self.end_time - self.start_time
-            return self.session_length
-        return None
-
-    def end_session(self):
-        """End the current session"""
-        if not self.end_time:
-            self.end_time = timezone.now()
-            self.calculate_session_length()
-            self.save()
