@@ -15,12 +15,25 @@ class GlobalSettings(models.Model):
         default=True,
         help_text="Whether players can change teams outside of games"
     )
+    enable_auto_container_shutdown = models.BooleanField(
+        default=True,
+        help_text="Whether to automatically shut down inactive containers"
+    )
+    inactive_container_timeout = models.PositiveIntegerField(
+        default=30,
+        help_text="Number of minutes to wait before stopping an inactive container"
+    )
+
+    def __str__(self):
+        return "Global Settings"
 
     def clean(self):
         if self.max_team_size < 1:
             raise ValidationError("Maximum team size must be at least 1")
         if self.number_of_tiers < 1:
             raise ValidationError("Number of tiers must be at least 1")
+        if self.inactive_container_timeout < 1:
+            raise ValidationError("Container inactivity timeout must be at least 1 minute")
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -33,6 +46,3 @@ class GlobalSettings(models.Model):
         """Get the current settings, creating default if none exist"""
         settings, created = cls.objects.get_or_create(pk=1)
         return settings
-
-    def __str__(self):
-        return "Global Settings"
