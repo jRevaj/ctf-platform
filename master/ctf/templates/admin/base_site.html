@@ -1,0 +1,8 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {% translate 'CTF Platform Admin' %}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">{% translate 'CTF Platform Administration' %}</a></h1>
+{% endblock %} 

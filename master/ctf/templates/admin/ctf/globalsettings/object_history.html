@@ -1,0 +1,10 @@
+{% extends "admin/object_history.html" %}
+{% load i18n admin_urls %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:ctf_globalsettings_change' 1 %}">{% translate 'Global System Settings' %}</a>
+&rsaquo; {% translate 'History' %}
+</div>
+{% endblock %} 

@@ -323,9 +323,6 @@ class GameContainerAdmin(admin.ModelAdmin):
                 self.container_service.sync_container_status(game_container)
         return super().changelist_view(request, extra_context=extra_context)
 
-    class Media:
-        css = {"all": ("admin/css/container_admin.css",)}
-
 
 class StatusWidgetWithButtons(Select):
     def __init__(self, object_id, *args, **kwargs):
@@ -478,15 +475,67 @@ class GamePhaseAdmin(admin.ModelAdmin):
 
 @admin.register(GlobalSettings)
 class GlobalSettingsAdmin(admin.ModelAdmin):
-    list_display = ('max_team_size', 'number_of_tiers', 'allow_team_changes', 'inactive_container_timeout',
-                    'enable_auto_container_shutdown')
-    readonly_fields = ('id',)
+    change_form_template = 'admin/ctf/globalsettings/change_form.html'
+    object_history_template = 'admin/ctf/globalsettings/object_history.html'
+
+    verbose_name_plural = "Global System Settings"
+    
+    fieldsets = (
+        ('Team Settings', {
+            'fields': ('max_team_size', 'number_of_tiers', 'allow_team_changes'),
+            'classes': ('wide',),
+        }),
+        ('Container Settings', {
+            'fields': ('enable_auto_container_shutdown', 'inactive_container_timeout'),
+            'classes': ('wide',),
+        }),
+        ('Task Scheduling', {
+            'fields': ('process_sessions_cron', 'process_phases_cron',
+                       'check_inactive_deployments_cron', 'monitor_ssh_connections_cron'),
+            'description': 'Configure task schedules using cron expressions (minute hour day month weekday)',
+            'classes': ('wide',),
+        })
+    )
 
     def has_add_permission(self, request):
         return not GlobalSettings.objects.exists()
 
     def has_delete_permission(self, request, obj=None):
         return False
+        
+    def save_model(self, request, obj, form, change):
+        """Update task scheduling when settings are saved"""
+        super().save_model(request, obj, form, change)
+
+        from ctf.utils.scheduler import update_celery_schedules
+        
+        success = update_celery_schedules()
+        if success:
+            self.message_user(request, "Task schedules updated successfully.")
+        else:
+            self.message_user(
+                request, 
+                "Settings saved, but task schedules could not be updated. You may need to restart Celery.", 
+                level="WARNING"
+            )
+            
+    def changelist_view(self, request, extra_context=None):
+        """Override changelist view to redirect to the settings form"""
+        obj, created = GlobalSettings.objects.get_or_create(pk=1)
+        return redirect('admin:ctf_globalsettings_change', obj.id)
+            
+    def response_post_save_change(self, request, obj):
+        """Stay on the same page after saving"""
+        return redirect('admin:ctf_globalsettings_change', obj.id)
+            
+    def get_urls(self):
+        """Add custom URL patterns"""
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path('', self.changelist_view, name='ctf_globalsettings_changelist'),
+        ]
+        return custom_urls + urls
 
 
 @admin.register(Team)

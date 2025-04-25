@@ -6,7 +6,8 @@ from typing import List, Tuple
 from django.utils import timezone
 
 from ctf.models import Team, GameSession, TeamAssignment, GamePhase
-from ctf.models.enums import TeamRole, GameSessionStatus, ContainerStatus
+from ctf.models.enums import TeamRole, GameSessionStatus
+from ctf.models.settings import GlobalSettings
 from ctf.services import ChallengeService
 from ctf.services.container_service import ContainerService
 
@@ -290,25 +291,38 @@ class MatchmakingService:
     @staticmethod
     def _attacked_target_recently(session: GameSession, attacker: Team, target: Team) -> bool:
         """
-        Check if team attacked selected target in previous game session.
-        This ensures teams don't attack the same opponent twice in a row.
+        Check if team attacked selected target in previous game sessions.
+        This ensures teams don't repeatedly attack the same opponents.
+        The number of previous sessions to check is configurable in global settings.
         """
-        previous_session = GameSession.objects.filter(
+        settings = GlobalSettings.get_settings()
+        check_count = settings.previous_targets_check_count
+
+        previous_sessions = GameSession.objects.filter(
             start_date__lt=session.start_date,
             status=GameSessionStatus.COMPLETED
-        ).order_by('-start_date').first()
+        ).order_by('-start_date')[:check_count]
 
-        if not previous_session:
+        if not previous_sessions:
             return False
 
-        previous_target_deployment = previous_session.team_assignments.filter(
-            team=target,
-            role=TeamRole.BLUE
-        ).first().deployment
+        for previous_session in previous_sessions:
+            blue_assignment = previous_session.team_assignments.get(
+                team=target,
+                role=TeamRole.BLUE
+            )
 
-        return TeamAssignment.objects.filter(
-            session=previous_session,
-            team=attacker,
-            role=TeamRole.RED,
-            deployment=previous_target_deployment
-        ).exists()
+            if not blue_assignment:
+                continue
+
+            previous_target_deployment = blue_assignment.deployment
+
+            if TeamAssignment.objects.filter(
+                    session=previous_session,
+                    team=attacker,
+                    role=TeamRole.RED,
+                    deployment=previous_target_deployment
+            ).exists():
+                return True
+
+        return False

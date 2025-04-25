@@ -16,7 +16,7 @@ from ctf.forms.team_forms import CreateTeamForm, JoinTeamForm
 from ctf.models import User, TeamAssignment
 from ctf.services.deployment_service import DeploymentService
 from ctf.services.flag_service import FlagService
-from ctf.utils import get_user_challenges
+from ctf.utils.view_helpers import get_user_challenges
 
 
 def health_check(request):
