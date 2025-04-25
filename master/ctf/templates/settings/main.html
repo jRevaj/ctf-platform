@@ -30,14 +30,23 @@
                     </span>
                     <textarea class="form-control {% if form.ssh_public_key.errors %}is-invalid{% endif %}" 
                               id="id_ssh_public_key" name="ssh_public_key" rows="3" 
-                              placeholder="Enter your SSH public key">{{ form.ssh_public_key.value|default:user.ssh_public_key }}</textarea>
+                              placeholder="Enter your SSH public key"
+                              {% if ssh_key_locked %}disabled{% endif %}>{{ form.ssh_public_key.value|default:user.ssh_public_key }}</textarea>
                     {% if form.ssh_public_key.errors %}
                         <div class="invalid-feedback">
                             {{ form.ssh_public_key.errors.0 }}
                         </div>
                     {% endif %}
                 </div>
-                <div class="form-text">This key will be used for SSH access to game servers</div>
+                <div class="form-text">
+                    This key will be used for SSH access to game servers
+                    {% if ssh_key_locked %}
+                        <br><span class="text-danger">SSH key editing is disabled while your team is in game.</span>
+                    {% endif %}
+                </div>
+                {% if form.original_ssh_key %}
+                    {{ form.original_ssh_key }}
+                {% endif %}
             </div>
             <button type="submit" class="btn btn-primary">Save Changes</button>
         </form>

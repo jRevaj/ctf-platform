@@ -69,6 +69,8 @@ def settings_view(request):
     else:
         form = UserSettingsForm(instance=request.user)
 
+    ssh_key_locked = form.is_ssh_key_locked()
+
     context = {
         "form": form,
         "user_team": request.user.team,
@@ -77,6 +79,7 @@ def settings_view(request):
             if request.user.team
             else False
         ),
+        "ssh_key_locked": ssh_key_locked,
     }
     return render(request, "settings/main.html", context)
 
