@@ -356,7 +356,9 @@ def submit_flag_view(request, challenge_uuid):
                     flag = form.cleaned_data['flag_object']
                     FlagService.capture_and_award(flag, request.user.team)
                     messages.success(request, "Flag captured successfully!")
-                    if not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        form = FlagSubmissionForm(challenge=challenge, team=request.user.team)
+                    else:
                         return redirect('challenges')
                 except Exception as e:
                     messages.error(request, str(e))

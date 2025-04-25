@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from ctf.models import Flag
+from ctf.models.enums import TeamRole
 
 
 class FlagSubmissionForm(forms.Form):
@@ -30,13 +31,16 @@ class FlagSubmissionForm(forms.Form):
                 raise ValidationError("You cannot capture your own team's flag")
 
             if flag.container and flag.container.deployment:
-                blue_assignment = flag.container.deployment.assignments.filter(role='blue').first()
+                blue_assignment = flag.container.deployment.assignments.get(role=TeamRole.BLUE)
                 if not blue_assignment:
                     raise ValidationError("Invalid flag configuration - no blue team assignment found")
-                
+
                 if flag.container.deployment != self.challenge.deployment:
                     raise ValidationError("This flag does not belong to this challenge")
-                if blue_assignment.team != self.challenge.session.team_assignments.filter(role='blue').first().team:
+                if blue_assignment.team != self.challenge.session.team_assignments.get(
+                        role=TeamRole.BLUE,
+                        deployment=self.challenge.deployment
+                ).team:
                     raise ValidationError("This flag does not belong to the correct blue team")
             else:
                 raise ValidationError("Invalid flag configuration")
