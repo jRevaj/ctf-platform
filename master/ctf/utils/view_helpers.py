@@ -1,6 +1,6 @@
 from django.db.models import Count
 
-from ctf.models import TeamAssignment, Team
+from ctf.models import Team, TeamAssignment
 from ctf.models.enums import GameSessionStatus, TeamRole
 from ctf.services import ContainerService
 
@@ -69,17 +69,3 @@ def get_user_challenges(user):
     return {
         "challenges": challenges
     }
-
-
-def is_first_session_for_teams(teams):
-    """
-    Determine if this is the first completed session for these teams.
-    For simplicity, check if any team has participated in a completed session.
-    """
-    team_ids = [team.id for team in teams]
-    completed_counts = Team.objects.filter(
-        id__in=team_ids,
-        assignments__session__status=GameSessionStatus.COMPLETED
-    ).annotate(completed_count=Count('assignments__session', distinct=True))
-
-    return not completed_counts.filter(completed_count__gt=0).exists()

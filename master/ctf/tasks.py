@@ -12,7 +12,7 @@ from ctf.services import DeploymentService
 from ctf.services.container_service import ContainerService
 from ctf.services.docker_service import DockerService
 from ctf.services.matchmaking_service import MatchmakingService
-from ctf.utils import is_first_session_for_teams
+from ctf.utils.helpers import is_first_session_for_teams
 
 logger = logging.getLogger(__name__)
 
