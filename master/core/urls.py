@@ -22,13 +22,16 @@ from ctf.views import (
     health_check, home, register_view, login_view, logout_view, settings_view,
     create_team_view, join_team_view, remove_team_member_view, team_management_view,
     regenerate_team_key_view, challenges_view, submit_flag_view, start_deployment_view,
-    check_deployment_status,
+    check_deployment_status, scoreboard_view, teams_view, team_detail_view,
 )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),
     path('challenges/', challenges_view, name='challenges'),
+    path('scoreboard/', scoreboard_view, name='scoreboard'),
+    path('teams/', teams_view, name='teams'),
+    path('teams/<uuid:team_uuid>/', team_detail_view, name='team_detail'),
     path('auth/', include([
         path('register/', register_view, name='register'),
         path('login/', login_view, name='login'),
@@ -44,7 +47,8 @@ urlpatterns = [
     ])),
     path('submit_flag/<uuid:challenge_uuid>/', login_required(submit_flag_view), name='submit_flag'),
     path('start_deployment/<uuid:challenge_uuid>/', login_required(start_deployment_view), name='start_deployment'),
-    path('check_deployment/<uuid:challenge_uuid>/', login_required(check_deployment_status), name='check_deployment_status'),
+    path('check_deployment/<uuid:challenge_uuid>/', login_required(check_deployment_status),
+         name='check_deployment_status'),
     path('__reload__/', include('django_browser_reload.urls')),
     path('health/', health_check, name='health_check'),
 ]

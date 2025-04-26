@@ -13,7 +13,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from ctf.forms.auth_forms import UserRegistrationForm, UserLoginForm, UserSettingsForm
 from ctf.forms.flag_forms import FlagSubmissionForm
 from ctf.forms.team_forms import CreateTeamForm, JoinTeamForm
-from ctf.models import User, TeamAssignment
+from ctf.models import User, TeamAssignment, Team
 from ctf.services.deployment_service import DeploymentService
 from ctf.services.flag_service import FlagService
 from ctf.utils.view_helpers import get_user_challenges
@@ -223,7 +223,8 @@ def check_deployment_status(request, challenge_uuid):
         if challenge.team != request.user.team:
             return JsonResponse({'error': 'Permission denied'}, status=403)
 
-        logger.info(f"Checking deployment status for challenge {challenge_uuid}, deployment {challenge.deployment.uuid}")
+        logger.info(
+            f"Checking deployment status for challenge {challenge_uuid}, deployment {challenge.deployment.uuid}")
 
         deployment_service = DeploymentService()
         try:
@@ -388,3 +389,21 @@ def submit_flag_view(request, challenge_uuid):
     except Exception as e:
         messages.error(request, str(e))
         return redirect('challenges')
+
+
+def scoreboard_view(request):
+    """Display the scoreboard with teams sorted by score"""
+    teams = Team.objects.filter(is_in_game=True).order_by('-score', 'name')
+    return render(request, "scoreboard.html", {"teams": teams})
+
+
+def teams_view(request):
+    """Display all teams"""
+    teams = Team.objects.all().order_by('name')
+    return render(request, "teams.html", {"teams": teams})
+
+
+def team_detail_view(request, team_uuid):
+    """Display detailed information about a specific team"""
+    team = get_object_or_404(Team, uuid=team_uuid)
+    return render(request, "team_detail.html", {"team": team})

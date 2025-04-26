@@ -9,6 +9,7 @@ from ctf.models.settings import GlobalSettings
 class Team(models.Model):
     name = models.CharField(max_length=128)
     join_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     score = models.IntegerField(default=0)
     red_points = models.IntegerField(default=0)
     blue_points = models.IntegerField(default=0)
@@ -51,7 +52,7 @@ class Team(models.Model):
     def should_be_in_game(self):
         """Check if team should be set as in game"""
         settings = GlobalSettings.get_settings()
-        return (self.users.count() == settings.max_team_size and 
+        return (self.users.count() == settings.max_team_size and
                 self.all_members_have_ssh_keys())
 
     def remove_member(self, user, member_to_remove):
