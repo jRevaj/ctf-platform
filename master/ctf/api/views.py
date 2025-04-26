@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -5,6 +6,10 @@ from rest_framework.response import Response
 from ctf.models import Flag, GameSession, GameContainer
 from ctf.services.serializers.flag_serializer import FlagSerializer
 from ctf.services.serializers.game_session_serializer import GameSessionSerializer
+
+
+def health_check(request):
+    return HttpResponse("OK")
 
 
 class GameSessionViewSet(viewsets.ModelViewSet):

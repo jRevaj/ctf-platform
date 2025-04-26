@@ -61,7 +61,7 @@ services:
     command: >
       sh -c "
         echo 'Waiting for Django to be ready...' &&
-        while ! curl -s http://master:8000/health/ > /dev/null; do
+        while ! curl -s http://master:8000/api/health/ > /dev/null; do
           echo 'Django is not ready yet...' &&
           sleep 5
         done &&
@@ -85,7 +85,7 @@ services:
     command: >
       sh -c "
         echo 'Waiting for Django to be ready...' &&
-        while ! curl -s http://master:8000/health/ > /dev/null; do
+        while ! curl -s http://master:8000/api/health/ > /dev/null; do
           echo 'Django is not ready yet...' &&
           sleep 5
         done &&

@@ -18,8 +18,9 @@ from django.contrib import admin
 from django.contrib.auth.decorators import login_required
 from django.urls import path, include
 
+from ctf.api.urls import api_urls
 from ctf.views import (
-    health_check, home, register_view, login_view, logout_view, settings_view,
+    home, register_view, login_view, logout_view, settings_view,
     create_team_view, join_team_view, remove_team_member_view, team_management_view,
     regenerate_team_key_view, challenges_view, submit_flag_view, start_deployment_view,
     check_deployment_status, scoreboard_view, teams_view, team_detail_view,
@@ -50,5 +51,5 @@ urlpatterns = [
     path('check_deployment/<uuid:challenge_uuid>/', login_required(check_deployment_status),
          name='check_deployment_status'),
     path('__reload__/', include('django_browser_reload.urls')),
-    path('health/', health_check, name='health_check'),
+    path('api/', include(api_urls))
 ]
