@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="h2 mb-4">Scoreboard</h1>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="scoreboardTable">
+                                <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Team</th>
+                                    <th class="sortable" data-sort="blue">Blue Points <i
+                                            class="bi bi-arrow-down-up"></i></th>
+                                    <th class="sortable" data-sort="red">Red Points <i class="bi bi-arrow-down-up"></i>
+                                    </th>
+                                    <th class="sortable" data-sort="score">Score <i class="bi bi-arrow-down-up"></i>
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for team in teams %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td><a href="{% url 'team_detail' team.uuid %}"
+                                               class="text-decoration-none">{{ team.name }}</a></td>
+                                        <td>{{ team.blue_points }}</td>
+                                        <td>{{ team.red_points }}</td>
+                                        <td>{{ team.score }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center">No teams available</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const table = document.getElementById('scoreboardTable');
+            const headers = table.querySelectorAll('th.sortable');
+            let currentSort = {
+                column: null,
+                direction: null
+            };
+
+            // Store initial order of rows
+            const initialRows = Array.from(table.querySelectorAll('tbody tr'));
+
+            headers.forEach(header => {
+                header.addEventListener('click', () => {
+                    const sortBy = header.dataset.sort;
+                    const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+                    // Handle sort direction
+                    if (currentSort.column === sortBy) {
+                        if (currentSort.direction === 'desc') {
+                            currentSort.direction = 'asc';
+                        } else if (currentSort.direction === 'asc') {
+                            // Clear sorting on third click
+                            currentSort.column = null;
+                            currentSort.direction = null;
+
+                            // Restore initial order
+                            const tbody = table.querySelector('tbody');
+                            initialRows.forEach((row, index) => {
+                                row.children[0].textContent = index + 1;
+                                tbody.appendChild(row);
+                            });
+
+                            // Reset all sort indicators
+                            headers.forEach(h => {
+                                const icon = h.querySelector('i');
+                                icon.className = 'bi bi-arrow-down-up';
+                            });
+                            return;
+                        }
+                    } else {
+                        currentSort.column = sortBy;
+                        currentSort.direction = 'desc';
+                    }
+
+                    // Sort rows
+                    rows.sort((a, b) => {
+                        const aValue = parseInt(a.children[getColumnIndex(sortBy)].textContent);
+                        const bValue = parseInt(b.children[getColumnIndex(sortBy)].textContent);
+
+                        if (currentSort.direction === 'asc') {
+                            return aValue - bValue;
+                        } else {
+                            return bValue - aValue;
+                        }
+                    });
+
+                    // Update rank numbers
+                    rows.forEach((row, index) => {
+                        row.children[0].textContent = index + 1;
+                    });
+
+                    // Reorder rows in the table
+                    const tbody = table.querySelector('tbody');
+                    rows.forEach(row => tbody.appendChild(row));
+
+                    // Update sort indicators
+                    headers.forEach(h => {
+                        const icon = h.querySelector('i');
+                        if (h.dataset.sort === currentSort.column) {
+                            icon.className = currentSort.direction === 'asc' ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+                        } else {
+                            icon.className = 'bi bi-arrow-down-up';
+                        }
+                    });
+                });
+            });
+
+            function getColumnIndex(sortBy) {
+                switch (sortBy) {
+                    case 'blue':
+                        return 2;
+                    case 'red':
+                        return 3;
+                    case 'score':
+                        return 4;
+                    default:
+                        return 2;
+                }
+            }
+        });
+    </script>
+{% endblock %} 

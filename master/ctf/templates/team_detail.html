@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'teams' %}">Teams</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ team.name }}</li>
+                    </ol>
+                </nav>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h1 class="h2 mb-4">{{ team.name }}</h1>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h3 class="h5 mb-3">Team Information</h3>
+                                <div class="mb-3">
+                                    <span class="text-muted">Score:</span>
+                                    <span class="ms-2 fw-medium">{{ team.score }}</span>
+                                </div>
+                                <div class="d-flex gap-2 mb-3">
+                                    <span class="text-muted">Points distribution:</span>
+                                    <div class="ms-2">
+                                        <span class="badge bg-primary me-2">Blue: {{ team.blue_points }}</span>
+                                        <span class="badge bg-danger">Red: {{ team.red_points }}</span>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <span class="text-muted">Status:</span>
+                                    <span class="ms-2 badge bg-{{ team.is_in_game|yesno:'success,secondary' }}">
+                                    {{ team.is_in_game|yesno:"In Game,Not in Game" }}
+                                </span>
+                                </div>
+                                <div class="mb-3">
+                                    <span class="text-muted">Created:</span>
+                                    <span class="ms-2">{{ team.created_at|date:"F j, Y" }}</span>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h3 class="h5 mb-3">Team Members</h3>
+                                <div class="list-group">
+                                    {% for member in team.users.all %}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <span class="fw-medium">{{ member.username }}</span>
+                                            {% if member == team.created_by %}
+                                                <span class="badge bg-primary">Creator</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="h5 mb-3">Recent Activity</h3>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for flag in team.captured_flags.all|slice:":5" %}
+                                    <tr>
+                                        <td>{{ flag.captured_at|date:"F j, Y H:i" }}</td>
+                                        <td><span class="badge bg-danger">Flag Capture</span></td>
+                                        <td>Captured flag worth {{ flag.points }} points</td>
+                                    </tr>
+                                {% endfor %}
+                                {% for flag in team.owned_flags.all|slice:":5" %}
+                                    <tr>
+                                        <td>{{ flag.created_at|date:"F j, Y H:i" }}</td>
+                                        <td><span class="badge bg-primary">Flag Defense</span></td>
+                                        <td>Secured flag worth {{ flag.points }} points</td>
+                                    </tr>
+                                {% endfor %}
+                                {% if not team.captured_flags.all and not team.owned_flags.all %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">No recent activity</td>
+                                    </tr>
+                                {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %} 
