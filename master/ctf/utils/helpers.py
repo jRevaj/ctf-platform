@@ -1,5 +1,3 @@
-from celery.schedules import crontab
-from django.core.exceptions import ValidationError
 from django.db.models import Count
 
 from ctf.models.enums import GameSessionStatus
@@ -18,14 +16,3 @@ def is_first_session_for_teams(teams):
     ).annotate(completed_count=Count('assignments__session', distinct=True))
 
     return not completed_counts.filter(completed_count__gt=0).exists()
-
-
-def validate_cron_expression(cron_expr, field_name):
-    """Validate a cron expression format"""
-    try:
-        parts = cron_expr.split()
-        if len(parts) != 5:
-            raise ValidationError(f"{field_name} must have 5 parts (minute hour day month weekday)")
-        crontab(*parts)
-    except Exception as e:
-        raise ValidationError(f"{field_name} is not a valid cron expression: {e}")

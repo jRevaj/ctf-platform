@@ -53,11 +53,11 @@ services:
         python manage.py runserver 0.0.0.0:8000
       "
 
-  celery:
+  celery_worker:
     build:
       context: ./master
       dockerfile: Dockerfile
-    container_name: celery
+    container_name: celery_worker
     command: >
       sh -c "
         echo 'Waiting for Django to be ready...' &&
@@ -65,8 +65,32 @@ services:
           echo 'Django is not ready yet...' &&
           sleep 5
         done &&
-        echo 'Django is ready! Starting Celery...' &&
-        celery -A core worker --loglevel=info --concurrency=4 -E -B
+        echo 'Django is ready! Starting Celery worker...' &&
+        celery -A core worker --loglevel=info --concurrency=4 -E
+      "
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    user: root
+    depends_on:
+      - master
+      - redis
+    env_file:
+      - .env
+
+  celery_beat:
+    build:
+      context: ./master
+      dockerfile: Dockerfile
+    container_name: celery_beat
+    command: >
+      sh -c "
+        echo 'Waiting for Django to be ready...' &&
+        while ! curl -s http://master:8000/health/ > /dev/null; do
+          echo 'Django is not ready yet...' &&
+          sleep 5
+        done &&
+        echo 'Django is ready! Starting Celery beat...' &&
+        celery -A core beat --loglevel=info
       "
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
