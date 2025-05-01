@@ -76,6 +76,8 @@ class Flag(models.Model):
         indexes = [
             models.Index(fields=["value"]),
         ]
+        verbose_name = "Flag"
+        verbose_name_plural = "Flags"
 
     def __str__(self):
         return self.value

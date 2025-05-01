@@ -246,7 +246,7 @@ class DockerService:
             return False
 
     @staticmethod
-    def disconnect_container_from_network(network, container) -> bool:
+    def disconnect_container_from_network(network: Network, container: GameContainer) -> bool:
         try:
             network.disconnect(container.docker_id)
             return True
@@ -255,7 +255,7 @@ class DockerService:
             return False
 
     @staticmethod
-    def remove_network(network) -> bool:
+    def remove_network(network: Network) -> bool:
         try:
             network.remove()
             return True
@@ -271,7 +271,7 @@ class DockerService:
             logger.error(f"Failed to get bridge network: {e}")
             return None
 
-    def disconnect_from_bridge(self, container) -> bool:
+    def disconnect_from_bridge(self, container: GameContainer) -> bool:
         """Disconnect a container from the default bridge network"""
         try:
             bridge = self.get_bridge_network()

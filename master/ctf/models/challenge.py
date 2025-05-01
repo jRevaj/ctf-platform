@@ -19,6 +19,10 @@ class ChallengeTemplate(models.Model):
     containers_config = models.JSONField(default=dict, null=True, blank=True)
     networks_config = models.JSONField(default=dict, null=True, blank=True)
 
+    class Meta:
+        verbose_name = "Challenge Template"
+        verbose_name_plural = "Challenge Templates"
+
     def __str__(self) -> str:
         return self.name
 
@@ -36,6 +40,10 @@ class ChallengeNetworkConfig(models.Model):
     deployment = models.ForeignKey('ctf.ChallengeDeployment', related_name="networks", on_delete=models.CASCADE)
     containers = models.ManyToManyField('ctf.GameContainer', related_name="challenge_network_configs")
 
+    class Meta:
+        verbose_name = "Challenge Network Config"
+        verbose_name_plural = "Challenge Network Configs"
+
     def __str__(self):
         return f"Network {self.name or 'Default'} ({self.subnet})"
 
@@ -45,6 +53,10 @@ class ChallengeDeployment(models.Model):
     template = models.ForeignKey('ctf.ChallengeTemplate', related_name="deployments", on_delete=models.PROTECT)
     last_activity = models.DateTimeField(default=timezone.now)
     has_active_connections = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Challenge Deployment"
+        verbose_name_plural = "Challenge Deployments"
 
     def __str__(self):
         return f"Deployment {self.template.name} ({self.template.pk})"
@@ -92,6 +104,8 @@ class DeploymentAccess(models.Model):
         indexes = [
             models.Index(fields=['deployment', 'is_active']),
         ]
+        verbose_name = "Deployment Access"
+        verbose_name_plural = "Deployment Accesses"
 
     def save(self, *args, **kwargs):
         """Override save to update deployment activity"""

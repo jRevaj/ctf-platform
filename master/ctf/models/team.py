@@ -17,6 +17,15 @@ class Team(models.Model):
     created_by = models.ForeignKey('ctf.User', on_delete=models.SET_NULL, null=True, related_name='created_teams')
     is_in_game = models.BooleanField(default=False)
 
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=['uuid']),
+            models.Index(fields=['join_key']),
+        ]
+        verbose_name = "Global Settings"
+        verbose_name_plural = "Global Settings"
+
     def __str__(self):
         return self.name
 
