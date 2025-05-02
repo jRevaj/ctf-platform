@@ -17,6 +17,11 @@
         Sync All Containers
     </a>
 </li>
+<li>
+    <a href="{% url 'admin:gamecontainer-clean-orphaned' %}" class="btn btn-warning">
+        Clean Orphaned Containers
+    </a>
+</li>
 {{ block.super }}
 
 {% endblock %} 

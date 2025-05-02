@@ -227,14 +227,14 @@ class DockerService:
             return False
 
     def clean_networks(self):
-        """Clean up unused networks"""
+        """Remove all docker networks"""
         try:
-            logger.info("Cleaning up unused networks")
+            logger.info("Removing all docker networks")
             self.client.networks.prune()
         except APIError as e:
-            logger.error(f"Failed to clean up network: {e}")
+            logger.error(f"Failed to remove network: {e}")
         except Exception as e:
-            logger.error(f"Failed to clean up network: {e}")
+            logger.error(f"Failed to remove network: {e}")
 
     @staticmethod
     def connect_container_to_network(network, container) -> bool:

@@ -116,75 +116,28 @@ class GameContainerAdmin(admin.ModelAdmin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Initialize services
         self.docker_service = DockerService()
         self.container_service = ContainerService(self.docker_service)
 
-    def formfield_for_dbfield(self, db_field, **kwargs):
-        formfield = super().formfield_for_dbfield(db_field, **kwargs)
-        if db_field.name == "status":
-            # Only add buttons if we're editing an existing object
-            if kwargs.get("request").resolver_match.kwargs.get("object_id"):
-                object_id = kwargs.get("request").resolver_match.kwargs.get("object_id")
-                formfield.widget = StatusWidgetWithButtons(object_id)
-        return formfield
-
-    def container_actions(self, obj):
+    @staticmethod
+    def container_actions(obj):
         return format_html(
-            '<a class="button" href="{}">Start</a>&nbsp;' '<a class="button" href="{}">Stop</a>&nbsp;' '<a class="button" href="{}">Sync</a>',
-            f"/admin/ctf/gamecontainer/{obj.pk}/start/",
-            f"/admin/ctf/gamecontainer/{obj.pk}/stop/",
-            f"/admin/ctf/gamecontainer/{obj.pk}/sync/",
+            '<a class="button" href="{}">Start</a>&nbsp;'
+            '<a class="button" href="{}">Stop</a>&nbsp;'
+            '<a class="button" href="{}">Sync</a>',
+            f"/admin/ctf/gamecontainer/{obj.pk}/action/start/",
+            f"/admin/ctf/gamecontainer/{obj.pk}/action/stop/",
+            f"/admin/ctf/gamecontainer/{obj.pk}/action/sync/",
         )
-
-    container_actions.short_description = "Actions"
-
-    def sync_status(self, request, queryset):
-        updated = 0
-        for game_container in queryset:
-            if self.container_service.sync_container_status(game_container):
-                updated += 1
-        self.message_user(request, f"Successfully synced status for {updated} of {queryset.count()} containers.")
-
-    sync_status.short_description = "Sync selected containers' status"
-
-    def start_containers(self, request, queryset):
-        started = 0
-        for game_container in queryset:
-            if self.container_service.start_container(game_container):
-                started += 1
-        self.message_user(request, f"Successfully started {started} of {queryset.count()} containers.")
-
-    start_containers.short_description = "Start selected containers"
-
-    def stop_containers(self, request, queryset):
-        stopped = 0
-        for game_container in queryset:
-            if self.container_service.stop_container(game_container):
-                stopped += 1
-        self.message_user(request, f"Successfully stopped {stopped} of {queryset.count()} containers.")
-
-    stop_containers.short_description = "Stop selected containers"
 
     def get_urls(self):
         from django.urls import path
-
         urls = super().get_urls()
         custom_urls = [
             path(
-                "<int:container_id>/start/",
-                self.admin_site.admin_view(self.start_container_view),
-                name="gamecontainer-start",
-            ),
-            path(
-                "<int:container_id>/stop/",
-                self.admin_site.admin_view(self.stop_container_view),
-                name="gamecontainer-stop",
-            ),
-            path(
-                "<int:container_id>/sync/",
-                self.admin_site.admin_view(self.sync_container_view),
-                name="gamecontainer-sync",
+                "<int:container_id>/action/<str:action>/",
+                self.admin_site.admin_view(self.container_action_view),
+                name="gamecontainer-action",
             ),
             path(
                 "sync_all/",
@@ -201,37 +154,37 @@ class GameContainerAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.start_all_view),
                 name="gamecontainer-start-all",
             ),
+            path(
+                "clean_orphaned/",
+                self.admin_site.admin_view(self.clean_orphaned_view),
+                name="gamecontainer-clean-orphaned",
+            ),
         ]
         return custom_urls + urls
 
-    def start_container_view(self, request, container_id):
-        game_container: GameContainer = self.model.objects.get(pk=container_id)
-        self.container_service.sync_container_status(game_container)
-        if game_container.is_running():
-            self.message_user(request, f"Container {game_container.name} is already running.", level="WARNING")
-        elif self.container_service.start_container(game_container):
-            self.message_user(request, f"Container {game_container.name} started successfully.")
-        else:
-            self.message_user(request, f"Failed to start container {game_container.name}.", level="ERROR")
-        return handle_action_redirect(request, container_id)
-
-    def stop_container_view(self, request, container_id):
+    def container_action_view(self, request, container_id, action):
         game_container = self.model.objects.get(pk=container_id)
         self.container_service.sync_container_status(game_container)
-        if game_container.is_stopped():
-            self.message_user(request, f"Container {game_container.name} is already stopped.", level="WARNING")
-        elif self.container_service.stop_container(game_container):
-            self.message_user(request, f"Container {game_container.name} stopped successfully.")
-        else:
-            self.message_user(request, f"Failed to stop container {game_container.name}.", level="ERROR")
-        return handle_action_redirect(request, container_id)
 
-    def sync_container_view(self, request, container_id):
-        game_container = self.model.objects.get(pk=container_id)
-        if self.container_service.sync_container_status(game_container):
-            self.message_user(request, f"Container {game_container.name} status synced successfully.")
+        action_map = {
+            'start': (self.container_service.start_container, 'started', 'running'),
+            'stop': (self.container_service.stop_container, 'stopped', 'stopped'),
+            'sync': (self.container_service.sync_container_status, 'synced', None)
+        }
+
+        if action not in action_map:
+            self.message_user(request, f"Invalid action: {action}", level="ERROR")
+            return handle_action_redirect(request, container_id)
+
+        service_method, success_msg, check_status = action_map[action]
+
+        if check_status and getattr(game_container, f"is_{check_status}")():
+            self.message_user(request, f"Container {game_container.name} is already {check_status}.", level="WARNING")
+        elif service_method(game_container):
+            self.message_user(request, f"Container {game_container.name} {success_msg} successfully.")
         else:
-            self.message_user(request, f"Failed to sync container {game_container.name} status.", level="ERROR")
+            self.message_user(request, f"Failed to {action} container {game_container.name}.", level="ERROR")
+
         return handle_action_redirect(request, container_id)
 
     def sync_all_view(self, request):
@@ -285,12 +238,6 @@ class GameContainerAdmin(admin.ModelAdmin):
             self.message_user(request, f"Successfully started all {started} containers.")
         return redirect("admin:ctf_gamecontainer_changelist")
 
-    def has_delete_permission(self, request, obj=None):
-        """Override delete permission to ensure proper cleanup"""
-        if obj and obj.status == ContainerStatus.RUNNING:
-            return False
-        return super().has_delete_permission(request, obj)
-
     def delete_model(self, request, obj):
         """Override delete_model to ensure proper cleanup"""
         if obj.delete():
@@ -300,28 +247,41 @@ class GameContainerAdmin(admin.ModelAdmin):
 
     def delete_queryset(self, request, queryset):
         """Override delete_queryset to ensure proper cleanup for bulk deletions"""
+        success_count = 0
+        fail_count = 0
+
         for obj in queryset:
-            self.delete_model(request, obj)
+            if obj.delete():
+                success_count += 1
+            else:
+                fail_count += 1
+
+        if success_count:
+            self.message_user(request, f"Successfully deleted {success_count} containers.")
+        if fail_count:
+            self.message_user(request, f"Failed to delete {fail_count} containers. Check logs for details.",
+                              level="ERROR")
 
     def save_model(self, request, obj, form, change):
-        """Override save_model to ensure status is synced before saving"""
         if change:
             self.container_service.sync_container_status(obj)
         super().save_model(request, obj, form, change)
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
-        """Override change_view to sync status before displaying the form"""
         obj = self.get_object(request, object_id)
         if obj:
             self.container_service.sync_container_status(obj)
         return super().change_view(request, object_id, form_url, extra_context=extra_context)
 
-    def changelist_view(self, request, extra_context=None):
-        """Override changelist_view to sync all container statuses"""
-        if "sync_all" in request.GET:
-            for game_container in self.model.objects.all():
-                self.container_service.sync_container_status(game_container)
-        return super().changelist_view(request, extra_context=extra_context)
+    def clean_orphaned_view(self, request):
+        """View to clean orphaned containers"""
+        try:
+            cleaned_count = self.container_service.clean_docker_containers()
+            self.message_user(request, f"Successfully cleaned {cleaned_count} orphaned containers.")
+        except Exception as e:
+            logger.error(f"Error cleaning orphaned containers: {e}")
+            self.message_user(request, f"Error cleaning orphaned containers: {str(e)}", level="ERROR")
+        return redirect("admin:ctf_gamecontainer_changelist")
 
 
 class StatusWidgetWithButtons(Select):
@@ -391,8 +351,11 @@ class DeploymentAccessAdmin(admin.ModelAdmin):
     readonly_fields = ('duration_display',)
 
     def duration_display(self, obj):
-        duration = obj.duration
-        minutes, seconds = divmod(duration, 60)
+        if not obj.duration:
+            return "N/A"
+
+        total_seconds = obj.duration.total_seconds()
+        minutes, seconds = divmod(total_seconds, 60)
         hours, minutes = divmod(minutes, 60)
         return f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
 
@@ -577,10 +540,26 @@ class TeamAdmin(admin.ModelAdmin):
 
 @admin.register(ChallengeDeployment)
 class ChallengeDeploymentAdmin(admin.ModelAdmin):
-    list_display = ('template', 'last_activity', 'has_active_connections', 'deployment_actions')
+    list_display = ('template', 'blue_team', 'red_team', 'last_activity', 'total_blue_access_time',
+                    'total_red_access_time', 'has_active_connections', 'deployment_actions')
     list_filter = ('has_active_connections',)
     actions = ['start_containers', 'stop_containers', 'sync_container_status']
     change_list_template = "admin/ctf/challengedeployment/change_list.html"
+
+    def delete_model(self, request, obj):
+        """Override delete_model to ensure proper cleanup of containers"""
+        for container in obj.containers.all():
+            container.delete()
+        super().delete_model(request, obj)
+        self.message_user(request, f"Deployment {obj.pk} and its containers successfully deleted.")
+
+    def delete_queryset(self, request, queryset):
+        """Override delete_queryset to ensure proper cleanup for bulk deletions"""
+        for obj in queryset:
+            for container in obj.containers.all():
+                container.delete()
+        super().delete_queryset(request, queryset)
+        self.message_user(request, f"Successfully deleted {queryset.count()} deployments and their containers.")
 
     def deployment_actions(self, obj):
         return format_html(

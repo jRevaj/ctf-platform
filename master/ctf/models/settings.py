@@ -28,6 +28,10 @@ class GlobalSettings(models.Model):
         help_text="Number of previous sessions to check when preventing teams from attacking recent targets"
     )
 
+    class Meta:
+        verbose_name = "Global Settings"
+        verbose_name_plural = "Global Settings"
+
     def __str__(self):
         return "Global Settings"
 
