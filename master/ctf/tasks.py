@@ -217,81 +217,92 @@ def monitor_ssh_connections():
     It uses the docker_service to check for active SSH connections and the deployment_service to record and end access sessions.
     """
     logger.info("Running monitor_ssh_connections task")
+    container_service = ContainerService()
     docker_service = DockerService()
     deployment_service = DeploymentService()
 
     try:
         deployments = ChallengeDeployment.objects.filter(
             containers__status=ContainerStatus.RUNNING
-        ).distinct().prefetch_related('containers', 'assignments')
-        logger.info(f"Found {len(deployments)} deployments")
+        ).distinct().prefetch_related(
+            'containers',
+            'assignments',
+            'access_records'
+        ).select_related(
+            'template'
+        )
+
+        active_access_records = DeploymentAccess.objects.filter(
+            is_active=True,
+            deployment__in=deployments
+        ).select_related('team', 'deployment')
+
+        active_db_sessions_map = {}
+        session_type_mapping = {}
+        for record in active_access_records:
+            if record.session_id:
+                sessions = record.session_id.split(',')
+                active_db_sessions_map[record.deployment_id] = set(sessions)
+                for session_id in sessions:
+                    if '-' in session_id and len(session_id.split('-')) > 1:
+                        session_type_mapping[session_id] = session_id.split('-')[1]
+
+        logger.info(f"Found {len(deployments)} active deployments")
 
         for deployment in deployments:
             try:
                 logger.info(f"Checking active SSH connections for deployment {deployment.id}")
                 has_connections = False
-                containers = deployment.containers.filter(status=ContainerStatus.RUNNING)
 
-                active_db_sessions = DeploymentAccess.objects.filter(
-                    deployment=deployment,
-                    is_active=True
-                ).values_list('session_id', flat=True)
-                active_db_sessions = set(active_db_sessions)
+                running_containers = list(deployment.containers.filter(status=ContainerStatus.RUNNING))
+                if not running_containers:
+                    continue
+
+                active_db_sessions = active_db_sessions_map.get(deployment.id, set())
 
                 all_active_docker_sessions = set()
                 container_session_map = {}
                 active_containers = set()
+                matched_db_sessions = set()
 
-                session_type_mapping = {
-                    sid: sid.split('-')[1] if '-' in sid and len(sid.split('-')) > 1 else 'unknown'
-                    for sid in active_db_sessions
-                }
-
-                for container in containers:
+                for container in running_containers:
                     container_active_sessions = docker_service.check_active_ssh_sessions(container.docker_id)
 
-                    valid_sessions = []
-                    for session_id in container_active_sessions:
-                        if not session_id or not isinstance(session_id, str):
-                            continue
-
-                        if '-' in session_id:
-                            valid_sessions.append(session_id)
-                        else:
-                            logger.warning(f"Skipping invalid session ID: {session_id}")
+                    valid_sessions = {
+                        sid for sid in container_active_sessions
+                        if sid and isinstance(sid, str) and '-' in sid
+                    }
 
                     for session_id in valid_sessions:
                         container_session_map[session_id] = container
+                        all_active_docker_sessions.add(session_id)
 
                     if valid_sessions:
                         active_containers.add(container.id)
-
-                    all_active_docker_sessions.update(valid_sessions)
-
-                    if valid_sessions:
                         has_connections = True
 
-                invalid_sessions = [sid for sid in active_db_sessions
-                                    if not ('-' in sid and len(sid.split('-')) > 1)]
+                invalid_sessions = {
+                    sid for sid in active_db_sessions
+                    if not ('-' in sid and len(sid.split('-')) > 1)
+                }
+
                 for session_id in invalid_sessions:
                     logger.warning(f"Ending invalid deployment access session: {session_id}")
                     deployment_service.end_deployment_access(deployment, session_id)
 
-                active_docker_session_by_type = {}
-                for session_id in all_active_docker_sessions:
-                    session_type = session_id.split('-')[1] if len(session_id.split('-')) > 1 else 'unknown'
-                    if session_type not in active_docker_session_by_type:
-                        active_docker_session_by_type[session_type] = []
-                    active_docker_session_by_type[session_type].append(session_id)
-
-                matched_db_sessions = set()
-
                 for session_id in all_active_docker_sessions:
                     if session_id in active_db_sessions:
                         matched_db_sessions.add(session_id)
-
                         container = container_session_map.get(session_id)
                         if container:
+                            team = container.red_team if container.red_team else container.blue_team
+                            logger.info("exceeded time limit call 1")
+                            if team and deployment_service.has_exceeded_time_limit(team, deployment):
+                                logger.info(f"Team {team.name} has exceeded time limit for deployment {deployment.id}")
+                                for dep_container in running_containers:
+                                    container_service.kill_ssh_session(dep_container, True)
+                                deployment_service.end_deployment_access(deployment, session_id)
+                                continue
                             container.update_activity()
                         continue
 
@@ -300,21 +311,25 @@ def monitor_ssh_connections():
                         continue
 
                     session_type = session_parts[1]
-
                     found_match = False
-                    for db_session in active_db_sessions:
-                        if db_session in matched_db_sessions:
-                            continue
 
+                    for db_session in active_db_sessions - matched_db_sessions:
                         db_session_type = session_type_mapping.get(db_session)
                         if db_session_type == session_type:
                             matched_db_sessions.add(db_session)
                             found_match = True
-
                             container = container_session_map.get(session_id)
                             if container:
+                                team = container.red_team if container.red_team else container.blue_team
+                                logger.info("exceeded time limit call 2")
+                                if team and deployment_service.has_exceeded_time_limit(team, deployment):
+                                    logger.info(
+                                        f"Team {team.name} has exceeded time limit for deployment {deployment.id}")
+                                    for dep_container in running_containers:
+                                        container_service.kill_ssh_session(dep_container, True)
+                                    deployment_service.end_deployment_access(deployment, session_id)
+                                    continue
                                 container.update_activity()
-
                             logger.debug(f"Matched docker session {session_id} to existing DB session {db_session}")
                             break
 
@@ -323,6 +338,15 @@ def monitor_ssh_connections():
                         if container:
                             team = container.red_team if container.red_team else container.blue_team
                             if team:
+                                logger.info("exceeded time limit call 3")
+                                if deployment_service.has_exceeded_time_limit(team, deployment):
+                                    logger.info(
+                                        f"Team {team.name} has exceeded time limit for deployment {deployment.id}")
+                                    for dep_container in running_containers:
+                                        container_service.kill_ssh_session(dep_container, True)
+                                    deployment_service.end_deployment_access(deployment, session_id)
+                                    continue
+
                                 logger.info(f"Recording new deployment access session {session_id}")
                                 deployment_service.record_deployment_access(
                                     deployment=deployment,
@@ -332,14 +356,9 @@ def monitor_ssh_connections():
                                 )
                                 container.update_activity()
 
-                for container in containers:
-                    if container.id in active_containers:
-                        container.update_activity()
-
-                for session_id in active_db_sessions:
-                    if session_id not in matched_db_sessions and session_id not in invalid_sessions:
-                        logger.info(f"Ending deployment access session {session_id}")
-                        deployment_service.end_deployment_access(deployment, session_id)
+                for session_id in active_db_sessions - matched_db_sessions - invalid_sessions:
+                    logger.info(f"Ending deployment access session {session_id}")
+                    deployment_service.end_deployment_access(deployment, session_id)
 
                 if has_connections != deployment.has_active_connections:
                     deployment.has_active_connections = has_connections

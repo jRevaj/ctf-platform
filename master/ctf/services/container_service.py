@@ -139,6 +139,21 @@ class ContainerService:
             logger.error(f"Failed to configure SSH access: {e}")
             return False
 
+    def kill_ssh_session(self, container: GameContainer, clean_ssh_access: bool) -> bool:
+        """Kill an SSH session"""
+        try:
+            logger.info(f"Killing SSH session for container {container.docker_id}")
+            self.docker.execute_command(container, ["killall", "-9", "sshd"])
+
+            if clean_ssh_access:
+                self.clean_ssh_access(container)
+
+            logger.info(f"SSH access for container {container.docker_id} has been killed and cleaned")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to kill SSH session for container {container}: {e}")
+            return False
+
     def get_ssh_connection_string(self, container: GameContainer) -> Optional[str]:
         """Get SSH connection string for a container"""
         try:

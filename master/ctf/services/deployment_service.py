@@ -1,6 +1,10 @@
 import logging
+from datetime import timedelta
+
+from django.utils import timezone
 
 from ctf.models.challenge import DeploymentAccess
+from ctf.models.enums import GameSessionStatus
 from ctf.services.container_service import ContainerService
 from ctf.services.docker_service import DockerService
 
@@ -134,3 +138,82 @@ class DeploymentService:
         except Exception as e:
             logger.error(f"Failed to end deployment access: {e}")
             return False
+
+    def has_exceeded_time_limit(self, team, deployment):
+        """Check if team has exceeded their time limit for this deployment"""
+        game_session = deployment.assignments.filter(
+            team=team,
+            session__status=GameSessionStatus.ACTIVE
+        ).first()
+
+        if not game_session or not game_session.session.enable_time_restrictions:
+            return False
+
+        time_spent = self.get_team_total_access_time_for_deployment(team, deployment)
+        max_time = game_session.session.get_max_time_for_role(game_session.role)
+
+        logger.info(f"0 < {max_time} <= {time_spent}")
+        return 0 < max_time <= time_spent
+
+    @staticmethod
+    def get_team_total_access_time_for_deployment(team, deployment):
+        """Get total time spent by team on this deployment in minutes"""
+        game_session = deployment.assignments.filter(
+            team=team,
+            session__status=GameSessionStatus.ACTIVE
+        ).first()
+
+        if not game_session or not game_session.session.enable_time_restrictions:
+            return 0
+
+        access_records = DeploymentAccess.objects.filter(
+            deployment=deployment,
+            team=team
+        ).order_by('start_time')
+
+        time_periods = []
+        for record in access_records:
+            if record.is_active:
+                end_time = timezone.now()
+            else:
+                end_time = record.end_time
+
+            time_periods.append((record.start_time, end_time))
+
+        if not time_periods:
+            return 0
+
+        merged_periods = []
+        current_start, current_end = time_periods[0]
+        for start, end in time_periods[1:]:
+            if start <= current_end:
+                current_end = max(current_end, end)
+            else:
+                merged_periods.append((current_start, current_end))
+                current_start, current_end = start, end
+
+        merged_periods.append((current_start, current_end))
+
+        total_duration = timedelta(0)
+        for start, end in merged_periods:
+            total_duration += end - start
+
+        return total_duration.total_seconds() / 60
+
+    def get_remaining_time_for_deployment(self, team, deployment):
+        """Get remaining time in minutes for team's deployment access"""
+        game_session = deployment.assignments.filter(
+            team=team,
+            session__status=GameSessionStatus.ACTIVE
+        ).first()
+
+        if not game_session or not game_session.session.enable_time_restrictions:
+            return 0
+
+        max_time = game_session.session.get_max_time_for_role(game_session.role)
+        if max_time <= 0:
+            return 0
+
+        time_spent = self.get_team_total_access_time_for_deployment(team, deployment)
+        remaining = max_time - time_spent
+        return max(0, remaining)
