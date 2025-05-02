@@ -1,6 +1,7 @@
 import logging
 import uuid
 from pathlib import Path
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
@@ -61,6 +62,22 @@ class ChallengeDeployment(models.Model):
     def __str__(self):
         return f"Deployment {self.template.name} ({self.template.pk})"
 
+    @property
+    def blue_team(self):
+        return self.containers.first().blue_team
+
+    @property
+    def red_team(self):
+        return self.containers.first().red_team
+
+    @property
+    def total_blue_access_time(self):
+        return sum(access.total_duration.total_seconds() for access in self.access_records.filter(team=self.blue_team))
+
+    @property
+    def total_red_access_time(self):
+        return sum(access.total_duration.total_seconds() for access in self.access_records.filter(team=self.red_team))
+
     def update_activity(self):
         self.last_activity = timezone.now()
         self.save(update_fields=['last_activity'])
@@ -95,6 +112,7 @@ class DeploymentAccess(models.Model):
     access_type = models.CharField(max_length=50)
     start_time = models.DateTimeField(default=timezone.now)
     end_time = models.DateTimeField(null=True, blank=True)
+    duration = models.DurationField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     containers = models.JSONField(default=list, help_text="List of container IDs accessed during this session")
@@ -116,11 +134,18 @@ class DeploymentAccess(models.Model):
         """End the current session"""
         self.end_time = timezone.now()
         self.is_active = False
-        self.save(update_fields=['end_time', 'is_active'])
+        self.duration = self.end_time - self.start_time
+        self.save(update_fields=['end_time', 'is_active', 'duration'])
+
+    def get_current_duration(self):
+        """Get the current duration of an active session"""
+        if not self.is_active:
+            return self.duration or timedelta(0)
+        return timezone.now() - self.start_time
 
     @property
-    def duration(self):
-        """Get session duration in seconds"""
-        if self.end_time:
-            return (self.end_time - self.start_time).total_seconds()
-        return (timezone.now() - self.start_time).total_seconds()
+    def total_duration(self):
+        """Get total duration including active session time"""
+        if self.is_active:
+            return self.get_current_duration()
+        return self.duration or timedelta(0)

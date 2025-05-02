@@ -1,5 +1,5 @@
-from datetime import timedelta
 import uuid
+from datetime import timedelta
 
 from django.db import models
 from django.db.models.signals import post_save, pre_save
@@ -9,14 +9,28 @@ from django.utils import timezone
 from ctf.models import GamePhase
 from ctf.models.enums import GameSessionStatus, TeamRole
 
+
 class GameSession(models.Model):
     name = models.CharField(max_length=128, unique=True, help_text="Descriptive name for this game session")
     template = models.ForeignKey("ctf.ChallengeTemplate", null=True, on_delete=models.PROTECT,
                                  related_name="game_sessions")
     start_date = models.DateTimeField()
     end_date = models.DateTimeField(null=True)
-    rotation_period = models.IntegerField(help_text="Period in days")
+    rotation_period = models.PositiveIntegerField(help_text="Period in days")
     status = models.CharField(max_length=16, choices=GameSessionStatus, default=GameSessionStatus.PLANNED)
+
+    enable_time_restrictions = models.BooleanField(
+        default=False,
+        help_text="Whether to enable time restrictions for accessing deployments"
+    )
+    max_blue_team_time = models.PositiveIntegerField(
+        default=120,
+        help_text="Maximum time in minutes that a blue team can spend securing a deployment (0 means no limit)"
+    )
+    max_red_team_time = models.PositiveIntegerField(
+        default=0,
+        help_text="Maximum time in minutes that a red team can spend attacking a deployment (0 means no limit)"
+    )
 
     class Meta:
         ordering = ["-start_date"]
@@ -45,6 +59,12 @@ class GameSession(models.Model):
         """Get currently active team assignments"""
         now = timezone.now()
         return self.team_assignments.filter(start_date__lte=now, end_date__gte=now)
+
+    def get_max_time_for_role(self, role):
+        """Get maximum time allowed for a specific team role"""
+        if not self.enable_time_restrictions:
+            return 0
+        return self.max_blue_team_time if role == TeamRole.BLUE else self.max_red_team_time
 
 
 @receiver(post_save, sender=GameSession)
