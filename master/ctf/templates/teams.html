@@ -17,7 +17,6 @@
                                     <th>Red Points</th>
                                     <th>Status</th>
                                     <th>Members</th>
-                                    <th>Created</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -38,7 +37,6 @@
                                                 <span class="badge bg-light text-dark me-1">{{ member.username }}</span>
                                             {% endfor %}
                                         </td>
-                                        <td>{{ team.created_at|date:"F j, Y" }}</td>
                                     </tr>
                                 {% empty %}
                                     <tr>
