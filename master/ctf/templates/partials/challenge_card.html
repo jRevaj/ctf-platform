@@ -19,7 +19,7 @@
                 </div>
             </div>
             {% if not completed %}
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                <button type="button" title="Show details" class="btn btn-primary" data-bs-toggle="modal"
                         data-bs-target="#challengeModal{{ challenge.id }}">
                     <i class="bi bi-eye"></i>
                 </button>
@@ -39,115 +39,8 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <p class="card-text text-muted">
-                    Phase:
-                    <span class="text-capitalize {% if completed %}text-success{% elif challenge.role == 'red' %}text-danger{% elif challenge.role == 'blue' %}text-primary{% endif %}">
-                        {% if completed %}Completed{% else %}{{ challenge.role }}{% endif %}
-                    </span>
-                </p>
-                {% if not completed %}
-                    <p class="card-text text-muted">
-                        Phase ends: {{ challenge.end_date|date:"d.m.Y" }}
-                    </p>
-
-                    {% csrf_token %}
-
-                    {% if deployment_starting %}
-                        <div class="deployment-status" data-challenge-uuid="{{ challenge.uuid }}">
-                            <div class="text-center mb-4">
-                                <div class="spinner-border text-primary mb-3" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <p class="text-muted">Starting deployment, please wait...</p>
-                                <div class="progress mb-3">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
-                                         role="progressbar" style="width: 100%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    {% elif not challenge.deployment.is_running %}
-                        <div class="">
-                            <p class="text-muted">
-                                <i class="bi bi-info-circle"></i>
-                                This challenge is currently stopped. Start it to get connection information and connect
-                                to the challenge.
-                            </p>
-                            <div class="d-flex justify-content-center mt-4">
-                                <button type="button" class="btn btn-primary start-deployment-btn"
-                                        data-challenge-uuid="{{ challenge.uuid }}"
-                                        data-url="{% url 'start_deployment' challenge.uuid %}">
-                                    <i class="bi bi-play-fill"></i> Start challenge
-                                </button>
-                            </div>
-                        </div>
-                    {% else %}
-                        {% for container in challenge.deployment.containers.all %}
-                            {% if container.is_entrypoint %}
-                                <div class="mb-4">
-                                    <label for="connectionString{{ challenge.id }}" class="form-label">Connection
-                                        Information</label>
-                                    <div class="input-group">
-                                        {% with connection_string=container.get_connection_string %}
-                                            <input type="text"
-                                                   class="form-control {% if 'not' in connection_string %}text-muted{% endif %}"
-                                                   value="{{ connection_string }}" readonly/>
-                                            {% if 'not' not in connection_string %}
-                                                <button class="btn btn-outline-secondary" type="button"
-                                                        data-bs-toggle="tooltip" title="Copy to clipboard"
-                                                        onclick="copyToClipboard('{{ connection_string }}', 'connectionToast')">
-                                                    <i class="bi bi-clipboard"></i>
-                                                </button>
-                                            {% else %}
-                                                <button class="btn btn-outline-secondary" type="button" disabled>
-                                                    <i class="bi bi-clipboard-x"></i>
-                                                </button>
-                                            {% endif %}
-                                        {% endwith %}
-                                    </div>
-                                    {% with connection_string=container.get_connection_string %}
-                                        {% if 'not' in connection_string %}
-                                            <small class="text-muted">
-                                                <i class="bi bi-info-circle"></i>
-                                                The container is currently unavailable. It may be stopped or in maintenance.
-                                            </small>
-                                        {% endif %}
-                                    {% endwith %}
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                    {% endif %}
-                    {% if challenge.role == 'red' %}
-                        <hr/>
-                        <h6>Submit Flag</h6>
-                        {% if messages %}
-                            {% for message in messages %}
-                                <div class="alert alert-{{ message.tags }} mb-3">
-                                    <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-circle{% endif %} me-2"></i>
-                                    {{ message }}
-                                </div>
-                            {% endfor %}
-                        {% endif %}
-                        <form method="post" action="{% url 'submit_flag' challenge.uuid %}" class="flag-submit-form">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <label for="flagValue{{ challenge.id }}" class="form-label">Flag Value</label>
-                                <input type="text"
-                                       class="form-control {% if form and form.flag.errors %}is-invalid{% endif %}"
-                                       id="flagValue{{ challenge.id }}" name="flag" required
-                                       value="{% if form %}{{ form.flag.value }}{% endif %}"/>
-                                {% if form and form.flag.errors %}
-                                    <div class="invalid-feedback">
-                                        {{ form.flag.errors.0 }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                Submit Flag
-                            </button>
-                        </form>
-                    {% endif %}
-                {% endif %}
+            <div class="modal-body challenge-modal-body" data-challenge-uuid="{{ challenge.uuid }}">
+                {% include "partials/challenge_card_inner.html" with challenge=challenge completed=completed settings=settings %}
             </div>
         </div>
     </div>
@@ -174,11 +67,39 @@
         initFlagSubmitHandlers();
         initDeploymentStartHandlers();
         initDeploymentStatusChecks();
+        initChallengeModalHandlers();
 
         window.copyToClipboard = function (text, toastId) {
             navigator.clipboard.writeText(text).then(
                 function () {
-                    const toast = new bootstrap.Toast(document.getElementById(toastId));
+                    const mainToastContainer = document.querySelector('.toast-container.position-fixed');
+                    if (!mainToastContainer) return;
+
+                    const existingToast = document.getElementById(toastId);
+                    if (existingToast) {
+                        existingToast.remove();
+                    }
+
+                    const toastElement = document.createElement('div');
+                    toastElement.id = toastId;
+                    toastElement.className = 'toast align-items-center text-bg-success border-0';
+                    toastElement.setAttribute('role', 'alert');
+                    toastElement.setAttribute('aria-live', 'assertive');
+                    toastElement.setAttribute('aria-atomic', 'true');
+                    toastElement.setAttribute('data-bs-autohide', 'true');
+                    toastElement.setAttribute('data-bs-delay', '3000');
+
+                    toastElement.innerHTML = `
+                        <div class="d-flex z-3">
+                            <div class="toast-body">
+                                <i class="bi bi-check-circle me-2"></i>Connection string copied to clipboard!
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    `;
+
+                    mainToastContainer.appendChild(toastElement);
+                    const toast = new bootstrap.Toast(toastElement);
                     toast.show();
                 }
             );
@@ -189,13 +110,13 @@
         document.querySelectorAll('.flag-submit-form').forEach(form => {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
-                
+
                 const formData = new FormData(this);
                 const submitButton = this.querySelector('button[type="submit"]');
                 const modalBody = this.closest('.modal-body');
-                
+
                 submitButton.disabled = true;
-                
+
                 fetch(this.action, {
                     method: 'POST',
                     body: formData,
@@ -203,38 +124,38 @@
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newForm = doc.querySelector('.flag-submit-form');
-                    const successMessage = doc.querySelector('.alert-success');
-                    const errorMessage = doc.querySelector('.alert-danger');
-                    
-                    const existingMessages = modalBody.querySelectorAll('.alert');
-                    existingMessages.forEach(msg => msg.remove());
-                    
-                    if (successMessage) {
-                        modalBody.insertBefore(successMessage.cloneNode(true), this);
-                        this.reset();
-                    } else if (errorMessage) {
-                        modalBody.insertBefore(errorMessage.cloneNode(true), this);
-                    }
-                    
-                    if (newForm) {
-                        this.innerHTML = newForm.innerHTML;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    const errorAlert = document.createElement('div');
-                    errorAlert.className = 'alert alert-danger mb-3';
-                    errorAlert.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>An error occurred while submitting the flag.';
-                    modalBody.insertBefore(errorAlert, this);
-                })
-                .finally(() => {
-                    submitButton.disabled = false;
-                });
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newForm = doc.querySelector('.flag-submit-form');
+                        const successMessage = doc.querySelector('.alert-success');
+                        const errorMessage = doc.querySelector('.alert-danger');
+
+                        const existingMessages = modalBody.querySelectorAll('.alert');
+                        existingMessages.forEach(msg => msg.remove());
+
+                        if (successMessage) {
+                            modalBody.insertBefore(successMessage.cloneNode(true), this);
+                            this.reset();
+                        } else if (errorMessage) {
+                            modalBody.insertBefore(errorMessage.cloneNode(true), this);
+                        }
+
+                        if (newForm) {
+                            this.innerHTML = newForm.innerHTML;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        const errorAlert = document.createElement('div');
+                        errorAlert.className = 'alert alert-danger mb-3';
+                        errorAlert.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>An error occurred while submitting the flag.';
+                        modalBody.insertBefore(errorAlert, this);
+                    })
+                    .finally(() => {
+                        submitButton.disabled = false;
+                    });
             });
         });
     }
@@ -242,7 +163,6 @@
     function initDeploymentStartHandlers() {
         document.querySelectorAll('.start-deployment-btn').forEach(button => {
             button.addEventListener('click', function () {
-                const challengeUuid = this.getAttribute('data-challenge-uuid');
                 const url = this.getAttribute('data-url');
                 const modalBody = this.closest('.modal-body');
 
@@ -265,27 +185,27 @@
                         'Content-Type': 'application/json'
                     }
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.html) {
-                        modalBody.innerHTML = data.html;
-
-                        if (data.challenge_uuid) {
-                            pollDeploymentStatus(data.challenge_uuid, modalBody);
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok: ' + response.status);
                         }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showAlert(modalBody, 'danger', `Error starting deployment: ${error.message}`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.html) {
+                            modalBody.innerHTML = data.html;
 
-                    this.disabled = false;
-                });
+                            if (data.challenge_uuid) {
+                                pollDeploymentStatus(data.challenge_uuid, modalBody);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showAlert(modalBody, 'danger', `Error starting deployment: ${error.message}`);
+
+                        this.disabled = false;
+                    });
             });
         });
     }
@@ -314,65 +234,65 @@
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                console.error('Server reported error:', data.error);
-                if (attempt > 5) {
-                    showAlert(modalBody, 'danger', `Server error: ${data.error}`);
-                    return;
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
                 }
-            }
-
-            if (data.is_running) {
-                fetch(`/challenges/?challenge_uuid=${challengeUuid}`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    console.error('Server reported error:', data.error);
+                    if (attempt > 5) {
+                        showAlert(modalBody, 'danger', `Server error: ${data.error}`);
+                        return;
                     }
-                })
-                .then(response => response.json())
-                .then(refreshData => {
-                    if (refreshData.html) {
-                        modalBody.innerHTML = refreshData.html;
-
-                        initFlagSubmitHandlers();
-                        initDeploymentStartHandlers();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error refreshing challenge card:', error);
-                    showAlert(modalBody, 'danger', `Error refreshing challenge data: ${error.message}`);
-                });
-            } else {
-                if (data.connection_info && data.connection_info.length > 0) {
-                    console.warn('Server reports deployment not running but returned connection info');
                 }
 
-                setTimeout(() => {
-                    pollDeploymentStatus(challengeUuid, modalBody, attempt + 1);
-                }, pollInterval);
-            }
-        })
-        .catch(error => {
-            console.error('Error polling deployment status:', error);
+                if (data.is_running) {
+                    fetch(`/challenges/?challenge_uuid=${challengeUuid}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(refreshData => {
+                            if (refreshData.html) {
+                                modalBody.innerHTML = refreshData.html;
 
-            if (attempt % 5 === 0) {
-                showAlert(modalBody, 'danger', `Error checking deployment status: ${error.message}`);
-            }
+                                initFlagSubmitHandlers();
+                                initDeploymentStartHandlers();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error refreshing challenge card:', error);
+                            showAlert(modalBody, 'danger', `Error refreshing challenge data: ${error.message}`);
+                        });
+                } else {
+                    if (data.connection_info && data.connection_info.length > 0) {
+                        console.warn('Server reports deployment not running but returned connection info');
+                    }
 
-            if (attempt < maxAttempts) {
-                setTimeout(() => {
-                    pollDeploymentStatus(challengeUuid, modalBody, attempt + 1);
-                }, pollInterval);
-            } else {
-                showAlert(modalBody, 'danger', `Failed to get deployment status after multiple attempts. Please try again later.`);
-            }
-        });
+                    setTimeout(() => {
+                        pollDeploymentStatus(challengeUuid, modalBody, attempt + 1);
+                    }, pollInterval);
+                }
+            })
+            .catch(error => {
+                console.error('Error polling deployment status:', error);
+
+                if (attempt % 5 === 0) {
+                    showAlert(modalBody, 'danger', `Error checking deployment status: ${error.message}`);
+                }
+
+                if (attempt < maxAttempts) {
+                    setTimeout(() => {
+                        pollDeploymentStatus(challengeUuid, modalBody, attempt + 1);
+                    }, pollInterval);
+                } else {
+                    showAlert(modalBody, 'danger', `Failed to get deployment status after multiple attempts. Please try again later.`);
+                }
+            });
     }
 
     function showAlert(container, type, message) {
@@ -386,5 +306,33 @@
     function clearAlerts(container) {
         const alerts = container.querySelectorAll('.alert');
         alerts.forEach(alert => alert.remove());
+    }
+
+    function initChallengeModalHandlers() {
+        document.querySelectorAll('.challenge-modal-body').forEach(modal => {
+            const challengeUuid = modal.dataset.challengeUuid;
+            const modalElement = modal.closest('.modal');
+            modalElement.addEventListener('shown.bs.modal', function () {
+                if (challengeUuid) {
+                    fetch(`/challenges/?challenge_uuid=${challengeUuid}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.html) {
+                                modal.innerHTML = data.html;
+
+                                initFlagSubmitHandlers();
+                                initDeploymentStartHandlers();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching challenge data:', error);
+                        });
+                }
+            });
+        });
     }
 </script> 

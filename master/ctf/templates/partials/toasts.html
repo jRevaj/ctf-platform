@@ -1,0 +1,81 @@
+<!-- Toast container for messages -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="toast align-items-center text-bg-{{ message.tags }} border-0" role="alert" aria-live="assertive"
+                 aria-atomic="true" data-bs-delay="5000">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        {% if message.tags == 'success' %}
+                            <i class="bi bi-check-circle me-2"></i>
+                        {% elif message.tags == 'error' or message.tags == 'danger' %}
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                        {% elif message.tags == 'warning' %}
+                            <i class="bi bi-exclamation-circle me-2"></i>
+                        {% elif message.tags == 'info' %}
+                            <i class="bi bi-info-circle me-2"></i>
+                        {% endif %}
+                        {{ message }}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                            aria-label="Close"></button>
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<script>
+    // Global toast function
+    function showToast(message, type = 'info', duration = 5000) {
+        const toastContainer = document.getElementById('toastContainer');
+        const toastId = 'toast-' + Date.now();
+
+        const toastHtml = `
+            <div class="toast align-items-center text-bg-${type} border-0" id="${toastId}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="${duration}">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${getToastIcon(type)}
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+
+        // Remove the toast element after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', function () {
+            toastElement.remove();
+        });
+    }
+
+    function getToastIcon(type) {
+        switch (type) {
+            case 'success':
+                return '<i class="bi bi-check-circle me-2"></i>';
+            case 'error':
+            case 'danger':
+                return '<i class="bi bi-exclamation-triangle me-2"></i>';
+            case 'warning':
+                return '<i class="bi bi-exclamation-circle me-2"></i>';
+            case 'info':
+            default:
+                return '<i class="bi bi-info-circle me-2"></i>';
+        }
+    }
+
+    // Initialize toasts
+    document.addEventListener('DOMContentLoaded', function () {
+        // Show system message toasts
+        const systemToastElList = [].slice.call(document.querySelectorAll('.toast-container > .toast'));
+        systemToastElList.forEach(toastEl => {
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        });
+    });
+</script> 

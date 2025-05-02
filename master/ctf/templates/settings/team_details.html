@@ -1,176 +1,168 @@
 {% extends 'settings/base.html' %} {% block settings_content %}
-<div class="mb-5">
-    {% if user_team.created_by == user %}
-    <h2 class="h4 mb-4">Manage Team</h2>
-    {% else %}
-    <h2 class="h4 mb-4">Team Details</h2>
-    {% endif %}
-    <div class="mb-4">
-        <h3 class="h6">Team Information</h3>
-        <div class="mb-3">
-            <span class="text-muted">Team Name:</span>
-            <span class="ms-2 fw-medium">{{ user_team.name }}</span>
-        </div>
-        <div class="mb-3">
-            <span class="text-muted">Team Score:</span>
-            <span class="ms-2 fw-medium">{{ user_team.score }}</span>
-        </div>
-        <div class="d-flex gap-2 mb-3">
-            <span class="text-muted">Points distribution:</span>
-            <div class="ms-2">
-                <span class="badge bg-primary me-2">Blue: {{ user_team.blue_points }}</span>
-                <span class="badge bg-danger">Red: {{ user_team.red_points }}</span>
+    <div class="mb-5">
+        {% if user_team.created_by == user %}
+            <h2 class="h4 mb-4">Manage Team</h2>
+        {% else %}
+            <h2 class="h4 mb-4">Team Details</h2>
+        {% endif %}
+        <div class="mb-4">
+            <h3 class="h6">Team Information</h3>
+            <div class="mb-3">
+                <span class="text-muted">Team Name:</span>
+                <span class="ms-2 fw-medium">{{ user_team.name }}</span>
             </div>
-        </div>
-        <div class="mb-3">
-            <span class="text-muted">Can play:</span>
-            <span class="ms-2 fw-medium text-{{ user_team.is_in_game|yesno:'success,danger' }}">{{ user_team.is_in_game|yesno:"Yes,No" }}</span>
-            {% if not user_team.is_in_game %}
-            <div class="text-secondary text-opacity-50">
-                Team must be full and all members must have SSH keys set up!
+            <div class="mb-3">
+                <span class="text-muted">Team Score:</span>
+                <span class="ms-2 fw-medium">{{ user_team.score }}</span>
             </div>
+            <div class="d-flex gap-2 mb-3">
+                <span class="text-muted">Points distribution:</span>
+                <div class="ms-2">
+                    <span class="badge bg-primary me-2">Blue: {{ user_team.blue_points }}</span>
+                    <span class="badge bg-danger">Red: {{ user_team.red_points }}</span>
+                </div>
+            </div>
+            <div class="mb-3">
+                <span class="text-muted">Can play:</span>
+                <span class="ms-2 fw-medium text-{{ user_team.is_in_game|yesno:'success,danger' }}">{{ user_team.is_in_game|yesno:"Yes,No" }}</span>
+                {% if not user_team.is_in_game %}
+                    <div class="text-secondary text-opacity-50">
+                        Team must be full and all members must have SSH keys set up!
+                    </div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                <span class="text-muted">Created:</span>
+                <span class="ms-2 fw-medium">{{ user_team.created_at|date:"F j, Y" }}</span>
+            </div>
+            {% if user_team.created_by == user %}
+                <div class="mb-3">
+                    <label class="form-label">Team Join Key</label>
+                    <div class="d-flex gap-2">
+                        <div class="input-group">
+                            <input
+                                    type="text"
+                                    class="form-control"
+                                    value="{{ user_team.join_key }}"
+                                    readonly
+                            />
+                            <button
+                                    class="btn btn-outline-secondary"
+                                    type="button"
+                                    data-bs-toggle="tooltip"
+                                    title="Copy to clipboard"
+                                    onclick="copyToClipboard('{{ user_team.join_key }}')"
+                            >
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                        <form
+                                method="post"
+                                action="{% url 'regenerate_team_key' %}"
+                                class="d-inline"
+                                onsubmit="return confirmRegenerateKey()"
+                        >
+                            {% csrf_token %}
+                            <button
+                                    type="submit"
+                                    class="btn btn-outline-warning d-flex gap-2"
+                                    data-bs-toggle="tooltip"
+                                    title="Generate new join key"
+                                    {% if user_team.is_in_game %}disabled{% endif %}
+                            >
+                                <i class="bi bi-key-fill"></i>
+                                Regenerate
+                            </button>
+                        </form>
+                    </div>
+                    <div class="form-text">
+                        Share this key with team members to let them join your team
+                    </div>
+                </div>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        // Initialize tooltips
+                        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                        tooltipTriggerList.map(function (tooltipTriggerEl) {
+                            return new bootstrap.Tooltip(tooltipTriggerEl);
+                        });
+                    });
+
+                    function copyToClipboard(text) {
+                        navigator.clipboard.writeText(text).then(function () {
+                            showToast('Team join key copied to clipboard!', 'success');
+                            
+                            const tooltip = bootstrap.Tooltip.getInstance(
+                                document.querySelector('[data-bs-toggle="tooltip"]')
+                            );
+                            if (tooltip) {
+                                tooltip.hide();
+                            }
+                        }).catch(function() {
+                            showToast('Failed to copy to clipboard', 'error');
+                        });
+                    }
+
+                    function confirmRegenerateKey() {
+                        if (confirm('Are you sure you want to regenerate the team join key? This will invalidate the current key.')) {
+                            showToast('Regenerating team join key...', 'info');
+                            return true;
+                        }
+                        return false;
+                    }
+                </script>
+            {% endif %}
+
+            <h4 class="h6 mt-4">Team Members</h4>
+            <div class="list-group list-group-flush mb-3">
+                {% for member in user_team.users.all %}
+                    <div
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                    >
+                        <span class="fw-medium">{{ member.username }}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            {% if member == user_team.created_by %}
+                                <span class="badge bg-primary">Creator</span>
+                            {% elif not user_team.is_in_game and user_team.created_by == user and member != user %}
+                                <form
+                                        method="post"
+                                        action="{% url 'remove_team_member' member.id %}"
+                                        class="d-inline"
+                                        onsubmit="return confirmRemoveMember('{{ member.username }}')"
+                                >
+                                    {% csrf_token %}
+                                    <button
+                                            type="submit"
+                                            title="Remove member"
+                                            class="btn btn-danger btn-sm"
+                                    >
+                                        <i class="bi bi-person-x"></i>
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if user_team.created_by == user and user_team.is_in_game %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Your team is currently in a game. Team changes are not allowed
+                    during games.
+                </div>
             {% endif %}
         </div>
-        <div class="mb-3">
-            <span class="text-muted">Created:</span>
-            <span class="ms-2 fw-medium">{{ user_team.created_at|date:"F j, Y" }}</span>
-        </div>
-        {% if user_team.created_by == user %}
-        <div class="mb-3">
-            <label class="form-label">Team Join Key</label>
-            <div class="d-flex gap-2">
-                <div class="input-group">
-                    <input
-                        type="text"
-                        class="form-control"
-                        value="{{ user_team.join_key }}"
-                        readonly
-                    />
-                    <button
-                        class="btn btn-outline-secondary"
-                        type="button"
-                        data-bs-toggle="tooltip"
-                        title="Copy to clipboard"
-                        onclick="copyToClipboard('{{ user_team.join_key }}')"
-                    >
-                        <i class="bi bi-clipboard"></i>
-                    </button>
-                </div>
-                <form
-                    method="post"
-                    action="{% url 'regenerate_team_key' %}"
-                    class="d-inline"
-                >
-                    {% csrf_token %}
-                    <button
-                        type="submit"
-                        class="btn btn-outline-warning d-flex gap-2"
-                        data-bs-toggle="tooltip"
-                        title="Generate new join key"
-                        {% if user_team.is_in_game %}disabled{% endif %}
-                    >
-                        <i class="bi bi-key-fill"></i>
-                        Regenerate
-                    </button>
-                </form>
-            </div>
-            <div class="form-text">
-                Share this key with team members to let them join your team
-            </div>
-        </div>
-
-        <!-- Toast notification -->
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
-            <div
-                id="copyToast"
-                class="toast align-items-center text-bg-success border-0"
-                role="alert"
-                aria-live="assertive"
-                aria-atomic="true"
-            >
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="bi bi-check-circle me-2"></i>Team join key
-                        copied to clipboard!
-                    </div>
-                    <button
-                        type="button"
-                        class="btn-close btn-close-white me-2 m-auto"
-                        data-bs-dismiss="toast"
-                        aria-label="Close"
-                    ></button>
-                </div>
-            </div>
-        </div>
-
-        <script>
-            document.addEventListener("DOMContentLoaded", function () {
-                const tooltipTriggerList = [].slice.call(
-                    document.querySelectorAll('[data-bs-toggle="tooltip"]')
-                );
-                const tooltipList = tooltipTriggerList.map(function (
-                    tooltipTriggerEl
-                ) {
-                    return new bootstrap.Tooltip(tooltipTriggerEl);
-                });
-            });
-
-            function copyToClipboard(text) {
-                navigator.clipboard.writeText(text).then(function () {
-                    const toast = new bootstrap.Toast(
-                        document.getElementById("copyToast")
-                    );
-                    toast.show();
-
-                    const tooltip = bootstrap.Tooltip.getInstance(
-                        document.querySelector('[data-bs-toggle="tooltip"]')
-                    );
-                    if (tooltip) {
-                        tooltip.hide();
-                    }
-                });
-            }
-        </script>
-        {% endif %}
-
-        <h4 class="h6 mt-4">Team Members</h4>
-        <div class="list-group list-group-flush mb-3">
-            {% for member in user_team.users.all %}
-            <div
-                class="list-group-item d-flex justify-content-between align-items-center"
-            >
-                <span class="fw-medium">{{ member.username }}</span>
-                <div class="d-flex align-items-center gap-2">
-                    {% if member == user_team.created_by %}
-                    <span class="badge bg-primary">Creator</span>
-                    {% elif not user_team.is_in_game and user_team.created_by == user and member != user %}
-                    <form
-                        method="post"
-                        action="{% url 'remove_team_member' member.id %}"
-                        class="d-inline"
-                    >
-                        {% csrf_token %}
-                        <button
-                            type="submit"
-                            title="Remove member"
-                            class="btn btn-danger btn-sm"
-                        >
-                            <i class="bi bi-person-x"></i>
-                        </button>
-                    </form>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-
-        {% if user_team.created_by == user and user_team.is_in_game %}
-        <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle me-2"></i>
-            Your team is currently in a game. Team changes are not allowed
-            during games.
-        </div>
-        {% endif %}
     </div>
-</div>
+
+    <script>
+        function confirmRemoveMember(username) {
+            if (confirm(`Are you sure you want to remove ${username} from the team?`)) {
+                showToast(`Removing ${username} from the team...`, 'warning');
+                return true;
+            }
+            return false;
+        }
+    </script>
 {% endblock %}

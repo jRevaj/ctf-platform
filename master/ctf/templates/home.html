@@ -43,22 +43,50 @@
                     {% endfor %}
                 </div>
             {% else %}
-                <p class="alert alert-info text-center">
-                    No challenges found.
-                </p>
+                <div id="noChallengesMessage" data-message="No challenges found." style="display: none;"></div>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const message = document.getElementById('noChallengesMessage').dataset.message;
+                        
+                        // Create a toast element
+                        const toastContainer = document.createElement('div');
+                        toastContainer.classList.add('toast', 'align-items-center', 'text-bg-info', 'border-0');
+                        toastContainer.setAttribute('role', 'alert');
+                        toastContainer.setAttribute('aria-live', 'assertive');
+                        toastContainer.setAttribute('aria-atomic', 'true');
+                        toastContainer.setAttribute('data-bs-delay', '5000');
+                        
+                        const toastContent = `
+                            <div class="d-flex">
+                                <div class="toast-body">
+                                    <i class="bi bi-info-circle me-2"></i>${message}
+                                </div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                        `;
+                        
+                        toastContainer.innerHTML = toastContent;
+                        
+                        // Add to the existing toast container
+                        document.querySelector('.toast-container').appendChild(toastContainer);
+                        
+                        // Show the toast
+                        const toast = new bootstrap.Toast(toastContainer);
+                        toast.show();
+                    });
+                </script>
+                <p class="text-center mt-3">No challenges available at the moment.</p>
             {% endif %}
 
-            <!-- Toast notification -->
-            <div class="toast-container position-fixed bottom-0 end-0 p-3">
-                <div id="connectionToast" class="toast align-items-center text-bg-success border-0" role="alert"
-                     aria-live="assertive" aria-atomic="true">
-                    <div class="d-flex">
-                        <div class="toast-body">
-                            <i class="bi bi-check-circle me-2"></i>Connection string copied to clipboard!
-                        </div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
-                                aria-label="Close"></button>
+            <!-- Toast notification for copying connection string - do not show automatically -->
+            <div id="connectionToast" class="toast align-items-center text-bg-success border-0" role="alert"
+                 aria-live="assertive" aria-atomic="true" data-bs-autohide="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-check-circle me-2"></i>Connection string copied to clipboard!
                     </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                            aria-label="Close"></button>
                 </div>
             </div>
         {% endif %}
