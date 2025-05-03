@@ -8,8 +8,8 @@ from django.utils.timezone import localtime
 from ctf.models import ChallengeTemplate
 from ctf.models.enums import GameSessionStatus
 from ctf.models.game_session import GameSession
-from ctf.models.team import Team
-from ctf.models.user import User
+from accounts.models.team import Team
+from accounts.models.user import User
 
 logger = logging.getLogger(__name__)
 

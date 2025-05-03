@@ -7,8 +7,9 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
+from accounts.models import Team
 from ctf.management.commands.utils import create_teams, create_users
-from ctf.models import GameSession, TeamAssignment, ChallengeTemplate, GamePhase, Team
+from ctf.models import GameSession, TeamAssignment, ChallengeTemplate, GamePhase
 from ctf.models.enums import TeamRole, GameSessionStatus
 from ctf.models.settings import GlobalSettings
 from ctf.services import DockerService, ContainerService

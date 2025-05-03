@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from ctf.models import Team
+from accounts.models import Team
 
 
 class CreateTeamForm(forms.ModelForm):

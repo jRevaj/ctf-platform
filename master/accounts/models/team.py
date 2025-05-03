@@ -3,8 +3,6 @@ import uuid
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.db import models
 
-from ctf.models.settings import GlobalSettings
-
 
 class Team(models.Model):
     name = models.CharField(max_length=128)
@@ -14,7 +12,7 @@ class Team(models.Model):
     red_points = models.IntegerField(default=0)
     blue_points = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey('ctf.User', on_delete=models.SET_NULL, null=True, related_name='created_teams')
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, related_name='created_teams')
     is_in_game = models.BooleanField(default=False)
 
     class Meta:
@@ -43,6 +41,7 @@ class Team(models.Model):
         """Check if team can accept new members"""
         if self.is_in_game:
             return False
+        from ctf.models.settings import GlobalSettings
         settings = GlobalSettings.get_settings()
         if not settings.allow_team_changes:
             return False
@@ -60,6 +59,7 @@ class Team(models.Model):
 
     def should_be_in_game(self):
         """Check if team should be set as in game"""
+        from ctf.models.settings import GlobalSettings
         settings = GlobalSettings.get_settings()
         return (self.users.count() == settings.max_team_size and
                 self.all_members_have_ssh_keys())
@@ -83,6 +83,7 @@ class Team(models.Model):
 
     def clean(self):
         """Validate team size"""
+        from ctf.models.settings import GlobalSettings
         settings = GlobalSettings.get_settings()
         if self.pk:
             if self.users.count() > settings.max_team_size:

@@ -52,7 +52,7 @@ class Flag(models.Model):
         on_delete=models.CASCADE
     )
     owner = models.ForeignKey(
-        "ctf.Team",
+        "accounts.Team",
         related_name="owned_flags",
         null=True,
         blank=True,
@@ -60,7 +60,7 @@ class Flag(models.Model):
     )
     is_captured = models.BooleanField(default=False)
     captured_by = models.ForeignKey(
-        "ctf.Team",
+        "accounts.Team",
         related_name="captured_flags",
         null=True,
         blank=True,

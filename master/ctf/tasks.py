@@ -4,7 +4,8 @@ from datetime import timedelta
 from celery import shared_task
 from django.utils import timezone
 
-from ctf.models import GameSession, Team, GamePhase, ChallengeDeployment
+from accounts.models import Team
+from ctf.models import GameSession, GamePhase, ChallengeDeployment
 from ctf.models.challenge import DeploymentAccess
 from ctf.models.enums import GameSessionStatus, TeamRole, ContainerStatus
 from ctf.models.settings import GlobalSettings
@@ -111,7 +112,7 @@ def process_phases():
             try:
                 red_phase = session.phases.get(phase_name=TeamRole.RED)
 
-                teams = list(session.get_teams())
+                teams = list(session.get_teams)
                 if not teams:
                     logger.warning(f"No teams found for session {session.name}")
                     continue

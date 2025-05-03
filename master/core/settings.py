@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     'django_browser_reload',
     'rest_framework',
     'channels',
+    'accounts',
     'ctf',
 ]
 
@@ -153,7 +154,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH_USER_MODEL = "ctf.User"
+AUTH_USER_MODEL = "accounts.User"
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/

@@ -50,9 +50,10 @@ class GameSession(models.Model):
         deployment_ids = self.team_assignments.values_list('deployment_id', flat=True).distinct()
         return GameContainer.objects.filter(deployment_id__in=deployment_ids)
 
+    @property
     def get_teams(self):
         """Get all teams participating in this session"""
-        from ctf.models import Team
+        from accounts.models import Team
         return Team.objects.filter(assignments__session=self).distinct()
 
     def get_active_assignments(self):
@@ -116,7 +117,7 @@ def handle_completed_session(sender, instance, created, **kwargs):
 class TeamAssignment(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="team_assignments")
-    team = models.ForeignKey("ctf.Team", on_delete=models.CASCADE, related_name="assignments")
+    team = models.ForeignKey("accounts.Team", on_delete=models.CASCADE, related_name="assignments")
     deployment = models.ForeignKey("ctf.ChallengeDeployment", on_delete=models.CASCADE, related_name="assignments")
     role = models.CharField(max_length=8, choices=TeamRole, default=TeamRole.BLUE)
     start_date = models.DateTimeField()

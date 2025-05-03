@@ -5,7 +5,8 @@ from typing import List, Tuple
 
 from django.utils import timezone
 
-from ctf.models import Team, GameSession, TeamAssignment, GamePhase
+from accounts.models import Team
+from ctf.models import GameSession, TeamAssignment, GamePhase
 from ctf.models.enums import TeamRole, GameSessionStatus
 from ctf.models.settings import GlobalSettings
 from ctf.services import ChallengeService

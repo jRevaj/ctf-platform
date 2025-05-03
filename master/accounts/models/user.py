@@ -6,8 +6,6 @@ from django.contrib.auth.models import (
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from .team import Team
-
 
 def validate_ssh_key(value: str) -> None:
     """Validate SSH public key format"""
@@ -34,7 +32,7 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=128, unique=True)
     email = models.EmailField(unique=True)
-    team = models.ForeignKey(Team, related_name="users", on_delete=models.CASCADE, null=True, blank=True)
+    team = models.ForeignKey("accounts.Team", related_name="users", on_delete=models.CASCADE, null=True, blank=True)
     ssh_public_key = models.TextField(default="", blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

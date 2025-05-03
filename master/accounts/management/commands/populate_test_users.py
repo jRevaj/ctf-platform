@@ -2,7 +2,7 @@ import sys
 
 from django.core.management.base import BaseCommand
 
-from ctf.models import User
+from accounts.models import User
 from scripts.populate_users import populate_users
 
 

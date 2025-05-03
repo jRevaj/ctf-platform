@@ -2,7 +2,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from ctf.models import GameContainer, Team, GameSession
+from accounts.models import Team
+from ctf.models import GameContainer, GameSession
 from ctf.models.constants import DockerConstants
 from ctf.models.enums import ContainerStatus
 from ctf.models.exceptions import ContainerOperationError

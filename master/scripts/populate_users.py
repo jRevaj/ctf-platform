@@ -10,7 +10,7 @@ sys.path.append(str(project_root))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 django.setup()
 
-from ctf.models import User
+from accounts.models import User
 
 
 def populate_users(stdout=sys.stdout):

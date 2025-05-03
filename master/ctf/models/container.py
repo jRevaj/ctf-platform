@@ -115,14 +115,14 @@ class GameContainer(models.Model):
     deployment = models.ForeignKey('ctf.ChallengeDeployment', null=True, blank=True, related_name="containers",
                                    on_delete=models.CASCADE)
     blue_team = models.ForeignKey(
-        'ctf.Team',
+        'accounts.Team',
         related_name="blue_containers",
         null=True,
         blank=True,
         on_delete=models.SET_NULL
     )
     red_team = models.ForeignKey(
-        'ctf.Team',
+        'accounts.Team',
         related_name="red_containers",
         null=True,
         blank=True,

@@ -107,7 +107,7 @@ class ChallengeDeployment(models.Model):
 
 class DeploymentAccess(models.Model):
     deployment = models.ForeignKey(ChallengeDeployment, related_name="access_records", on_delete=models.CASCADE)
-    team = models.ForeignKey("ctf.Team", on_delete=models.CASCADE)
+    team = models.ForeignKey("accounts.Team", on_delete=models.CASCADE)
     session_id = models.CharField(max_length=256, null=True, blank=True)
     access_type = models.CharField(max_length=50)
     start_time = models.DateTimeField(default=timezone.now)
