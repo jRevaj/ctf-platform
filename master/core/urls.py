@@ -24,6 +24,7 @@ from ctf.views import home, ChallengesView, scoreboard_view, FlagSubmissionView,
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),
+    path ('', include('accounts.urls')),
     path('challenges/', ChallengesView.as_view(), name='challenges'),
     path('scoreboard/', scoreboard_view, name='scoreboard'),
     path('submit_flag/<uuid:challenge_uuid>/', FlagSubmissionView.as_view(), name='submit_flag'),
