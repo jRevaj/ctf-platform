@@ -10,7 +10,7 @@ from django.utils import timezone
 from accounts.models import Team
 from ctf.management.commands.utils import create_teams, create_users
 from ctf.models import GameSession, TeamAssignment, ChallengeTemplate, GamePhase
-from ctf.models.enums import TeamRole, GameSessionStatus
+from ctf.models.enums import TeamRole, GameSessionStatus, GamePhaseStatus
 from ctf.models.settings import GlobalSettings
 from ctf.services import DockerService, ContainerService
 from ctf.services.matchmaking_service import MatchmakingService
@@ -140,7 +140,7 @@ class Command(BaseCommand):
         phases = session.phases.all()
         blue_phase = phases.get(phase_name=TeamRole.BLUE)
         self._simulate_first_round(session, blue_phase, teams)
-        blue_phase.status = GameSessionStatus.COMPLETED
+        blue_phase.status = GamePhaseStatus.COMPLETED
         blue_phase.save(update_fields=["status"])
 
     def _simulate_first_round(self, session: GameSession, phase: GamePhase, teams: list[Team]) -> None:
@@ -158,7 +158,7 @@ class Command(BaseCommand):
         for assignment in blue_assignments:
             logger.info(f"Team: {assignment.team.name} -> Deployment: {assignment.deployment.pk}")
 
-        phase.status = GameSessionStatus.ACTIVE
+        phase.status = GamePhaseStatus.ACTIVE
         phase.save(update_fields=['status'])
         session.status = GameSessionStatus.ACTIVE
         session.save(update_fields=['status'])
@@ -180,7 +180,7 @@ class Command(BaseCommand):
         for assignment in red_assignments:
             logger.info(f"Team: {assignment.team.name} -> Deployment: {assignment.deployment.pk}")
 
-        phase.status = GameSessionStatus.ACTIVE
+        phase.status = GamePhaseStatus.ACTIVE
         phase.save(update_fields=['status'])
         logger.info("First round assignment tested successfully!")
 
@@ -207,6 +207,6 @@ class Command(BaseCommand):
         for assignment in red_assignments:
             logger.info(f"Team: {assignment.team.name} -> Deployment: {assignment.deployment.pk}")
 
-        phase.status = GameSessionStatus.ACTIVE
+        phase.status = GamePhaseStatus.ACTIVE
         phase.save(update_fields=['status'])
         logger.info("Swiss round assignment tested successfully!")

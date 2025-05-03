@@ -7,7 +7,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from ctf.models import GamePhase
-from ctf.models.enums import GameSessionStatus, TeamRole
+from ctf.models.enums import GameSessionStatus, TeamRole, GamePhaseStatus
 
 
 class GameSession(models.Model):
@@ -109,7 +109,7 @@ def handle_completed_session(sender, instance, created, **kwargs):
         old_status = getattr(instance, '_old_status', None)
         if old_status != GameSessionStatus.COMPLETED:
             from ctf.services import ContainerService, FlagService
-            instance.phases.all().update(status=GameSessionStatus.COMPLETED)
+            instance.phases.all().update(status=GamePhaseStatus.COMPLETED)
             FlagService().distribute_uncaptured_flags_points(instance)
             ContainerService().stop_session_containers(instance)
 

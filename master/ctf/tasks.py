@@ -8,7 +8,7 @@ from django.utils import timezone
 from accounts.models import Team
 from ctf.models import GameSession, GamePhase, ChallengeDeployment
 from ctf.models.challenge import DeploymentAccess
-from ctf.models.enums import GameSessionStatus, TeamRole, ContainerStatus
+from ctf.models.enums import GameSessionStatus, TeamRole, ContainerStatus, GamePhaseStatus
 from ctf.models.settings import GlobalSettings
 from ctf.services import DeploymentService
 from ctf.services.container_service import ContainerService
@@ -55,7 +55,7 @@ def process_sessions():
                 if success:
                     session.status = GameSessionStatus.ACTIVE
                     phase = session.phases.filter(phase_name=TeamRole.BLUE).first()
-                    phase.status = GameSessionStatus.ACTIVE
+                    phase.status = GamePhaseStatus.ACTIVE
                     phase.save(update_fields=["status"])
                     session.save(update_fields=['status'])
                     logger.info(f"Successfully prepared first round for session {session.name}")
@@ -103,7 +103,7 @@ def process_phases():
 
         try:
             red_phase = session.phases.filter(
-                status=GameSessionStatus.ACTIVE,
+                status=GamePhaseStatus.ACTIVE,
                 phase_name=TeamRole.RED,
                 end_date__lte=timezone.now(),
             ).first()
@@ -116,7 +116,7 @@ def process_phases():
                 continue
 
             blue_phase = session.phases.filter(
-                status=GameSessionStatus.ACTIVE,
+                status=GamePhaseStatus.ACTIVE,
                 phase_name=TeamRole.BLUE,
                 end_date__lte=timezone.now(),
             ).first()
@@ -147,9 +147,9 @@ def process_phases():
                         )
 
                     if success:
-                        blue_phase.status = GameSessionStatus.COMPLETED
+                        blue_phase.status = GamePhaseStatus.COMPLETED
                         blue_phase.save(update_fields=["status"])
-                        red_phase.status = GameSessionStatus.ACTIVE
+                        red_phase.status = GamePhaseStatus.ACTIVE
                         red_phase.save(update_fields=["status"])
                         logger.info(f"Successfully transitioned to red phase for session {session.name}")
                     else:

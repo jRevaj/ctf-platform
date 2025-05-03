@@ -1,11 +1,11 @@
 from django.db import models
 
-from ctf.models.enums import GameSessionStatus, TeamRole
+from ctf.models.enums import TeamRole, GamePhaseStatus
 
 
 class GamePhase(models.Model):
     session = models.ForeignKey("ctf.GameSession", on_delete=models.CASCADE, related_name='phases')
-    status = models.CharField(max_length=16, choices=GameSessionStatus, default=GameSessionStatus.PLANNED)
+    status = models.CharField(max_length=16, choices=GamePhaseStatus, default=GamePhaseStatus.PLANNED)
     phase_name = models.CharField(max_length=8, choices=TeamRole, default=TeamRole.BLUE)
     start_date = models.DateTimeField(help_text="Start date of this game phase")
     end_date = models.DateTimeField(help_text="End date of this game phase")

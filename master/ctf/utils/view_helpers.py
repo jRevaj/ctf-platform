@@ -1,7 +1,7 @@
 import logging
 
 from ctf.models import TeamAssignment
-from ctf.models.enums import GameSessionStatus, TeamRole
+from ctf.models.enums import TeamRole, GamePhaseStatus
 from ctf.services import ContainerService, DeploymentService
 
 logger = logging.getLogger(__name__)
@@ -38,8 +38,8 @@ def get_user_challenges(user):
             blue_phase = session.phases.filter(phase_name=TeamRole.BLUE).first()
             red_phase = session.phases.filter(phase_name=TeamRole.RED).first()
 
-            blue_completed = blue_phase and blue_phase.status == GameSessionStatus.COMPLETED
-            red_completed = red_phase and red_phase.status == GameSessionStatus.COMPLETED
+            blue_completed = blue_phase and blue_phase.status == GamePhaseStatus.COMPLETED
+            red_completed = red_phase and red_phase.status == GamePhaseStatus.COMPLETED
 
             display_assignment = None
 
@@ -51,9 +51,9 @@ def get_user_challenges(user):
                 elif challenge.role == TeamRole.RED:
                     red_assignment = challenge
 
-            if blue_phase and blue_phase.status == GameSessionStatus.ACTIVE and blue_assignment:
+            if blue_phase and blue_phase.status == GamePhaseStatus.ACTIVE and blue_assignment:
                 display_assignment = blue_assignment
-            elif blue_completed and red_phase and red_phase.status == GameSessionStatus.ACTIVE and red_assignment:
+            elif blue_completed and red_phase and red_phase.status == GamePhaseStatus.ACTIVE and red_assignment:
                 display_assignment = red_assignment
             elif blue_completed and red_completed and red_assignment:
                 display_assignment = red_assignment
