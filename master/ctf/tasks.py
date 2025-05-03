@@ -81,20 +81,27 @@ def process_phases():
     
     This task checks for overdue phases and transitions to the next phase.
     It handles both the transition from blue phase to red phase and the transition from red phase to completed session.
+    
+    Raises:
+        Exception: If there's an error processing phase transitions or if any session fails to transition
     """
     logger.info("Running process_phases task")
-    try:
-        active_sessions = GameSession.objects.filter(
-            status=GameSessionStatus.ACTIVE
-        ).prefetch_related('phases')
 
-        if not active_sessions.exists():
-            logger.info("No active sessions found for phase rotation")
-            return
+    active_sessions = GameSession.objects.filter(
+        status=GameSessionStatus.ACTIVE
+    ).prefetch_related('phases')
 
-        matchmaking_service = MatchmakingService()
+    if not active_sessions.exists():
+        logger.info("No active sessions found for phase rotation")
+        return
 
-        for session in active_sessions:
+    matchmaking_service = MatchmakingService()
+    failed_sessions = []
+
+    for session in active_sessions:
+        logger.info(f"Processing phase transition for session: {session.name}")
+
+        try:
             red_phase = session.phases.filter(
                 status=GameSessionStatus.ACTIVE,
                 phase_name=TeamRole.RED,
@@ -103,8 +110,9 @@ def process_phases():
 
             if red_phase:
                 logger.info(f"Red phase overdue for session: {session.name}, completing session")
-                session.status = GameSessionStatus.COMPLETED
-                session.save(update_fields=["status"])
+                with transaction.atomic():
+                    session.status = GameSessionStatus.COMPLETED
+                    session.save(update_fields=["status"])
                 continue
 
             blue_phase = session.phases.filter(
@@ -117,44 +125,54 @@ def process_phases():
                 logger.info(f"No overdue blue phase found for session: {session.name}")
                 continue
 
-            logger.info(f"Processing phase transition for session: {session.name}")
-
             try:
                 red_phase = session.phases.get(phase_name=TeamRole.RED)
-
                 teams = list(session.get_teams)
+
                 if not teams:
-                    logger.warning(f"No teams found for session {session.name}")
+                    error_msg = f"No teams found for session {session.name}"
+                    logger.warning(error_msg)
+                    failed_sessions.append((session.name, error_msg))
                     continue
 
-                if is_first_session_for_teams(teams):
-                    logger.info(f"Using random matching for first session: {session.name}")
-                    success = matchmaking_service.create_random_red_assignments(session, red_phase, teams)
-                else:
-                    logger.info(f"Using Swiss matching for subsequent session: {session.name}")
-                    settings = GlobalSettings.get_settings()
-                    success = matchmaking_service.create_swiss_assignments(session, red_phase, teams,
-                                                                           settings.number_of_tiers)
+                with transaction.atomic():
+                    if is_first_session_for_teams(teams):
+                        logger.info(f"Using random matching for first session: {session.name}")
+                        success = matchmaking_service.create_random_red_assignments(session, red_phase, teams)
+                    else:
+                        logger.info(f"Using Swiss matching for subsequent session: {session.name}")
+                        settings = GlobalSettings.get_settings()
+                        success = matchmaking_service.create_swiss_assignments(
+                            session, red_phase, teams, settings.number_of_tiers
+                        )
 
-                if success:
-                    blue_phase.status = GameSessionStatus.COMPLETED
-                    blue_phase.save(update_fields=["status"])
-                    red_phase.status = GameSessionStatus.ACTIVE
-                    red_phase.save(update_fields=["status"])
-                    logger.info(f"Successfully transitioned to red phase for session {session.name}")
-                else:
-                    logger.error(f"Failed to transition to red phase for session {session.name}")
+                    if success:
+                        blue_phase.status = GameSessionStatus.COMPLETED
+                        blue_phase.save(update_fields=["status"])
+                        red_phase.status = GameSessionStatus.ACTIVE
+                        red_phase.save(update_fields=["status"])
+                        logger.info(f"Successfully transitioned to red phase for session {session.name}")
+                    else:
+                        error_msg = f"Failed to transition to red phase for session {session.name}"
+                        logger.error(error_msg)
+                        failed_sessions.append((session.name, error_msg))
 
             except GamePhase.DoesNotExist:
-                logger.error(f"Red phase not found for session {session.name}")
-                continue
-            except Exception as e:
-                logger.error(f"Error processing transition for session {session.name}: {e}")
+                error_msg = f"Red phase not found for session {session.name}"
+                logger.error(error_msg)
+                failed_sessions.append((session.name, error_msg))
                 continue
 
-    except Exception as e:
-        logger.error(f"Error processing phase transitions: {e}")
-        raise
+        except Exception as e:
+            error_msg = f"Error processing transition for session {session.name}: {str(e)}"
+            logger.error(error_msg)
+            failed_sessions.append((session.name, error_msg))
+
+    if failed_sessions:
+        error_details = "\n".join([f"- {name}: {error}" for name, error in failed_sessions])
+        raise Exception(f"Failed to process some phase transitions:\n{error_details}")
+
+    logger.info("Successfully processed all phase transitions")
 
 
 @shared_task
