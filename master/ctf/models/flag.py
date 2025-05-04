@@ -27,7 +27,7 @@ class FlagManager(models.Manager):
             logger.error(f"Error creating flag: {e}")
             return None
 
-    def get_flag_by_value(self, value):
+    def get_free_flag_by_value(self, value):
         """Get flag by value"""
         try:
             return self.get(value=value, is_captured=False)
@@ -66,6 +66,13 @@ class Flag(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
     )
+    captured_by_user = models.ForeignKey(
+        "accounts.User",
+        related_name="captured_flags",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
     captured_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -82,16 +89,18 @@ class Flag(models.Model):
     def __str__(self):
         return self.value
 
-    def capture(self, team):
+    def capture(self, team, user=None):
         """Mark the flag as captured"""
         self.is_captured = True
         self.captured_by = team
+        self.captured_by_user = user
         self.captured_at = datetime.now(timezone.utc)
-        self.save(update_fields=["is_captured", "captured_by", "captured_at"])
+        self.save(update_fields=["is_captured", "captured_by", "captured_by_user", "captured_at"])
 
     def release(self):
         """Release the flag"""
         self.is_captured = False
         self.captured_by = None
+        self.captured_by_user = None
         self.captured_at = None
-        self.save(update_fields=["is_captured", "captured_by", "captured_at"])
+        self.save(update_fields=["is_captured", "captured_by", "captured_by_user", "captured_at"])

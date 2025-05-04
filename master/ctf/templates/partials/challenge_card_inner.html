@@ -100,7 +100,7 @@
             {% endif %}
         {% endif %}
     {% endif %}
-    {% if challenge.role == 'red' %}
+    {% if challenge.role == 'red' and challenge.deployment.is_running %}
         <hr/>
         <h6>Submit Flag</h6>
         {% if messages %}

@@ -9,9 +9,10 @@ logger = logging.getLogger(__name__)
 
 class FlagService:
     @staticmethod
-    def capture_and_award(flag: Flag, captured_by: Team) -> None:
+    def capture_and_award(flag: Flag, captured_by_user) -> None:
         """Handle flag capture"""
-        flag.capture(captured_by)
+        captured_by = captured_by_user.team
+        flag.capture(captured_by, captured_by_user)
         captured_by.red_points += flag.points
         captured_by.update_score()
 

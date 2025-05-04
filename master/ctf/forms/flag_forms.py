@@ -20,17 +20,17 @@ class FlagSubmissionForm(forms.Form):
         flag_value = self.cleaned_data['flag']
 
         try:
-            flag = Flag.objects.get_flag_by_value(flag_value)
+            flag = Flag.objects.get_free_flag_by_value(flag_value)
             if not flag:
                 raise ValidationError("Invalid flag")
-
-            if flag.is_captured:
-                raise ValidationError("Flag has already been captured")
 
             if flag.owner == self.team:
                 raise ValidationError("You cannot capture your own team's flag")
 
             if flag.container and flag.container.deployment:
+                if flag.container.red_team != self.team:
+                    raise ValidationError("You cannot capture flag that does not belong to deployment you are attacking")
+
                 blue_assignment = flag.container.deployment.assignments.get(role=TeamRole.BLUE)
                 if not blue_assignment:
                     raise ValidationError("Invalid flag configuration - no blue team assignment found")
