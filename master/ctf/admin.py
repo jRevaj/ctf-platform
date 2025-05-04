@@ -8,7 +8,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from accounts.models import Team
-from ctf.forms.admin_forms import GameContainerForm, GameSessionForm
+from ctf.forms.admin_forms import GameContainerForm, GameSessionForm, ChallengeTemplateForm
 from ctf.models import ChallengeTemplate, Flag, GameContainer, DeploymentAccess, GameSession, TeamAssignment, GamePhase, \
     ChallengeDeployment, ChallengeNetworkConfig
 from ctf.models.enums import ContainerStatus, GameSessionStatus
@@ -27,9 +27,34 @@ def handle_action_redirect(request, container_id):
 
 @admin.register(ChallengeTemplate)
 class ChallengeTemplateAdmin(admin.ModelAdmin):
+    form = ChallengeTemplateForm
     list_display = ("folder", "name", "description")
     actions = ["sync_templates"]
     change_list_template = "admin/ctf/challengetemplate/change_list.html"
+    readonly_fields = ('folder',)
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj:
+            form.base_fields['template_file'].help_text = "Upload a new zip file to replace the existing scenario"
+        return form
+
+    def delete_model(self, request, obj):
+        """Override delete_model to ensure template folder is deleted"""
+        try:
+            obj.delete()
+            self.message_user(request, "Template and its folder were successfully deleted.")
+        except Exception as e:
+            self.message_user(request, f"Error deleting template: {str(e)}", level="ERROR")
+
+    def delete_queryset(self, request, queryset):
+        """Override delete_queryset to handle bulk deletions"""
+        for obj in queryset:
+            try:
+                obj.delete()
+            except Exception as e:
+                self.message_user(request, f"Error deleting template {obj}: {str(e)}", level="ERROR")
+        self.message_user(request, "Selected templates were successfully deleted.")
 
     def get_urls(self):
         from django.urls import path
@@ -47,7 +72,7 @@ class ChallengeTemplateAdmin(admin.ModelAdmin):
         """View to handle template sync"""
         from django.core.management import call_command
         try:
-            call_command("sync_templates")
+            call_command("sync_templates", "--all")
             self.message_user(request, "Templates synced successfully.")
         except Exception as e:
             self.message_user(request, f"Error syncing templates: {str(e)}", level="ERROR")

@@ -1,11 +1,17 @@
 import logging
+import os
+import shutil
 import uuid
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
+from zipfile import ZipFile
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+
+from ctf.utils.template_helpers import read_template_info
 
 logger = logging.getLogger(__name__)
 
@@ -13,25 +19,90 @@ logger = logging.getLogger(__name__)
 class ChallengeTemplate(models.Model):
     folder = models.CharField(max_length=128, unique=True, null=True,
                               help_text="Folder name in game-templates directory")
-    name = models.CharField(max_length=64)
-    title = models.CharField(max_length=256, default="")
+    name = models.CharField(max_length=64, null=True, blank=True)
+    title = models.CharField(max_length=256, default="", blank=True)
     description = models.TextField(default="", blank=True)
     docker_compose = models.TextField(default="", blank=True)
     containers_config = models.JSONField(default=dict, null=True, blank=True)
     networks_config = models.JSONField(default=dict, null=True, blank=True)
+    template_file = models.FileField(upload_to='ctf/static/uploads/', null=True, blank=True,
+                                     help_text="Upload a zip file containing the scenario folder")
 
     class Meta:
         verbose_name = "Challenge Template"
         verbose_name_plural = "Challenge Templates"
 
     def __str__(self) -> str:
-        return self.name
+        return self.name or self.folder or "Unnamed Template"
 
     def get_template_folder(self) -> str:
-        return f"game-challenges/{self.name}"
+        return f"game-challenges/{self.name or self.folder}"
 
     def get_full_template_path(self) -> Path:
         return Path(settings.BASE_DIR) / self.get_template_folder()
+
+    def clean(self):
+        if self.template_file and not self.template_file.name.endswith('.zip'):
+            raise ValidationError({'template_file': 'Only zip files are allowed.'})
+
+        if not self.template_file and (not self.name or not self.title):
+            if not self.name:
+                raise ValidationError({'name': 'Name is required when not uploading a template file'})
+            if not self.title:
+                raise ValidationError({'title': 'Title is required when not uploading a template file'})
+
+    def save(self, *args, **kwargs):
+        template_file = self.template_file
+        if template_file:
+            try:
+                super().save(*args, **kwargs)
+
+                with ZipFile(template_file.path, 'r') as zip_ref:
+                    first_dir = next((name for name in zip_ref.namelist() if name.endswith('/')), None)
+                    if not first_dir:
+                        raise ValidationError('Zip file must contain a directory.')
+
+                    self.folder = first_dir.rstrip('/')
+                    self.name = self.folder
+
+                    target_dir = self.get_full_template_path()
+                    target_dir.mkdir(parents=True, exist_ok=True)
+
+                    zip_ref.extractall(target_dir.parent)
+
+                    template_info = read_template_info(target_dir)
+                    if template_info:
+                        self.title = template_info.get('title', '')
+                        self.description = template_info.get('description', '')
+                        self.docker_compose = template_info.get('docker_compose', '')
+                        self.containers_config = template_info.get('containers', {})
+                        self.networks_config = template_info.get('networks', {})
+                    else:
+                        raise ValidationError('Failed to read template information')
+
+                if os.path.exists(template_file.path):
+                    os.remove(template_file.path)
+                self.template_file = None
+
+                super().save(update_fields=['folder', 'name', 'title', 'description', 'docker_compose',
+                                            'containers_config', 'networks_config', 'template_file'])
+            except Exception as e:
+                if os.path.exists(template_file.path):
+                    os.remove(template_file.path)
+                raise ValidationError(f'Error processing zip file: {str(e)}')
+        else:
+            super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Delete the template folder when the template is deleted"""
+        template_path = self.get_full_template_path()
+        if template_path.exists():
+            try:
+                shutil.rmtree(template_path)
+                logger.info(f"Deleted template folder: {template_path}")
+            except Exception as e:
+                logger.error(f"Failed to delete template folder {template_path}: {e}")
+        super().delete(*args, **kwargs)
 
 
 class ChallengeNetworkConfig(models.Model):

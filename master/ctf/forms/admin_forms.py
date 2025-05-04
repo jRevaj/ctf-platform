@@ -1,8 +1,64 @@
-from django.forms import ModelForm, ValidationError
+from pathlib import Path
+from zipfile import ZipFile
+
+from django.conf import settings
+from django.forms import ModelForm, ValidationError, Textarea
 from django.utils import timezone
 
-from ctf.models import GameContainer, GameSession
+from ctf.models import GameContainer, GameSession, ChallengeTemplate
 from ctf.models.enums import GameSessionStatus
+
+
+class ChallengeTemplateForm(ModelForm):
+    class Meta:
+        model = ChallengeTemplate
+        fields = ['template_file', 'name', 'title', 'description', 'docker_compose', 'containers_config',
+                  'networks_config']
+        widgets = {
+            'docker_compose': Textarea(attrs={'rows': 10}),
+            'containers_config': Textarea(attrs={'rows': 10}),
+            'networks_config': Textarea(attrs={'rows': 10}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.files.get('template_file'):
+            self.fields['name'].required = True
+            self.fields['title'].required = True
+        else:
+            self.fields['name'].required = False
+            self.fields['title'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        template_file = cleaned_data.get('template_file')
+        name = cleaned_data.get('name')
+        title = cleaned_data.get('title')
+
+        if not template_file and (not name or not title):
+            if not name:
+                self.add_error('name', 'Name is required when not uploading a template file')
+            if not title:
+                self.add_error('title', 'Title is required when not uploading a template file')
+
+        if template_file:
+            try:
+                with ZipFile(template_file, 'r') as zip_ref:
+                    first_dir = next((name for name in zip_ref.namelist() if name.endswith('/')), None)
+                    if not first_dir:
+                        raise ValidationError('Zip file must contain a directory.')
+
+                    folder_name = first_dir.rstrip('/')
+                    template_path = Path(settings.BASE_DIR) / f"game-challenges/{folder_name}"
+
+                    if template_path.exists():
+                        self.add_error('template_file',
+                                       f'A template with folder name "{folder_name}" already exists. Please use a different folder name in your zip file.')
+            except Exception as e:
+                if not isinstance(e, ValidationError):
+                    self.add_error('template_file', f'Error validating zip file: {str(e)}')
+
+        return cleaned_data
 
 
 class GameContainerForm(ModelForm):
