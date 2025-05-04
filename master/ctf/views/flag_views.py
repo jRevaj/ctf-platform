@@ -53,7 +53,7 @@ class FlagSubmissionView(TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseMi
     def form_valid(self, form):
         try:
             flag = form.cleaned_data['flag_object']
-            FlagService.capture_and_award(flag, self.request.user.team)
+            FlagService.capture_and_award(flag, self.request.user)
             messages.success(self.request, "Flag captured successfully!")
         except Exception as e:
             messages.error(self.request, str(e))
@@ -79,7 +79,7 @@ class FlagSubmissionView(TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseMi
             'has_time_restriction': has_time_restriction,
             'max_time': max_time,
             'time_spent': time_spent,
-            'spent_percentage': round((time_spent / max_time) * 100),
+            'spent_percentage': round((time_spent / max_time) * 100) if max_time > 0 else 0,
             'remaining_time': remaining_time,
             'time_exceeded': time_exceeded
         }

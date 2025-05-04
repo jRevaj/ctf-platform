@@ -73,7 +73,7 @@
                             {% if 'not' in connection_string %}
                                 <small class="text-muted">
                                     <i class="bi bi-info-circle"></i>
-                                    The container is currently unavailable. It may be stopped or in maintenance.
+                                    The container is currently unavailable.
                                 </small>
                             {% endif %}
                         {% endwith %}
@@ -100,7 +100,7 @@
             {% endif %}
         {% endif %}
     {% endif %}
-    {% if challenge.role == 'red' %}
+    {% if challenge.role == 'red' and challenge.deployment.is_running %}
         <hr/>
         <h6>Submit Flag</h6>
         {% if messages %}
