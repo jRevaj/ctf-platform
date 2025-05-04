@@ -75,7 +75,7 @@ class DeploymentStatusView(TeamRequiredMixin, AjaxResponseMixin, DetailView):
                             'max_time': max_time,
                             'time_spent': time_spent,
                             'remaining_time': remaining_time,
-                            'spent_percentage': round((time_spent / max_time) * 100),
+                            'spent_percentage': round((time_spent / max_time) * 100) if max_time > 0 else 0,
                             'time_exceeded': time_exceeded
                         })
 
@@ -86,7 +86,7 @@ class DeploymentStatusView(TeamRequiredMixin, AjaxResponseMixin, DetailView):
                 'has_time_restriction': has_time_restriction,
                 'max_time': max_time,
                 'time_spent': time_spent,
-                'spent_percentage': round((time_spent / max_time) * 100),
+                'spent_percentage': round((time_spent / max_time) * 100) if max_time > 0 else 0,
                 'remaining_time': remaining_time,
                 'time_exceeded': time_exceeded
             })
@@ -165,7 +165,7 @@ class StartDeploymentView(TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseM
 def start_deployment_async(deployment_id, team_id):
     """Background task to start a deployment"""
     try:
-        from ctf.models import ChallengeDeployment, Team
+        from ctf.models import ChallengeDeployment
 
         logger.info(f"Starting deployment {deployment_id} for team {team_id}")
         deployment = ChallengeDeployment.objects.get(id=deployment_id)
