@@ -184,57 +184,74 @@ def check_inactive_deployments():
     2. Its last_activity timestamp is older than the timeout setting
     3. It has no active access records in the database
     4. All of its containers haven't had any activity in the timeout period
+    
+    Raises:
+        Exception: If there's an error checking or stopping inactive deployments
     """
     logger.info("Running check_inactive_deployments task")
+    settings = GlobalSettings.get_settings()
+    if not settings.enable_auto_container_shutdown:
+        logger.warning("Auto-container shutdown disabled")
+        return
+
     container_service = ContainerService()
+    cutoff_time = timezone.now() - timedelta(minutes=settings.inactive_container_timeout)
 
-    try:
-        settings = GlobalSettings.get_settings()
-        if not settings.enable_auto_container_shutdown:
-            logger.warning("Auto-container shutdown disabled")
-            return
+    inactive_deployments = ChallengeDeployment.objects.filter(
+        has_active_connections=False,
+        last_activity__lt=cutoff_time,
+        containers__status=ContainerStatus.RUNNING
+    ).distinct()
 
-        cutoff_time = timezone.now() - timedelta(minutes=settings.inactive_container_timeout)
+    inactive_deployments = inactive_deployments.exclude(
+        access_records__is_active=True
+    )
 
-        inactive_deployments = ChallengeDeployment.objects.filter(
-            has_active_connections=False,
-            last_activity__lt=cutoff_time,
-            containers__status=ContainerStatus.RUNNING
-        ).distinct()
+    truly_inactive_deployments = []
+    for deployment in inactive_deployments:
+        containers = deployment.containers.filter(status=ContainerStatus.RUNNING)
 
-        inactive_deployments = inactive_deployments.exclude(
-            access_records__is_active=True
-        )
+        has_recent_activity = False
+        for container in containers:
+            if container.last_activity >= cutoff_time:
+                has_recent_activity = True
+                logger.debug(f"Container {container.id} in deployment {deployment.id} has recent activity")
+                break
 
-        truly_inactive_deployments = []
-        for deployment in inactive_deployments:
-            containers = deployment.containers.filter(status=ContainerStatus.RUNNING)
+        if not has_recent_activity:
+            truly_inactive_deployments.append(deployment)
+            logger.debug(f"Deployment {deployment.id} confirmed inactive - all containers inactive")
 
-            has_recent_activity = False
-            for container in containers:
-                if container.last_activity >= cutoff_time:
-                    has_recent_activity = True
-                    logger.debug(f"Container {container.id} in deployment {deployment.id} has recent activity")
-                    break
+    if not truly_inactive_deployments:
+        logger.info("No inactive deployments found")
+        return
 
-            if not has_recent_activity:
-                truly_inactive_deployments.append(deployment)
-                logger.debug(f"Deployment {deployment.id} confirmed inactive - all containers inactive")
+    logger.info(f"Stopping {len(truly_inactive_deployments)} inactive deployments")
+    failed_deployments = []
 
-        if not truly_inactive_deployments:
-            logger.info("No inactive deployments found")
-            return
-
-        logger.info(f"Stopping {len(truly_inactive_deployments)} inactive deployments")
-
-        for deployment in truly_inactive_deployments:
+    for deployment in truly_inactive_deployments:
+        try:
             logger.info(f"Stopping inactive deployment {deployment.id} (last activity: {deployment.last_activity})")
             containers = deployment.containers.filter(status=ContainerStatus.RUNNING)
-            for container in containers:
-                container_service.stop_container(container)
 
-    except Exception as e:
-        logger.error(f"Error checking inactive deployments: {e}")
+            for container in containers:
+                try:
+                    container_service.stop_container(container)
+                except Exception as e:
+                    error_msg = f"Failed to stop container {container.id} in deployment {deployment.id}: {str(e)}"
+                    logger.error(error_msg)
+                    failed_deployments.append((deployment.id, error_msg))
+
+        except Exception as e:
+            error_msg = f"Error processing deployment {deployment.id}: {str(e)}"
+            logger.error(error_msg)
+            failed_deployments.append((deployment.id, error_msg))
+
+    if failed_deployments:
+        error_details = "\n".join([f"- Deployment {id}: {error}" for id, error in failed_deployments])
+        raise Exception(f"Failed to stop some inactive deployments:\n{error_details}")
+
+    logger.info("Successfully processed all inactive deployments")
 
 
 @shared_task()
