@@ -1,10 +1,11 @@
-name: corporate_breach
+name: challenge3
 title: Corporate Network Breach Challenge
 description: Multi-container environment simulating a corporate network with various interconnected services.
 
 containers:
   webserver:
     name: webserver
+    is_entrypoint: true
     flags:
       - id: wordpress_plugin_flag
         placeholder: "FLAG_PLACEHOLDER_1"

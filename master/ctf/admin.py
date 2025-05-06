@@ -28,7 +28,7 @@ def handle_action_redirect(request, container_id):
 @admin.register(ChallengeTemplate)
 class ChallengeTemplateAdmin(admin.ModelAdmin):
     form = ChallengeTemplateForm
-    list_display = ("folder", "name", "description")
+    list_display = ("folder", "name", "title", "description")
     actions = ["sync_templates"]
     change_list_template = "admin/ctf/challengetemplate/change_list.html"
     readonly_fields = ('folder',)
