@@ -16,13 +16,13 @@ class Team(models.Model):
     is_in_game = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["-score", "name"]
         indexes = [
             models.Index(fields=['uuid']),
             models.Index(fields=['join_key']),
         ]
-        verbose_name = "Global Settings"
-        verbose_name_plural = "Global Settings"
+        verbose_name = "Team"
+        verbose_name_plural = "Teams"
 
     def __str__(self):
         return self.name
@@ -90,6 +90,3 @@ class Team(models.Model):
                 raise ValidationError(f"Team cannot have more than {settings.max_team_size} members")
             if self.should_be_in_game():
                 self.is_in_game = True
-
-    class Meta:
-        ordering = ['-score', 'name']

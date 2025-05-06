@@ -1,6 +1,7 @@
 from django.db import models
 
-from ctf.models.enums import TeamRole, GamePhaseStatus
+from accounts.models.enums import TeamRole
+from ctf.models.enums import GamePhaseStatus
 
 
 class GamePhase(models.Model):
@@ -13,8 +14,8 @@ class GamePhase(models.Model):
     class Meta:
         ordering = ['-start_date']
         unique_together = ['session', 'phase_name']
-        verbose_name = "Game Phase"
-        verbose_name_plural = "Game Phases"
+        verbose_name = "Phase"
+        verbose_name_plural = "Phases"
 
     def __str__(self):
         return f"Phase {self.phase_name} of {self.session.name}"

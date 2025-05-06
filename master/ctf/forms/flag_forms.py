@@ -1,8 +1,8 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
+from accounts.models.enums import TeamRole
 from ctf.models import Flag
-from ctf.models.enums import TeamRole
 
 
 class FlagSubmissionForm(forms.Form):
@@ -29,7 +29,8 @@ class FlagSubmissionForm(forms.Form):
 
             if flag.container and flag.container.deployment:
                 if flag.container.red_team != self.team:
-                    raise ValidationError("You cannot capture flag that does not belong to deployment you are attacking")
+                    raise ValidationError(
+                        "You cannot capture flag that does not belong to deployment you are attacking")
 
                 blue_assignment = flag.container.deployment.assignments.get(role=TeamRole.BLUE)
                 if not blue_assignment:

@@ -36,7 +36,7 @@ class TeamAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     list_filter = ('is_in_game',)
     actions = ['set_teams_in_game', 'set_teams_not_in_game']
-    change_list_template = "admin/ctf/team/change_list.html"
+    change_list_template = "admin/team/change_list.html"
 
     @staticmethod
     def user_count(obj):
@@ -63,13 +63,13 @@ class TeamAdmin(admin.ModelAdmin):
         """View to set all teams as in game"""
         updated = self.model.objects.update(is_in_game=True)
         self.message_user(request, f"All teams ({updated}) were successfully set as in game.")
-        return redirect("admin:ctf_team_changelist")
+        return redirect("admin:accounts_team_changelist")
 
     def set_all_teams_not_in_game_view(self, request):
         """View to set all teams as not in game"""
         updated = self.model.objects.update(is_in_game=False)
         self.message_user(request, f"All teams ({updated}) were successfully set as not in game.")
-        return redirect("admin:ctf_team_changelist")
+        return redirect("admin:accounts_team_changelist")
 
     def set_teams_in_game(self, request, queryset):
         updated = queryset.update(is_in_game=True)

@@ -6,13 +6,14 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 
+from accounts.models.enums import TeamRole
 from ctf.models import GamePhase
-from ctf.models.enums import GameSessionStatus, TeamRole, GamePhaseStatus
+from ctf.models.enums import GameSessionStatus, GamePhaseStatus
 
 
 class GameSession(models.Model):
     name = models.CharField(max_length=128, unique=True, help_text="Descriptive name for this game session")
-    template = models.ForeignKey("ctf.ChallengeTemplate", null=True, on_delete=models.PROTECT,
+    template = models.ForeignKey("challenges.ChallengeTemplate", null=True, on_delete=models.PROTECT,
                                  related_name="game_sessions")
     start_date = models.DateTimeField()
     end_date = models.DateTimeField(null=True)
@@ -34,8 +35,8 @@ class GameSession(models.Model):
 
     class Meta:
         ordering = ["-start_date"]
-        verbose_name = "Game Session"
-        verbose_name_plural = "Game Sessions"
+        verbose_name = "Session"
+        verbose_name_plural = "Sessions"
 
     def __str__(self):
         return f"{self.name} ({self.status})"
@@ -46,9 +47,9 @@ class GameSession(models.Model):
 
     def get_containers(self):
         """Get all containers associated with this session via team assignments"""
-        from ctf.models.container import GameContainer
+        from challenges.models.container import ChallengeContainer
         deployment_ids = self.team_assignments.values_list('deployment_id', flat=True).distinct()
-        return GameContainer.objects.filter(deployment_id__in=deployment_ids)
+        return ChallengeContainer.objects.filter(deployment_id__in=deployment_ids)
 
     @property
     def get_teams(self):
@@ -108,7 +109,8 @@ def handle_completed_session(sender, instance, created, **kwargs):
     if instance.status == GameSessionStatus.COMPLETED:
         old_status = getattr(instance, '_old_status', None)
         if old_status != GameSessionStatus.COMPLETED:
-            from ctf.services import ContainerService, FlagService
+            from ctf.services import FlagService
+            from challenges.services import ContainerService
             instance.phases.all().update(status=GamePhaseStatus.COMPLETED)
             FlagService().distribute_uncaptured_flags_points(instance)
             ContainerService().stop_session_containers(instance)
@@ -118,7 +120,7 @@ class TeamAssignment(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="team_assignments")
     team = models.ForeignKey("accounts.Team", on_delete=models.CASCADE, related_name="assignments")
-    deployment = models.ForeignKey("ctf.ChallengeDeployment", on_delete=models.CASCADE, related_name="assignments")
+    deployment = models.ForeignKey("challenges.ChallengeDeployment", on_delete=models.CASCADE, related_name="assignments")
     role = models.CharField(max_length=8, choices=TeamRole, default=TeamRole.BLUE)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()

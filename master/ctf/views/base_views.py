@@ -1,7 +1,7 @@
 from django.shortcuts import render
 
 from accounts.models import Team
-from ctf.utils.view_helpers import get_user_challenges
+from challenges.utils.view_helpers import get_user_challenges
 
 
 def home(request):

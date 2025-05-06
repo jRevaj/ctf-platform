@@ -17,19 +17,16 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-from ctf.api.urls import api_urls
-from ctf.views import home, ChallengesView, scoreboard_view, FlagSubmissionView, StartDeploymentView, \
-    DeploymentStatusView
+from core.api.urls import api_urls
+from ctf.views import home, scoreboard_view, FlagSubmissionView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),
-    path ('', include('accounts.urls')),
-    path('challenges/', ChallengesView.as_view(), name='challenges'),
+    path('', include('accounts.urls')),
+    path('challenges/', include('challenges.urls')),
     path('scoreboard/', scoreboard_view, name='scoreboard'),
     path('submit_flag/<uuid:challenge_uuid>/', FlagSubmissionView.as_view(), name='submit_flag'),
-    path('start_deployment/<uuid:challenge_uuid>/', StartDeploymentView.as_view(), name='start_deployment'),
-    path('check_deployment/<uuid:challenge_uuid>/', DeploymentStatusView.as_view(), name='check_deployment_status'),
     path('__reload__/', include('django_browser_reload.urls')),
     path('api/', include(api_urls))
 ]

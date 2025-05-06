@@ -45,7 +45,7 @@ class Flag(models.Model):
     placeholder = models.CharField(max_length=128, default="", blank=True)
     hint = models.TextField(default="", blank=True)
     container = models.ForeignKey(
-        "ctf.GameContainer",
+        "challenges.ChallengeContainer",
         related_name="flags",
         null=True,
         blank=True,

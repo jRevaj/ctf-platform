@@ -1,7 +1,3 @@
-.status-actions {
-    margin-left: 10px;
-}
-
 .status-actions .button {
     padding: 5px 10px;
     margin: 0 2px;
@@ -21,9 +17,3 @@ select[disabled] {
     opacity: 1;
     cursor: not-allowed;
 }
-
-/* Make the status field and buttons align nicely */
-.field-status .readonly {
-    display: flex !important;
-    align-items: center;
-} 

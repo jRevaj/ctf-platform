@@ -5,11 +5,11 @@ from datetime import timedelta
 
 from django.utils.timezone import localtime
 
-from ctf.models import ChallengeTemplate
-from ctf.models.enums import GameSessionStatus
-from ctf.models.game_session import GameSession
 from accounts.models.team import Team
 from accounts.models.user import User
+from challenges.models import ChallengeTemplate
+from ctf.models.enums import GameSessionStatus
+from ctf.models.game_session import GameSession
 
 logger = logging.getLogger(__name__)
 

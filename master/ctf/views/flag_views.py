@@ -2,10 +2,11 @@ from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.views.generic import FormView
 
+from challenges.utils.view_helpers import get_user_challenges
 from ctf.forms.flag_forms import FlagSubmissionForm
 from ctf.models import TeamAssignment
 from ctf.services import FlagService
-from ctf.utils.view_helpers import get_session_time_restrictions, get_user_challenges
+from ctf.utils.view_helpers import get_session_time_restrictions
 from ctf.views.mixins import TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseMixin
 
 

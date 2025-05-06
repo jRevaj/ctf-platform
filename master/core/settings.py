@@ -88,6 +88,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'channels',
     'accounts',
+    'challenges',
     'ctf',
 ]
 

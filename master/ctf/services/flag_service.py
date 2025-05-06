@@ -1,7 +1,7 @@
 import logging
 
+from accounts.models.enums import TeamRole
 from ctf.models import Flag, GameSession
-from ctf.models.enums import TeamRole
 
 logger = logging.getLogger(__name__)
 

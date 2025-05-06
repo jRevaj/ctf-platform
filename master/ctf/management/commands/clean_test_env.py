@@ -6,9 +6,10 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from accounts.models import Team
-from ctf.models import GameContainer, GameSession, Flag, GamePhase, ChallengeDeployment, TeamAssignment
-from ctf.models.exceptions import ContainerOperationError, DockerOperationError
-from ctf.services import DockerService, ContainerService
+from challenges.models import ChallengeContainer, ChallengeDeployment
+from challenges.models.exceptions import ContainerOperationError, DockerOperationError
+from challenges.services import DockerService, ContainerService
+from ctf.models import GameSession, GamePhase, TeamAssignment, Flag
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class Command(BaseCommand):
 
     def _cleanup_game_resources(self):
         game_sessions = GameSession.objects.all()
-        game_containers = GameContainer.objects.all()
+        game_containers = ChallengeContainer.objects.all()
 
         temp_folder = os.path.join(settings.BASE_DIR, "temp")
         if os.path.exists(temp_folder):

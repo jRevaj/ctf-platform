@@ -8,12 +8,14 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from accounts.models import Team
-from ctf.management.commands.utils import create_teams, create_users
-from ctf.models import GameSession, TeamAssignment, ChallengeTemplate, GamePhase
-from ctf.models.enums import TeamRole, GameSessionStatus, GamePhaseStatus
+from accounts.models.enums import TeamRole
+from challenges.models import ChallengeTemplate
+from challenges.services import DockerService, ContainerService
+from ctf.management.commands.utils import create_users, create_teams
+from ctf.models import GameSession, GamePhase, TeamAssignment
+from ctf.models.enums import GameSessionStatus, GamePhaseStatus
 from ctf.models.settings import GlobalSettings
-from ctf.services import DockerService, ContainerService
-from ctf.services.matchmaking_service import MatchmakingService
+from ctf.services import MatchmakingService
 
 logger = logging.getLogger(__name__)
 
