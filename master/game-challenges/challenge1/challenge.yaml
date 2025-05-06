@@ -7,11 +7,6 @@ containers:
     name: target1
     is_entrypoint: true
     flags:
-      - id: apache_flag
-        placeholder: "FLAG_PLACEHOLDER_1"
-        points: 100
-        file: "/target1/Dockerfile"
-        hint: "Check web server configurations"
       - id: file_flag
         placeholder: "FLAG_PLACEHOLDER_2"
         points: 100
