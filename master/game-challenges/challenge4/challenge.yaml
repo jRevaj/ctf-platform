@@ -1,0 +1,42 @@
+name: challenge4
+title: Base multi-container challenge
+description: Challenge to test multiple containers in one network and multiple services per container
+
+containers:
+  target1:
+    name: target1
+    is_entrypoint: true
+    flags:
+      - id: file_flag
+        placeholder: "FLAG_PLACEHOLDER_2"
+        points: 100
+        file: "/target1/flag.txt"
+        hint: "Check root folder"
+      - id: mysql_flag
+        placeholder: "FLAG_PLACEHOLDER_3"
+        points: 200
+        file: "/target1/entrypoint.sh"
+        hint: "Database permissions might be loose"
+
+  target2:
+    name: target2
+
+  target3:
+    name: target3
+    flags:
+      - id: file_flag
+        placeholder: "FLAG_PLACEHOLDER_4"
+        points: 300
+        file: "/target3/entrypoint.sh"
+        hint: ""
+        service: "filesystem"
+
+networks:
+  internal_networks:
+    - name: "corporate_network"
+      containers: [ "target1", "target2", "target3" ]
+    - name: "backend_network"
+      containers: [ "target2", "target3" ]
+  dev_networks:
+    - name: "storage_network"
+      containers: [ "target3" ]

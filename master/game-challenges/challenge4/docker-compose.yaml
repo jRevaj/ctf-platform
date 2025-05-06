@@ -1,0 +1,17 @@
+services:
+  target1:
+    build: ./target1
+    ports:
+      - "2201:22"
+      - "8001:80"
+      - "3301:3306"
+
+  target2:
+    build: ./target2
+    ports:
+      - "2202:22"
+
+  target3:
+    build: ./target3
+    ports:
+      - "2203:22"
