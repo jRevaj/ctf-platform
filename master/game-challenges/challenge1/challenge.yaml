@@ -34,13 +34,13 @@ containers:
         service: "MySQL"
 
   target2:
-    name: "target2"
+    name: target2
     services:
       - name: "SSH"
         port: 22
 
   target3:
-    name: "target3"
+    name: target3
     services:
       - name: "SSH"
         port: 22

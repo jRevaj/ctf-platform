@@ -8,7 +8,7 @@ from django.db import models
 logger = logging.getLogger(__name__)
 
 
-def generate_flag(prefix="flag"):
+def generate_flag(prefix="fei-ctf"):
     """Generate a new random flag"""
     charset = string.ascii_letters + string.digits
     random_part = "".join(secrets.choice(charset) for _ in range(32))

@@ -1,6 +1,5 @@
 import logging
 
-from accounts.models import Team
 from ctf.models import Flag, GameSession
 from ctf.models.enums import TeamRole
 
@@ -55,3 +54,5 @@ class FlagService:
 
         for team, flags in flags_by_team.items():
             self.award_blue_points(flags)
+
+    # TODO: implement showing hints of unsubmitted flags
