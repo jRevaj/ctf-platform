@@ -1,18 +1,10 @@
 name: corporate_breach
 title: Corporate Network Breach Challenge
-description: Multi-container environment simulating a corporate network with various interconnected services. Players must identify and exploit vulnerabilities across multiple attack vectors to capture flags through diverse mechanisms including service exploits, database queries, application interactions, and more.
+description: Multi-container environment simulating a corporate network with various interconnected services.
 
 containers:
   webserver:
     name: webserver
-    base_image: ubuntu:22.04
-    services:
-      - name: "SSH"
-        port: 22
-      - name: "WordPress"
-        port: 80
-      - name: "MySQL"
-        port: 3306
     flags:
       - id: wordpress_plugin_flag
         placeholder: "FLAG_PLACEHOLDER_1"
@@ -32,161 +24,82 @@ containers:
         location: "WordPress hidden admin panel at /wp-admin/secret.php"
         hint: "Not all admin interfaces are well-known"
         service: "WordPress"
-    vulnerabilities:
-      - id: "wordpress_plugin_rce"
-        description: "Vulnerable WordPress plugin with remote code execution capability"
-      - id: "directory_listing_enabled"
-        description: "Directory listing enabled on web server"
-      - id: "mysql_weak_password"
-        description: "MySQL root account has a weak password"
 
   intranet:
     name: "intranet"
-    base_image: debian:11
-    services:
-      - name: "SSH"
-        port: 22
-      - name: "Internal Wiki (Gogs)"
-        port: 3000
-      - name: "Redis"
-        port: 6379
     flags:
       - id: api_endpoint_flag
         placeholder: "FLAG_PLACEHOLDER_4"
         points: 250
         location: "Response from API endpoint /api/v1/system/status with parameter debug=true"
         hint: "Some API endpoints have hidden parameters"
-        service: "Internal Wiki"
       - id: redis_command_flag
         placeholder: "FLAG_PLACEHOLDER_5"
         points: 200
         location: "Redis key 'secret_flag' visible only when executing specific Redis commands"
         hint: "Redis commands can reveal more than just GET"
-        service: "Redis"
       - id: session_hijacking_flag
         placeholder: "FLAG_PLACEHOLDER_6"
         points: 300
         location: "Cookie value when logged in as admin user"
         hint: "Session management can be vulnerable"
-        service: "Internal Wiki"
-    vulnerabilities:
-      - id: "gogs_sqli"
-        description: "SQL injection vulnerability in the wiki search functionality"
-      - id: "redis_no_auth"
-        description: "Redis instance running without authentication"
-      - id: "session_fixation"
-        description: "Session IDs aren't regenerated after login"
 
   fileserver:
     name: "fileserver"
-    base_image: ubuntu:22.04
-    services:
-      - name: "SSH"
-        port: 22
-      - name: "FTP"
-        port: 21
-      - name: "Samba"
-        port: 445
     flags:
       - id: hidden_share_flag
         placeholder: "FLAG_PLACEHOLDER_7"
         points: 200
         location: "Content of file accessible only through a hidden Samba share"
         hint: "Not all shares are visible by default"
-        service: "Samba"
       - id: ftp_upload_flag
         placeholder: "FLAG_PLACEHOLDER_8"
         points: 150
         location: "Response after uploading and executing a specific file via FTP"
         hint: "Some uploaded files might be executable in certain locations"
-        service: "FTP"
       - id: ssh_banner_flag
         placeholder: "FLAG_PLACEHOLDER_9"
         points: 100
         location: "SSH banner message when connecting to a specific user"
         hint: "SSH banners can vary by connection parameters"
-        service: "SSH"
-    vulnerabilities:
-      - id: "anonymous_ftp"
-        description: "FTP server configured to allow anonymous access with write permissions"
-      - id: "samba_public_share"
-        description: "Samba share with world-readable permissions"
-      - id: "custom_ssh_config"
-        description: "SSH configuration leaks information in custom banner messages"
 
   monitoring:
     name: "monitoring"
-    base_image: centos:7
-    services:
-      - name: "SSH"
-        port: 22
-      - name: "Nagios"
-        port: 8080
-      - name: "Elasticsearch"
-        port: 9200
     flags:
       - id: nagios_command_flag
         placeholder: "FLAG_PLACEHOLDER_10"
         points: 300
         location: "Output of a custom Nagios command execution"
         hint: "Monitoring systems execute commands to check service status"
-        service: "Nagios"
       - id: elasticsearch_query_flag
         placeholder: "FLAG_PLACEHOLDER_11"
         points: 350
         location: "Result of a specific Elasticsearch query on index 'system-secrets'"
         hint: "Complex search queries can reveal hidden data"
-        service: "Elasticsearch"
       - id: status_page_flag
         placeholder: "FLAG_PLACEHOLDER_12"
         points: 250
         location: "Revealed when exploiting XSS on Nagios status page"
         hint: "Input fields aren't always properly sanitized"
-        service: "Nagios"
-    vulnerabilities:
-      - id: "nagios_default_creds"
-        description: "Nagios web interface using default admin credentials"
-      - id: "elasticsearch_no_auth"
-        description: "Elasticsearch instance with no authentication required"
-      - id: "nagios_command_injection"
-        description: "Nagios check command vulnerable to command injection"
 
   devserver:
     name: "devserver"
-    base_image: ubuntu:22.04
-    services:
-      - name: "SSH"
-        port: 22
-      - name: "Jenkins"
-        port: 8080
-      - name: "GitLab"
-        port: 80
     flags:
       - id: jenkins_build_flag
         placeholder: "FLAG_PLACEHOLDER_13"
         points: 400
         location: "Console output of a specific Jenkins build job"
         hint: "Build logs can contain sensitive information"
-        service: "Jenkins"
       - id: gitlab_issue_flag
         placeholder: "FLAG_PLACEHOLDER_14"
         points: 350
         location: "Description of a hidden GitLab issue only visible to admin users"
         hint: "Access control might not be properly implemented"
-        service: "GitLab"
       - id: environment_var_flag
         placeholder: "FLAG_PLACEHOLDER_15"
         points: 325
         location: "Environment variable revealed through server-side template injection"
         hint: "Template rendering can expose server variables"
-        service: "GitLab"
-    vulnerabilities:
-      - id: "jenkins_groovy_script"
-        description: "Jenkins script console accessible with weak credentials"
-      - id: "gitlab_ssti"
-        description: "Server-side template injection in GitLab wiki rendering"
-      - id: "git_config_leak"
-        description: "Git configuration exposes credentials in .git directory"
 
 networks:
   internal_networks:

@@ -2,7 +2,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
-from accounts.forms.auth_forms import UserRegistrationForm, UserLoginForm
+from accounts.forms.auth_forms import UserRegistrationForm, UserLoginForm, UserSettingsForm
 
 
 def register_view(request):

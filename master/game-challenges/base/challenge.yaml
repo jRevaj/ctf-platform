@@ -1,6 +1,6 @@
 name: base
 title: Base SSH Container
-description: Basic SSH-enabled container for testing and development
+description: Basic SSH-enabled container for testing ssh config
 
 containers:
   target1:
