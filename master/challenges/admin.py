@@ -348,9 +348,9 @@ class ChallengeDeploymentAdmin(admin.ModelAdmin):
             '<a class="button" href="{}">Start</a>&nbsp;'
             '<a class="button" href="{}">Stop</a>&nbsp;'
             '<a class="button" href="{}">Sync</a>',
-            f"/admin/challengedeployment/{obj.pk}/start/",
-            f"/admin/challengedeployment/{obj.pk}/stop/",
-            f"/admin/challengedeployment/{obj.pk}/sync/",
+            f"/admin/challenges/challengedeployment/{obj.pk}/start/",
+            f"/admin/challenges/challengedeployment/{obj.pk}/stop/",
+            f"/admin/challenges/challengedeployment/{obj.pk}/sync/",
         )
 
     deployment_actions.short_description = "Actions"
