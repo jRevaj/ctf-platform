@@ -6,7 +6,7 @@ from accounts.models import Team
 from challenges.models import ChallengeContainer
 from challenges.models.constants import DockerConstants
 from challenges.models.enums import ContainerStatus
-from challenges.models.exceptions import ContainerOperationError
+from challenges.models.exceptions import ContainerOperationError, ContainerNotFoundError
 from challenges.services import DockerService
 from ctf.models import GameSession
 
@@ -98,11 +98,12 @@ class ContainerService:
                 logger.warning(f"Container {container.name} ({container.docker_id}) not found")
                 return False
 
+            # TODO: refactor
             docker_container.exec_run(
                 [
                     "sh",
                     "-c",
-                    "rm -rf /home/ctf-user/.ssh && rm -rf /home/ctf-user/.ssh/authorized_keys"
+                    "rm -rf /home/ctf-user/.ssh && rm -rf /home/ctf-user/.ssh/authorized_keys && history -c && rm /home/ctf-user/.bash_history && unset HISTFILE"
                 ]
             )
 
@@ -145,8 +146,8 @@ class ContainerService:
         """Kill an SSH session"""
         try:
             logger.info(f"Killing SSH session for container {container.docker_id}")
-            self.docker.execute_command(container, ["killall", "-9", "sshd"])
-
+            docker_container = self.docker.get_container(container.docker_id)
+            self.docker.execute_command(docker_container, ["killall", "-9", "sshd"], True)
             if clean_ssh_access:
                 self.clean_ssh_access(container)
 

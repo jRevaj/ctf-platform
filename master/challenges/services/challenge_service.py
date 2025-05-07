@@ -185,7 +185,8 @@ class ChallengeService:
                 logger.info(f"Disconnecting non-entrypoint containers from bridge network")
                 for container in containers:
                     if not container.is_entrypoint:
-                        self.docker_service.disconnect_from_bridge(container)
+                        docker_container = self.docker_service.get_container(container.docker_id)
+                        self.docker_service.disconnect_from_bridge(docker_container)
 
             if network_configs:
                 return network_configs

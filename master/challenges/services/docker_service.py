@@ -8,7 +8,6 @@ from docker.models.containers import Container
 from docker.models.networks import Network
 from docker.types import IPAMPool, IPAMConfig
 
-from challenges.models import ChallengeContainer
 from challenges.models.constants import DockerConstants
 from challenges.models.enums import ContainerStatus
 from challenges.models.exceptions import DockerOperationError, ContainerNotFoundError
@@ -127,11 +126,11 @@ class DockerService:
             logger.error(f"Failed to list containers: {e}")
             return []
 
-    def execute_command(self, container: ChallengeContainer, command: list[str]) -> tuple[int, str]:
+    @staticmethod
+    def execute_command(container: Container, command: list[str], privileged: bool = False) -> tuple[int, str]:
         """Execute a command in a container"""
         try:
-            docker_container = self.get_container(container.docker_id)
-            result = docker_container.exec_run(command, privileged=True)
+            result = container.exec_run(command, privileged=privileged)
 
             if result.exit_code != 0:
                 raise DockerOperationError(f"Failed to execute command: {result.output.decode('utf-8')}")
@@ -246,12 +245,12 @@ class DockerService:
             return False
 
     @staticmethod
-    def disconnect_container_from_network(network: Network, container: ChallengeContainer) -> bool:
+    def disconnect_container_from_network(network: Network, container: Container) -> bool:
         try:
-            network.disconnect(container.docker_id)
+            network.disconnect(container)
             return True
         except Exception as e:
-            logger.error(f"Failed to disconnect container {container.docker_id} from network {network.name}: {e}")
+            logger.error(f"Failed to disconnect container {container.name} from network {network.name}: {e}")
             return False
 
     @staticmethod
@@ -271,12 +270,12 @@ class DockerService:
             logger.error(f"Failed to get bridge network: {e}")
             return None
 
-    def disconnect_from_bridge(self, container: ChallengeContainer) -> bool:
+    def disconnect_from_bridge(self, container: Container) -> bool:
         """Disconnect a container from the default bridge network"""
         try:
             bridge = self.get_bridge_network()
             if bridge:
-                bridge.disconnect(container.docker_id)
+                bridge.disconnect(container)
                 logger.info(f"Container {container.name} disconnected from bridge network")
                 return True
             return False
