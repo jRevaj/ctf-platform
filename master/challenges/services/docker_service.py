@@ -6,7 +6,7 @@ import docker
 from docker.errors import APIError, NotFound
 from docker.models.containers import Container
 from docker.models.networks import Network
-from docker.types import IPAMPool, IPAMConfig
+from docker.types import IPAMPool, IPAMConfig, RestartPolicy
 
 from challenges.models.constants import DockerConstants
 from challenges.models.enums import ContainerStatus
@@ -38,6 +38,7 @@ class DockerService:
     def create_container(self, container_name: str, image_tag: str, port: int = None) -> Container:
         """Create and start a new Docker container"""
         try:
+            # TODO: check restart_policy - maybe refactor to low level api
             if port:
                 try:
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

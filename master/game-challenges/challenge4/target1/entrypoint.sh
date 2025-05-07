@@ -109,5 +109,9 @@ source /app/venv/bin/activate
 python3 /app/app.py &
 echo "Flask application started on port 8080" >> /tmp/debug.log
 
+# Remove access to this entrypoint file
+chmod 700 /entrypoint.sh
+chown root:root /entrypoint.sh
+
 # Keep container running
 tail -f /dev/null

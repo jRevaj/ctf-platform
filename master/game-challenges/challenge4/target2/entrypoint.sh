@@ -170,5 +170,9 @@ TARGET1_HOST=$TARGET1_HOST TARGET3_HOST=$TARGET3_HOST python3 /app/app.py &
 chmod 750 /app/app.py
 chown root:root /app/app.py
 
+# Remove access to this entrypoint file
+chmod 700 /entrypoint.sh
+chown root:root /entrypoint.sh
+
 # Keep container running
 tail -f /dev/null
