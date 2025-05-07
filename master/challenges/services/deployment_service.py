@@ -151,8 +151,8 @@ class DeploymentService:
         time_spent = self.get_team_total_access_time_for_deployment(team, deployment)
         max_time = game_session.session.get_max_time_for_role(game_session.role)
 
-        logger.info(f"0 < {max_time} <= {time_spent}")
-        return 0 < max_time <= time_spent
+        logger.info(f"Time spent: {time_spent} minutes, Max time: {max_time} minutes")
+        return max_time > 0 and time_spent >= max_time
 
     @staticmethod
     def get_team_total_access_time_for_deployment(team, deployment):
