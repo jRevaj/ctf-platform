@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from challenges.utils.helpers import get_time_string_from_seconds
 from challenges.utils.template_helpers import read_template_info
 
 logger = logging.getLogger(__name__)
@@ -143,19 +144,13 @@ class ChallengeDeployment(models.Model):
 
     @property
     def total_blue_access_time(self):
-        total = int(sum(access.total_duration.total_seconds() for access in self.access_records.filter(team=self.blue_team)))
-        hours = total // 3600
-        minutes = (total % 3600) // 60
-        seconds = total % 60
-        return f"{hours}h {minutes}m {seconds}s"
+        return get_time_string_from_seconds(
+            sum(access.total_duration.total_seconds() for access in self.access_records.filter(team=self.blue_team)))
 
     @property
     def total_red_access_time(self):
-        total = int(sum(access.total_duration.total_seconds() for access in self.access_records.filter(team=self.red_team)))
-        hours = total // 3600
-        minutes = (total % 3600) // 60
-        seconds = total % 60
-        return f"{hours}h {minutes}m {seconds}s"
+        return get_time_string_from_seconds(
+            sum(access.total_duration.total_seconds() for access in self.access_records.filter(team=self.red_team)))
 
     def update_activity(self):
         self.last_activity = timezone.now()
