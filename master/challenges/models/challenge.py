@@ -143,11 +143,19 @@ class ChallengeDeployment(models.Model):
 
     @property
     def total_blue_access_time(self):
-        return sum(access.total_duration.total_seconds() for access in self.access_records.filter(team=self.blue_team))
+        total = int(sum(access.total_duration.total_seconds() for access in self.access_records.filter(team=self.blue_team)))
+        hours = total // 3600
+        minutes = (total % 3600) // 60
+        seconds = total % 60
+        return f"{hours}h {minutes}m {seconds}s"
 
     @property
     def total_red_access_time(self):
-        return sum(access.total_duration.total_seconds() for access in self.access_records.filter(team=self.red_team))
+        total = int(sum(access.total_duration.total_seconds() for access in self.access_records.filter(team=self.red_team)))
+        hours = total // 3600
+        minutes = (total % 3600) // 60
+        seconds = total % 60
+        return f"{hours}h {minutes}m {seconds}s"
 
     def update_activity(self):
         self.last_activity = timezone.now()
