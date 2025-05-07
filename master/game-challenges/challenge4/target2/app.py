@@ -19,9 +19,9 @@ print(f"Attempting to connect to: http://{TARGET3_HOST}:8080")
 @app.route('/')
 def index():
     return jsonify({
-        'message': 'Welcome to the flag service',
-        'target1_host': TARGET1_HOST,
-        'target3_host': TARGET3_HOST
+        'message': 'Welcome to the flag service here are available hosts',
+        'target1': TARGET1_HOST,
+        'target3': TARGET3_HOST
     })
 
 @app.route('/target1')

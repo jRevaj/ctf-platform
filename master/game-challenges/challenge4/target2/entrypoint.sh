@@ -1,4 +1,3 @@
-# game-containers/base/entrypoint.sh
 #!/bin/bash
 
 # Debug info
@@ -23,7 +22,7 @@ echo "SSH permissions set" >> /tmp/debug.log
 ssh-keygen -A
 echo "SSH host keys generated" >> /tmp/debug.log
 
-# Create the hidden key with proper permissions
+# Create the hidden key file
 mkdir -p /var/log/.backup
 
 # Use a fixed key instead of generating a new one each time
@@ -119,9 +118,9 @@ for retry in {1..30}; do
     echo "Found $INTERFACES network interfaces" >> /tmp/debug.log
     
     # Try to determine our own IP and network
-    if ip addr show eth0 2>/dev/null | grep -q 'inet '; then
-      OWN_IP=$(ip addr show eth0 | grep -o 'inet [0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' | cut -d' ' -f2)
-      echo "Found eth0 IP: $OWN_IP" >> /tmp/debug.log
+    if ip addr show eth1 2>/dev/null | grep -q 'inet '; then
+      OWN_IP=$(ip addr show eth1 | grep -o 'inet [0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' | cut -d' ' -f2)
+      echo "Found eth1 IP: $OWN_IP" >> /tmp/debug.log
       
       # Calculate based on common Docker network pattern
       BASE_IP=$(echo $OWN_IP | cut -d. -f1-3)
@@ -165,7 +164,11 @@ echo "Final IPs: target1=$TARGET1_HOST, target3=$TARGET3_HOST" >> /tmp/debug.log
 
 # Start Flask application with the discovered IP
 source /app/venv/bin/activate
-TARGET1_HOST=$TARGET1_HOST TARGET3_HOST=$TARGET3_HOST python3 /app.py &
+TARGET1_HOST=$TARGET1_HOST TARGET3_HOST=$TARGET3_HOST python3 /app/app.py &
+
+# Remove access to the app
+chmod 750 /app/app.py
+chown root:root /app/app.py
 
 # Keep container running
 tail -f /dev/null

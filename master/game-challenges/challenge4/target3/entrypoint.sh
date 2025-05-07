@@ -1,10 +1,9 @@
-# game-containers/base/entrypoint.sh
 #!/bin/bash
 
 # Debug info
 echo "Starting entrypoint script" > /tmp/debug.log
 
-# Set a password for ctf-user for debugging
+# Set a password for ctf-user
 echo "ctf-user:password" | chpasswd
 echo "Set password for ctf-user" >> /tmp/debug.log
 
@@ -19,14 +18,13 @@ EOL
 
 echo "Added matching public key to authorized_keys" >> /tmp/debug.log
 
-# Set proper permissions
+# Set permissions
 chown -R ctf-user:ctf-user /home/ctf-user/.ssh
 chmod 700 /home/ctf-user/.ssh
 chmod 600 /home/ctf-user/.ssh/authorized_keys
 echo "SSH permissions set" >> /tmp/debug.log
 
-# Create the final flag file
-# Create a more obfuscated flag file
+# Create the final flag file with obfuscated flag
 echo "FLAG_PLACEHOLDER_4" | base64 | rev > /home/ctf-user/flag.txt
 chmod 600 /home/ctf-user/flag.txt
 chown ctf-user:ctf-user /home/ctf-user/flag.txt
@@ -43,7 +41,7 @@ echo "SSH daemon started" >> /tmp/debug.log
 
 # Start Flask application
 source /app/venv/bin/activate
-python3 /app.py &
+python3 /app/app.py &
 echo "Flask application started on port 8080" >> /tmp/debug.log
 
 # Keep container running

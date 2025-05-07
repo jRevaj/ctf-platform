@@ -6,15 +6,15 @@ echo "Current directory: $(pwd)" >> /tmp/debug.log
 ls -la / >> /tmp/debug.log
 
 # Set a specific password for ctf-user
-echo "ctf-user:starthere" | chpasswd
+echo "ctf-user:admin" | chpasswd
 echo "Set password for ctf-user" >> /tmp/debug.log
 
 # Create a hint file for the challenge
 echo "I found these credentials in the admin's notes:" > /home/ctf-user/network_scan.txt
 echo "Server: 172.1.0.3 - Username: ctf-user, Password: s3cret_t4rget2" >> /home/ctf-user/network_scan.txt
 echo "There might be more servers on the network..." >> /home/ctf-user/network_scan.txt
-chmod 644 /home/ctf-user/network_scan.txt
-chown ctf-user:ctf-user /home/ctf-user/network_scan.txt
+chmod 750 /home/ctf-user/network_scan.txt
+chown root:root /home/ctf-user/network_scan.txt
 
 # Hide the secret in hidden directories with misleading names
 mkdir -p /var/www/.backup/.system
@@ -35,8 +35,8 @@ touch /home/ctf-user/.ssh/authorized_keys
 echo "SSH directory created" >> /tmp/debug.log
 ls -la /home/ctf-user/.ssh >> /tmp/debug.log
 
-# Set proper permissions
-chown -R ctf-user:ctf-user /home/ctf-user/.ssh
+# Set proper permissions for SSH
+chown -R root:root /home/ctf-user/.ssh
 chmod 700 /home/ctf-user/.ssh
 chmod 600 /home/ctf-user/.ssh/authorized_keys
 echo "SSH permissions set" >> /tmp/debug.log
@@ -78,7 +78,7 @@ INSERT INTO users (username, password) VALUES
 INSERT INTO secrets VALUES (1, 'FLAG_PLACEHOLDER_3');
 
 -- Create MySQL user with same password as system user
-CREATE USER 'ctf-user'@'localhost' IDENTIFIED BY 'starthere';
+CREATE USER 'ctf-user'@'localhost' IDENTIFIED BY 'admin123';
 GRANT SELECT ON ctf_db.* TO 'ctf-user'@'localhost';
 FLUSH PRIVILEGES;
 EOF
@@ -106,10 +106,8 @@ echo "SSH daemon started" >> /tmp/debug.log
 
 # Start Flask application
 source /app/venv/bin/activate
-python3 /app.py &
+python3 /app/app.py &
 echo "Flask application started on port 8080" >> /tmp/debug.log
-
-rm /expose_secret.c
 
 # Keep container running
 tail -f /dev/null
