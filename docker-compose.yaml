@@ -101,5 +101,7 @@ services:
     env_file:
       - .env
 
+# TODO: implement networks
+
 volumes:
   postgres_data:

@@ -17,6 +17,16 @@ services:
       - "9232:9200"
     networks:
       - corporate_network
+      
+  monitoring:
+    build: ./monitoring
+    ports:
+      - "2233:22"
+      - "8033:80"
+      - "3033:3000"
+      - "8090:8090"
+    networks:
+      - corporate_network
 
 networks:
   corporate_network:

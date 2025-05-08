@@ -2,6 +2,7 @@ name: challenge3
 title: Corporate Network Breach Challenge
 description: Multi-container environment simulating a corporate network with various interconnected services.
 
+# TODO: test deployment through platform
 containers:
   webserver:
     name: webserver

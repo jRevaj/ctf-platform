@@ -6,7 +6,7 @@ from accounts.models import Team
 from challenges.models import ChallengeContainer
 from challenges.models.constants import DockerConstants
 from challenges.models.enums import ContainerStatus
-from challenges.models.exceptions import ContainerOperationError, ContainerNotFoundError
+from challenges.models.exceptions import ContainerOperationError
 from challenges.services import DockerService
 from ctf.models import GameSession
 
@@ -25,6 +25,7 @@ class ContainerService:
 
     def create_related_containers(self, template, temp_dir, session, blue_team):
         """Batch create related containers"""
+        # TODO: try to parallelize this?
         try:
             containers = []
             template_path = Path(temp_dir) if temp_dir else template.get_full_template_path()

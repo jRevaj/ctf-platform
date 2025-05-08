@@ -9,6 +9,8 @@
         Phase ends: {{ challenge.end_date|date:"d.m.Y" }}
     </p>
 
+    {# TODO: implement hints system #}
+
     {% if has_time_restriction %}
         {% include "partials/time_restrictions.html" %}
     {% endif %}

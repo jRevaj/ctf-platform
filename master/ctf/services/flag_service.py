@@ -7,6 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 class FlagService:
+    # TODO: think of flag checkers - provide endpoints that containers can connect to?
+
     @staticmethod
     def capture_and_award(flag: Flag, captured_by_user) -> None:
         """Handle flag capture"""
@@ -55,4 +57,4 @@ class FlagService:
         for team, flags in flags_by_team.items():
             self.award_blue_points(flags)
 
-    # TODO: implement showing hints of unsubmitted flags
+    # TODO: implement showing hints of unsubmitted flags + points deduction system
