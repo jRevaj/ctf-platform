@@ -22,90 +22,24 @@ containers:
         points: 100
         location: "WordPress hidden admin panel at /wp-admin/secret.php"
         hint: "Not all admin interfaces are well-known"
-
-  intranet:
-    name: "intranet"
+  fileserver:
+    name: fileserver
+    is_entrypoint: false
     flags:
-      - id: api_endpoint_flag
+      - id: internal_config_flag
         placeholder: "FLAG_PLACEHOLDER_4"
-        points: 250
-        location: "Response from API endpoint /api/v1/system/status with parameter debug=true"
-        hint: "Some API endpoints have hidden parameters"
-      - id: redis_command_flag
+        points: 150
+        location: "Hidden in an encrypted backup file in /srv/data/backups/"
+        hint: "Some backups may contain sensitive information if you can decrypt them"
+      - id: elasticsearch_flag
         placeholder: "FLAG_PLACEHOLDER_5"
         points: 200
-        location: "Redis key 'secret_flag' visible only when executing specific Redis commands"
-        hint: "Redis commands can reveal more than just GET"
-      - id: session_hijacking_flag
-        placeholder: "FLAG_PLACEHOLDER_6"
-        points: 300
-        location: "Cookie value when logged in as admin user"
-        hint: "Session management can be vulnerable"
-
-  fileserver:
-    name: "fileserver"
-    flags:
-      - id: hidden_share_flag
-        placeholder: "FLAG_PLACEHOLDER_7"
-        points: 200
-        location: "Content of file accessible only through a hidden Samba share"
-        hint: "Not all shares are visible by default"
-      - id: ftp_upload_flag
-        placeholder: "FLAG_PLACEHOLDER_8"
-        points: 150
-        location: "Response after uploading and executing a specific file via FTP"
-        hint: "Some uploaded files might be executable in certain locations"
-      - id: ssh_banner_flag
-        placeholder: "FLAG_PLACEHOLDER_9"
-        points: 100
-        location: "SSH banner message when connecting to a specific user"
-        hint: "SSH banners can vary by connection parameters"
-
-  monitoring:
-    name: "monitoring"
-    flags:
-      - id: nagios_command_flag
-        placeholder: "FLAG_PLACEHOLDER_10"
-        points: 300
-        location: "Output of a custom Nagios command execution"
-        hint: "Monitoring systems execute commands to check service status"
-      - id: elasticsearch_query_flag
-        placeholder: "FLAG_PLACEHOLDER_11"
-        points: 350
-        location: "Result of a specific Elasticsearch query on index 'system-secrets'"
-        hint: "Complex search queries can reveal hidden data"
-      - id: status_page_flag
-        placeholder: "FLAG_PLACEHOLDER_12"
-        points: 250
-        location: "Revealed when exploiting XSS on Nagios status page"
-        hint: "Input fields aren't always properly sanitized"
-
-  devserver:
-    name: "devserver"
-    flags:
-      - id: jenkins_build_flag
-        placeholder: "FLAG_PLACEHOLDER_13"
-        points: 400
-        location: "Console output of a specific Jenkins build job"
-        hint: "Build logs can contain sensitive information"
-      - id: gitlab_issue_flag
-        placeholder: "FLAG_PLACEHOLDER_14"
-        points: 350
-        location: "Description of a hidden GitLab issue only visible to admin users"
-        hint: "Access control might not be properly implemented"
-      - id: environment_var_flag
-        placeholder: "FLAG_PLACEHOLDER_15"
-        points: 325
-        location: "Environment variable revealed through server-side template injection"
-        hint: "Template rendering can expose server variables"
+        location: "Hidden in Elasticsearch index 'system-secrets'"
+        hint: "NoSQL databases like Elasticsearch can contain valuable information if you query them correctly"
 
 networks:
   internal_networks:
     - name: "corporate_network"
-      containers: [ "webserver", "intranet", "fileserver", "monitoring", "devserver" ]
+      containers: [ "webserver", "fileserver" ]
     - name: "backend_network"
-      containers: [ "webserver", "intranet" ]
-    - name: "storage_network"
-      containers: [ "fileserver", "devserver" ]
-    - name: "monitoring_network"
-      containers: [ "monitoring", "webserver", "intranet", "fileserver", "devserver" ]
+      containers: [ "webserver" ]

@@ -8,57 +8,18 @@ services:
     networks:
       - corporate_network
       - backend_network
-      - monitoring_network
-
-  intranet:
-    build: ./intranet
-    ports:
-      - "2232:22"
-      - "3032:3000"
-      - "6379:6379"
-    networks:
-      - corporate_network
-      - backend_network
-      - monitoring_network
 
   fileserver:
     build: ./fileserver
     ports:
-      - "2233:22"
-      - "2133:21"
-      - "4453:445"
+      - "2232:22"
+      - "8032:80"
+      - "9232:9200"
     networks:
       - corporate_network
-      - storage_network
-      - monitoring_network
-
-  monitoring:
-    build: ./monitoring
-    ports:
-      - "2234:22"
-      - "8084:8080"
-      - "9204:9200"
-    networks:
-      - corporate_network
-      - monitoring_network
-
-  devserver:
-    build: ./devserver
-    ports:
-      - "2235:22"
-      - "8085:8080"
-      - "8035:80"
-    networks:
-      - corporate_network
-      - storage_network
-      - monitoring_network
 
 networks:
   corporate_network:
     driver: bridge
   backend_network:
     driver: bridge
-  storage_network:
-    driver: bridge
-  monitoring_network:
-    driver: bridge 

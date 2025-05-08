@@ -19,8 +19,10 @@ RUN apt-get update && apt-get install -y \
     netcat
 
 # Setup MongoDB 6.0 repository properly
-RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add - && \
-    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list && \
+RUN wget -qO - https://pgp.mongodb.com/server-6.0.asc | \
+    gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg --dearmor && \
+    echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | \
+    tee /etc/apt/sources.list.d/mongodb-org-6.0.list && \
     apt-get update && \
     apt-get install -y mongodb-org mongodb-org-shell mongodb-mongosh && \
     mkdir -p /data/db && \

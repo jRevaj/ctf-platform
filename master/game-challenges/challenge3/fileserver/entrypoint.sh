@@ -1,34 +1,72 @@
 #!/bin/bash
+set -e
 
-# Start SSH service
+# Start SSH server
 service ssh start
-echo "SSH service started"
 
-# Create necessary directories for vsftpd
-mkdir -p /var/run/vsftpd/empty
-mkdir -p /var/log
-touch /var/log/ftp_uploads.log
-chmod 666 /var/log/ftp_uploads.log
+# Start Apache for file serving
+service apache2 start
 
-# Start FTP service
-service vsftpd start
-echo "FTP service started"
+# Fix elasticsearch folder permissions
+chown -R elasticsearch:elasticsearch /var/lib/elasticsearch
+chown -R elasticsearch:elasticsearch /etc/elasticsearch
+chown -R elasticsearch:elasticsearch /var/log/elasticsearch
 
-# Create necessary directories for Samba
-mkdir -p /var/log/samba
-mkdir -p /var/lib/samba
-mkdir -p /run/samba
+# Start Elasticsearch service (with reduced verbosity)
+echo "Starting Elasticsearch..."
+service elasticsearch start
 
-# Start Samba service
-service smbd start
-service nmbd start
-echo "Samba services started"
+# Wait for Elasticsearch to be ready
+echo "Waiting for Elasticsearch to start..."
+until curl -s "http://localhost:9200/_cluster/health?wait_for_status=yellow" > /dev/null; do
+    echo "Waiting for Elasticsearch to become available..."
+    sleep 5
+done
 
-# Set up a cron job to check for PHP files in FTP directory
-echo "* * * * * root /var/ftp/ftp_flag_handler.sh" > /etc/cron.d/ftp-monitor
-service cron start
-echo "Cron service started"
+# Create index and add documents
+echo "Elasticsearch is ready. Creating system-secrets index..."
+curl -X PUT "localhost:9200/system-secrets?pretty" -H "Content-Type: application/json" -d'
+{
+  "mappings": {
+    "properties": {
+      "id": { "type": "keyword" },
+      "description": { "type": "text" },
+      "secret_data": { "type": "text" }
+    }
+  }
+}'
+
+sleep 2
+
+# Add sample documents to index
+echo "Adding documents to system-secrets index..."
+curl -X POST "localhost:9200/system-secrets/_doc?pretty" -H "Content-Type: application/json" -d'
+{
+  "id": "sys123",
+  "description": "System Configuration",
+  "secret_data": "Regular system config"
+}'
+
+curl -X POST "localhost:9200/system-secrets/_doc?pretty" -H "Content-Type: application/json" -d'
+{
+  "id": "flag456",
+  "description": "Hidden flag information",
+  "secret_data": "FLAG_PLACEHOLDER_11"
+}'
+
+curl -X POST "localhost:9200/system-secrets/_doc?pretty" -H "Content-Type: application/json" -d'
+{
+  "id": "sys789",
+  "description": "Network Configuration",
+  "secret_data": "Regular network settings"
+}'
+
+# Remove access to this entrypoint file
+echo "Removing access to this entrypoint file..."
+chmod 700 /entrypoint.sh
+chown root:root /entrypoint.sh
+
+echo "All services started. Container is ready."
 
 # Keep container running
-echo "All services started. Container is now running..."
-tail -f /dev/null 
+exec tail -f /dev/null 

@@ -1,9 +1,0 @@
-*******************************************************************
-*                                                         *
-*  WARNING: Unauthorized access to this system is         *
-*           prohibited. All connections are logged.       *
-*                                                         *
-*  ADMIN NOTE: Remember to rotate SSH keys                *
-*              FLAG_PLACEHOLDER_9                      *
-*                                                         *
-******************************************************************* 
