@@ -1,0 +1,7 @@
+{
+  "api_version": "1.0",
+  "environment": "production",
+  "allow_internal_requests": true,
+  "monitoring_systems": ["webserver", "fileserver"],
+  "admin_users": ["admin", "system"]
+}

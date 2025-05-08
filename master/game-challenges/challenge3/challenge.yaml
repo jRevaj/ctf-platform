@@ -10,17 +10,17 @@ containers:
       - id: wordpress_plugin_flag
         placeholder: "FLAG_PLACEHOLDER_1"
         points: 150
-        location: "WordPress plugin admin page response header (X-Flag)"
+        file: "/webserver/custom-plugin.php"
         hint: "Analyze the HTTP response headers when accessing the plugin admin page"
       - id: mysql_user_flag
         placeholder: "FLAG_PLACEHOLDER_2"
         points: 200
-        location: "MySQL database, table 'wp_secrets', column 'flag_value'"
+        file: "/webserver/entrypoint.sh"
         hint: "SQL queries can reveal hidden database content"
       - id: hidden_admin_flag
         placeholder: "FLAG_PLACEHOLDER_3"
         points: 100
-        location: "WordPress hidden admin panel at /wp-admin/secret.php"
+        file: "/webserver/secret.php"
         hint: "Not all admin interfaces are well-known"
   fileserver:
     name: fileserver
@@ -29,17 +29,31 @@ containers:
       - id: internal_config_flag
         placeholder: "FLAG_PLACEHOLDER_4"
         points: 150
-        location: "Hidden in an encrypted backup file in /srv/data/backups/"
+        file: "/fileserver/Dockerfile"
         hint: "Some backups may contain sensitive information if you can decrypt them"
       - id: elasticsearch_flag
         placeholder: "FLAG_PLACEHOLDER_5"
         points: 200
-        location: "Hidden in Elasticsearch index 'system-secrets'"
+        file: "/fileserver/entrypoint.sh"
         hint: "NoSQL databases like Elasticsearch can contain valuable information if you query them correctly"
+  monitoring:
+    name: monitoring
+    is_entrypoint: false
+    flags:
+      - id: grafana_api_flag
+        placeholder: "FLAG_PLACEHOLDER_6"
+        points: 250
+        file: "/monitoring/api.py"
+        hint: "Some APIs have authorization flaws that can be exploited by manipulating headers"
+      - id: monitoring_config_flag
+        placeholder: "FLAG_PLACEHOLDER_7"
+        points: 175
+        file: "/monitoring/entrypoint.sh"
+        hint: "Monitoring systems often store sensitive data in unexpected places - look deeper than configuration files"
 
 networks:
   internal_networks:
     - name: "corporate_network"
-      containers: [ "webserver", "fileserver" ]
+      containers: [ "monitoring", "webserver" ]
     - name: "backend_network"
-      containers: [ "webserver" ]
+      containers: [ "monitoring", "fileserver" ]
