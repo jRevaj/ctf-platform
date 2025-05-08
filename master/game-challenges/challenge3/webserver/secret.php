@@ -1,78 +1,65 @@
 <?php
 /**
- * Hidden admin panel for CTF challenge
+ * Hidden admin page with a flag
  */
 
-// Basic authentication
-$valid_username = 'admin';
-$valid_password = 'super_secret_admin_password';
+// Load WordPress core
+define('WP_USE_THEMES', false);
+require_once(dirname(__FILE__) . '/../wp-load.php');
 
-$authenticated = false;
-
-// Check for authentication attempt
-if (isset($_POST['username']) && isset($_POST['password'])) {
-    if ($_POST['username'] === $valid_username && $_POST['password'] === $valid_password) {
-        $authenticated = true;
-    }
+// Check if user is logged in as an admin
+if (!current_user_can('administrator')) {
+    status_header(404);
+    wp_die('Page not found');
+    exit;
 }
 
-// Output appropriate content
-header('Content-Type: text/html');
+// Display the flag
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>WordPress Secret Admin Panel</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Admin Page</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .container { max-width: 600px; margin: 0 auto; }
-        .login-form { background: #f5f5f5; padding: 20px; border-radius: 5px; }
-        .secret-panel { background: #e0f7fa; padding: 20px; border-radius: 5px; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 10px; margin: 10px 0; }
-        input[type="submit"] { background: #0073aa; color: white; border: none; padding: 10px 20px; cursor: pointer; }
-        .flag { background: #000; color: #fff; padding: 10px; font-family: monospace; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 20px;
+        }
+        .container {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #23282d;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .flag {
+            background-color: #f0f0f1;
+            padding: 15px;
+            border-left: 4px solid #00a0d2;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>WordPress Secret Admin Panel</h1>
-        
-        <?php if (!$authenticated): ?>
-            <div class="login-form">
-                <h2>Login Required</h2>
-                <form method="post">
-                    <div>
-                        <label for="username">Username:</label>
-                        <input type="text" id="username" name="username" required>
-                    </div>
-                    <div>
-                        <label for="password">Password:</label>
-                        <input type="password" id="password" name="password" required>
-                    </div>
-                    <div>
-                        <input type="submit" value="Login">
-                    </div>
-                </form>
-            </div>
-        <?php else: ?>
-            <div class="secret-panel">
-                <h2>Welcome, Administrator</h2>
-                <p>This panel contains sensitive information not accessible through the regular admin interface.</p>
-                
-                <h3>System Information</h3>
-                <ul>
-                    <li>WordPress Version: 6.0.0</li>
-                    <li>PHP Version: <?php echo phpversion(); ?></li>
-                    <li>Server: <?php echo $_SERVER['SERVER_SOFTWARE']; ?></li>
-                </ul>
-                
-                <h3>Security Flag</h3>
-                <div class="flag">FLAG_PLACEHOLDER_3</div>
-                
-                <h3>Sensitive Configuration</h3>
-                <p>Database credentials and other sensitive information would be listed here...</p>
-            </div>
-        <?php endif; ?>
+        <h1>Secret Admin Page</h1>
+        <p>Congratulations on finding the hidden admin page!</p>
+        <div class="flag">
+            <strong>Flag:</strong> FLAG_PLACEHOLDER_3
+        </div>
+        <p>This page is not linked from anywhere in the admin dashboard and should remain confidential.</p>
     </div>
 </body>
 </html> 

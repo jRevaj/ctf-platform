@@ -12,19 +12,16 @@ containers:
         points: 150
         location: "WordPress plugin admin page response header (X-Flag)"
         hint: "Analyze the HTTP response headers when accessing the plugin admin page"
-        service: "WordPress"
       - id: mysql_user_flag
         placeholder: "FLAG_PLACEHOLDER_2"
         points: 200
         location: "MySQL database, table 'wp_secrets', column 'flag_value'"
         hint: "SQL queries can reveal hidden database content"
-        service: "MySQL"
       - id: hidden_admin_flag
         placeholder: "FLAG_PLACEHOLDER_3"
         points: 100
         location: "WordPress hidden admin panel at /wp-admin/secret.php"
         hint: "Not all admin interfaces are well-known"
-        service: "WordPress"
 
   intranet:
     name: "intranet"
