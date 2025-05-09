@@ -5,7 +5,50 @@
         <div class="row">
             <div class="col-12">
                 <h1 class="h2 mb-4">Scoreboard</h1>
-                {# TODO: implement score chart #}
+
+                <!-- Score Chart Section -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Score History</h2>
+                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                            <div class="btn-group" role="group" aria-label="Time period">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="1">Last 24h
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary active" data-days="7">Last 7
+                                    days
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="14">Last 14
+                                    days
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="30">Last 30
+                                    days
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="all">All time
+                                </button>
+                            </div>
+
+                            <div class="d-flex align-items-center mt-2">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <input type="radio" class="btn-check" name="dataType" id="totalScoreRadio"
+                                           value="total" checked>
+                                    <label class="btn btn-outline-primary" for="totalScoreRadio">Total Score</label>
+
+                                    <input type="radio" class="btn-check" name="dataType" id="bluePointsRadio"
+                                           value="blue">
+                                    <label class="btn btn-outline-primary" for="bluePointsRadio">Blue Points</label>
+
+                                    <input type="radio" class="btn-check" name="dataType" id="redPointsRadio"
+                                           value="red">
+                                    <label class="btn btn-outline-primary" for="redPointsRadio">Red Points</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="height: 400px;">
+                            <canvas id="scoreChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-body">
                         <div class="table-responsive">
@@ -46,6 +89,11 @@
         </div>
     </div>
 
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const table = document.getElementById('scoreboardTable');
@@ -55,7 +103,6 @@
                 direction: null
             };
 
-            // Store initial order of rows
             const initialRows = Array.from(table.querySelectorAll('tbody tr'));
 
             headers.forEach(header => {
@@ -63,23 +110,19 @@
                     const sortBy = header.dataset.sort;
                     const rows = Array.from(table.querySelectorAll('tbody tr'));
 
-                    // Handle sort direction
                     if (currentSort.column === sortBy) {
                         if (currentSort.direction === 'desc') {
                             currentSort.direction = 'asc';
                         } else if (currentSort.direction === 'asc') {
-                            // Clear sorting on third click
                             currentSort.column = null;
                             currentSort.direction = null;
 
-                            // Restore initial order
                             const tbody = table.querySelector('tbody');
                             initialRows.forEach((row, index) => {
                                 row.children[0].textContent = index + 1;
                                 tbody.appendChild(row);
                             });
 
-                            // Reset all sort indicators
                             headers.forEach(h => {
                                 const icon = h.querySelector('i');
                                 icon.className = 'bi bi-arrow-down-up';
@@ -91,7 +134,6 @@
                         currentSort.direction = 'desc';
                     }
 
-                    // Sort rows
                     rows.sort((a, b) => {
                         const aValue = parseInt(a.children[getColumnIndex(sortBy)].textContent);
                         const bValue = parseInt(b.children[getColumnIndex(sortBy)].textContent);
@@ -103,16 +145,9 @@
                         }
                     });
 
-                    // Update rank numbers
-                    rows.forEach((row, index) => {
-                        row.children[0].textContent = index + 1;
-                    });
-
-                    // Reorder rows in the table
                     const tbody = table.querySelector('tbody');
                     rows.forEach(row => tbody.appendChild(row));
 
-                    // Update sort indicators
                     headers.forEach(h => {
                         const icon = h.querySelector('i');
                         if (h.dataset.sort === currentSort.column) {
@@ -135,6 +170,230 @@
                     default:
                         return 2;
                 }
+            }
+
+            let scoreChart;
+            let scoreData = JSON.parse('{{ score_history_json|escapejs }}');
+            
+            let teamVisibility = {};
+            let selectedDataType = 'total';
+            
+            // Helper function to generate color for a team
+            function getTeamColor(index, alpha = 1) {
+                // Use Chart.js built-in helpers to generate colors
+                return index % 2 === 0 
+                    ? `hsla(${(index * 50) % 360}, 70%, 60%, ${alpha})` 
+                    : `hsla(${(index * 70 + 20) % 360}, 70%, 45%, ${alpha})`;
+            }
+            
+            function initTeamVisibility() {
+                const teamIds = Object.keys(scoreData);
+
+                teamIds.sort((a, b) => {
+                    const scoreA = getLatestScore(scoreData[a]);
+                    const scoreB = getLatestScore(scoreData[b]);
+                    return scoreB - scoreA;
+                });
+                
+                const teamsToShow = Math.min(5, teamIds.length);
+
+                teamVisibility = {};
+
+                teamIds.forEach((teamId, index) => {
+                    teamVisibility[teamId] = index < teamsToShow;
+                });
+            }
+
+            function getLatestScore(team) {
+                if (!team.scores || team.scores.length === 0) return 0;
+                return team.scores[team.scores.length - 1];
+            }
+            
+            function initChart() {
+                const chartElement = document.getElementById('scoreChart');
+                if (!chartElement) return;
+                
+                const ctx = chartElement.getContext('2d');
+                
+                const datasets = [];
+                
+                Object.keys(scoreData).forEach((teamId, index) => {
+                    if (!teamVisibility[teamId]) return;
+                    
+                    const team = scoreData[teamId];
+                    const color = getTeamColor(index);
+                    const backgroundColor = getTeamColor(index, 0.2);
+                    
+                    let dataPoints;
+                    let label;
+                    
+                    switch (selectedDataType) {
+                        case 'blue':
+                            dataPoints = createDataPoints(team.timestamps, team.blue_points);
+                            label = `${team.name} (Blue)`;
+                            break;
+                        case 'red':
+                            dataPoints = createDataPoints(team.timestamps, team.red_points);
+                            label = `${team.name} (Red)`;
+                            break;
+                        case 'total':
+                        default:
+                            dataPoints = createDataPoints(team.timestamps, team.scores);
+                            label = team.name;
+                            break;
+                    }
+                    
+                    datasets.push({
+                        label: label,
+                        data: dataPoints,
+                        borderColor: color,
+                        backgroundColor: backgroundColor,
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        tension: 0.2,
+                        pointHoverRadius: 5,
+                        fill: false
+                    });
+                });
+
+                scoreChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: getDynamicTimeUnit(),
+                                    displayFormats: {
+                                        hour: 'HH:mm',
+                                        day: 'MMM d'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Points'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.parsed.y} points`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function createDataPoints(timestamps, values) {
+                return timestamps.map((time, index) => {
+                    return {
+                        x: new Date(time),
+                        y: values[index]
+                    };
+                });
+            }
+
+            document.querySelectorAll('input[name="dataType"]').forEach(radio => {
+                radio.addEventListener('change', function () {
+                    selectedDataType = this.value;
+                    updateChart();
+                });
+            });
+
+            const timeButtons = document.querySelectorAll('[data-days]');
+            timeButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    timeButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+
+                    const days = this.dataset.days;
+                    fetchScoreHistory(days);
+                });
+            });
+
+            function fetchScoreHistory(days) {
+                const url = days === 'all'
+                    ? '/api/team-score-history/'
+                    : `/api/team-score-history/?days=${days}`;
+
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Server responded with status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+                        scoreData = data.teams;
+                        initTeamVisibility();
+                        updateChart();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching score history:', error);
+                        const chartElement = document.getElementById('scoreChart');
+                        if (chartElement) {
+                            chartElement.innerHTML = `<div class="alert alert-danger text-center m-5">Error loading data: ${error.message}</div>`;
+                        }
+                    });
+            }
+
+            function updateChart() {
+                if (scoreChart) {
+                    scoreChart.destroy();
+                }
+                initChart();
+            }
+
+            if (Object.keys(scoreData).length > 0) {
+                initTeamVisibility();
+                initChart();
+            } else {
+                const chartElement = document.getElementById('scoreChart');
+                if (chartElement) {
+                    chartElement.innerHTML = '<div class="alert alert-info text-center m-5">No score history data available yet.</div>';
+                }
+            }
+
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+
+            function getDynamicTimeUnit() {
+                const activeDays = document.querySelector('.btn-group [data-days].active');
+                if (!activeDays) return 'day';
+
+                const days = activeDays.dataset.days;
+                if (days === '1') return 'hour';
+                return 'day';
             }
         });
     </script>

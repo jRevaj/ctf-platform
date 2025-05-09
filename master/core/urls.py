@@ -17,16 +17,14 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-from core.api.urls import api_urls
-from ctf.views import home, scoreboard_view, FlagSubmissionView
+from ctf.views import home
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),
     path('', include('accounts.urls')),
+    path('', include('ctf.urls')),
     path('challenges/', include('challenges.urls')),
-    path('scoreboard/', scoreboard_view, name='scoreboard'),
-    path('submit_flag/<uuid:challenge_uuid>/', FlagSubmissionView.as_view(), name='submit_flag'),
     path('__reload__/', include('django_browser_reload.urls')),
-    path('api/', include(api_urls))
+    path('api/', include('core.api.urls')),
 ]

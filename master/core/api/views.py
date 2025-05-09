@@ -1,5 +1,5 @@
-from django.http import HttpResponse
+from django.http import JsonResponse
 
 
 def health_check(request):
-    return HttpResponse("OK")
+    return JsonResponse({'status': 'ok'})

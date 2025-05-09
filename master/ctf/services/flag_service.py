@@ -15,7 +15,7 @@ class FlagService:
         captured_by = captured_by_user.team
         flag.capture(captured_by, captured_by_user)
         captured_by.red_points += flag.points
-        captured_by.update_score()
+        captured_by.update_score(change_reason=f"Flag captured")
 
     @staticmethod
     def award_blue_points(flags: list[Flag]) -> None:
@@ -29,7 +29,7 @@ class FlagService:
         team = flags[0].owner
         total_points = sum(flag.points for flag in flags)
         team.blue_points += total_points
-        team.update_score()
+        team.update_score(change_reason=f"Defense points")
         logger.info(f"Awarded {total_points} blue points to team {team.name}")
 
     def distribute_uncaptured_flags_points(self, session: GameSession) -> None:

@@ -20,4 +20,5 @@ urlpatterns = [
         path('team/remove-member/<int:member_id>/', login_required(remove_team_member_view), name='remove_team_member'),
         path('team/regenerate-key/', login_required(regenerate_team_key_view), name='regenerate_team_key'),
     ])),
+    path('api/', include('accounts.api.urls')),
 ]

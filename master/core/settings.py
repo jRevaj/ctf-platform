@@ -70,6 +70,11 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
+        'core': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
         'django': {
             'handlers': ['console'],
             'level': 'INFO',
