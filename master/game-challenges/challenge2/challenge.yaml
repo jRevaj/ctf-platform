@@ -1,65 +1,60 @@
 name: challenge2
-title: Advanced Multi-Container Security Challenge
-description: More complex challenge with service interdependencies and multiple paths of revealing flags
+title: Corporate infrastructure
+description: Multi-container environment simulating a corporate network with various services. Learn about web application security and correct configuration of services.
 
+# TODO: test deployment through platform
 containers:
-  target1:
-    name: target1
+  webserver:
+    name: webserver
+    is_entrypoint: true
     flags:
-      - id: apache_flag
+      - id: wordpress_plugin_flag
         placeholder: "FLAG_PLACEHOLDER_1"
-        points: 100
-        file: "/target1/Dockerfile"
-        hint: "Check web server configurations"
-      - id: file_flag
+        points: 150
+        file: "/webserver/custom-plugin.php"
+        hint: "Analyze the HTTP response headers when accessing the plugin admin page"
+      - id: mysql_user_flag
         placeholder: "FLAG_PLACEHOLDER_2"
-        points: 100
-        file: "/target1/flag.txt"
-        hint: "Check root folder"
-      - id: mysql_flag
-        placeholder: "FLAG_PLACEHOLDER_3"
         points: 200
-        file: "/target1/entrypoint.sh"
-        hint: "Database permissions might be loose"
-      - id: cron_flag
+        file: "/webserver/entrypoint.sh"
+        hint: "SQL queries can reveal hidden database content"
+      - id: hidden_admin_flag
+        placeholder: "FLAG_PLACEHOLDER_3"
+        points: 100
+        file: "/webserver/secret.php"
+        hint: "Not all admin interfaces are well-known"
+  fileserver:
+    name: fileserver
+    is_entrypoint: false
+    flags:
+      - id: internal_config_flag
         placeholder: "FLAG_PLACEHOLDER_4"
         points: 150
-        file: "/target1/cron/backup.sh"
-        hint: "Scheduled tasks might reveal secrets"
-
-  target2:
-    name: "target2"
-    flags:
-      - id: nodejs_flag
+        file: "/fileserver/Dockerfile"
+        hint: "Some backups may contain sensitive information if you can decrypt them"
+      - id: elasticsearch_flag
         placeholder: "FLAG_PLACEHOLDER_5"
         points: 200
-        file: "/target2/app/config.js"
-        hint: "Check application configurations"
-      - id: mongodb_flag
+        file: "/fileserver/entrypoint.sh"
+        hint: "NoSQL databases like Elasticsearch can contain valuable information if you query them correctly"
+  monitoring:
+    name: monitoring
+    is_entrypoint: false
+    flags:
+      - id: grafana_api_flag
         placeholder: "FLAG_PLACEHOLDER_6"
         points: 250
-        file: "/target2/mongodb/setup.js"
-        hint: "NoSQL databases can have security issues too"
-
-  target3:
-    name: "target3"
-    flags:
-      - id: file_flag
+        file: "/monitoring/api.py"
+        hint: "Some APIs have authorization flaws that can be exploited by manipulating headers"
+      - id: monitoring_config_flag
         placeholder: "FLAG_PLACEHOLDER_7"
-        points: 300
-        file: "/target3/entrypoint.sh"
-        hint: "Look for sensitive information in startup scripts"
-      - id: jenkins_flag
-        placeholder: "FLAG_PLACEHOLDER_8"
-        points: 350
-        file: "/target3/jenkins/credentials.xml"
-        hint: "CI/CD systems often contain sensitive credentials"
+        points: 175
+        file: "/monitoring/entrypoint.sh"
+        hint: "Monitoring systems often store sensitive data in unexpected places - look deeper than configuration files"
 
-  target4:
-    name: "target4"
-    flags:
-      - id: tomcat_flag
-        placeholder: "FLAG_PLACEHOLDER_9"
-        points: 400
-        file: "/target4/tomcat/manager/flag.txt"
-        hint: "Default credentials are dangerous"
+networks:
+  internal_networks:
+    - name: "corporate_network"
+      containers: [ "monitoring", "webserver" ]
+    - name: "backend_network"
+      containers: [ "monitoring", "fileserver" ]

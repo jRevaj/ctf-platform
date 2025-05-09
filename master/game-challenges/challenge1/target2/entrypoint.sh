@@ -1,4 +1,3 @@
-# game-containers/base/entrypoint.sh
 #!/bin/bash
 
 # Debug info
@@ -7,12 +6,6 @@ echo "Starting entrypoint script" > /tmp/debug.log
 # Set password for ctf-user for the challenge
 echo "ctf-user:s3cret_t4rget2" | chpasswd
 echo "Set password for ctf-user" >> /tmp/debug.log
-
-# Create a hint file about target3
-echo "Admin notes: The backup server at 172.1.0.4 uses key-based authentication only." > /home/ctf-user/admin_notes.txt
-echo "The key is hidden somewhere in this server." >> /home/ctf-user/admin_notes.txt
-chmod 644 /home/ctf-user/admin_notes.txt
-chown ctf-user:ctf-user /home/ctf-user/admin_notes.txt
 
 # Setup SSH
 mkdir -p /home/ctf-user/.ssh
@@ -29,7 +22,7 @@ echo "SSH permissions set" >> /tmp/debug.log
 ssh-keygen -A
 echo "SSH host keys generated" >> /tmp/debug.log
 
-# Create the hidden key with proper permissions
+# Create the hidden key file
 mkdir -p /var/log/.backup
 
 # Use a fixed key instead of generating a new one each time
@@ -95,13 +88,91 @@ cp /var/log/.backup/backup_key.pub /home/ctf-user/.ssh/id_rsa.pub
 chmod 644 /home/ctf-user/.ssh/id_rsa.pub
 chown ctf-user:ctf-user /home/ctf-user/.ssh/id_rsa.pub
 
-# Save the public key to a location that can be copied to target3
-cp /var/log/.backup/backup_key.pub /home/ctf-user/target3_key.pub
-chmod 644 /home/ctf-user/target3_key.pub
-chown ctf-user:ctf-user /home/ctf-user/target3_key.pub
+# Start SSH server
+/usr/sbin/sshd
 
-# Start SSH with debug logging
-echo "Starting SSH daemon" >> /tmp/debug.log
-/usr/sbin/sshd -D -e
+# Discover the IP of target1 and target3 with retries
+echo "Waiting for network interfaces to be ready..." >> /tmp/debug.log
 
-exec "$@"
+# Set default values (in case network detection fails)
+TARGET1_IP="172.2.0.2"
+TARGET3_IP="172.2.0.4"
+
+# Function to find available network interfaces
+find_interfaces() {
+  echo "Available network interfaces:" >> /tmp/debug.log
+  ip addr | grep -E '^[0-9]+:' | cut -d: -f2 | tr -d ' ' >> /tmp/debug.log
+}
+
+# First check what network interfaces are available
+find_interfaces
+
+# Retry logic to wait for network setup
+for retry in {1..30}; do
+  echo "Network discovery attempt $retry..." >> /tmp/debug.log
+  
+  # Check if we have non-loopback interfaces
+  INTERFACES=$(ip -o link show | grep -v 'lo:' | wc -l)
+  
+  if [ "$INTERFACES" -gt 1 ]; then
+    echo "Found $INTERFACES network interfaces" >> /tmp/debug.log
+    
+    # Try to determine our own IP and network
+    if ip addr show eth1 2>/dev/null | grep -q 'inet '; then
+      OWN_IP=$(ip addr show eth1 | grep -o 'inet [0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' | cut -d' ' -f2)
+      echo "Found eth1 IP: $OWN_IP" >> /tmp/debug.log
+      
+      # Calculate based on common Docker network pattern
+      BASE_IP=$(echo $OWN_IP | cut -d. -f1-3)
+      LAST_OCTET=$(echo $OWN_IP | cut -d. -f4)
+      
+      # Assume target1 is probably .2 and target3 is probably .4 if we're .3
+      if [ "$LAST_OCTET" = "3" ]; then
+        TARGET1_IP="${BASE_IP}.2"
+        TARGET3_IP="${BASE_IP}.4"
+        echo "Calculated network IPs: target1=$TARGET1_IP, target3=$TARGET3_IP" >> /tmp/debug.log
+        break
+      fi
+    fi
+    
+    # If we have more interfaces, try eth1
+    if ip addr show eth1 2>/dev/null | grep -q 'inet '; then
+      OWN_IP=$(ip addr show eth1 | grep -o 'inet [0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' | cut -d' ' -f2)
+      echo "Found eth1 IP: $OWN_IP" >> /tmp/debug.log
+      
+      # Calculate based on common Docker network pattern
+      BASE_IP=$(echo $OWN_IP | cut -d. -f1-3)
+      LAST_OCTET=$(echo $OWN_IP | cut -d. -f4)
+      
+      TARGET1_IP="${BASE_IP}.$(($LAST_OCTET - 1))"
+      TARGET3_IP="${BASE_IP}.$(($LAST_OCTET + 1))"
+      echo "Calculated network IPs: target1=$TARGET1_IP, target3=$TARGET3_IP" >> /tmp/debug.log
+      break
+    fi
+  fi
+  
+  echo "Networks not fully ready yet, waiting..." >> /tmp/debug.log
+  find_interfaces
+  sleep 2
+done
+
+# Export the discovered IPs
+export TARGET1_HOST="$TARGET1_IP"
+export TARGET3_HOST="$TARGET3_IP"
+
+echo "Final IPs: target1=$TARGET1_HOST, target3=$TARGET3_HOST" >> /tmp/debug.log
+
+# Start Flask application with the discovered IP
+source /app/venv/bin/activate
+TARGET1_HOST=$TARGET1_HOST TARGET3_HOST=$TARGET3_HOST python3 /app/app.py &
+
+# Remove access to the app
+chmod 750 /app/app.py
+chown root:root /app/app.py
+
+# Remove access to this entrypoint file
+chmod 700 /entrypoint.sh
+chown root:root /entrypoint.sh
+
+# Keep container running
+tail -f /dev/null

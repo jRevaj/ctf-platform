@@ -28,16 +28,19 @@ chmod 700 /home/ctf-user/.ssh
 chmod 600 /home/ctf-user/.ssh/authorized_keys
 echo "SSH permissions set" >> /tmp/debug.log
 
-# Generate SSH host keys
+# Ensure SSH host keys exist
 ssh-keygen -A
 echo "SSH host keys generated" >> /tmp/debug.log
 
 # Start MySQL and create database with flag
-service mysql start
+mkdir -p /run/mysqld
+chown -R mysql:mysql /run/mysqld
+mysql_install_db --user=mysql --datadir=/var/lib/mysql
+mysqld_safe --user=mysql &
 sleep 5
 echo "MySQL started" >> /tmp/debug.log
 
-# MySQL flag - FLAG_PLACEHOLDER_3
+# Create database and set up users
 mysql -u root << EOF
 CREATE DATABASE IF NOT EXISTS ctf_db;
 USE ctf_db;
@@ -61,46 +64,26 @@ INSERT INTO users (username, password) VALUES
 
 INSERT INTO secrets VALUES (1, 'FLAG_PLACEHOLDER_3');
 
--- Create MySQL user with excessive privileges - intentional vulnerability
-CREATE USER 'webapp'@'%' IDENTIFIED BY 'webapp_password';
-GRANT ALL PRIVILEGES ON *.* TO 'webapp'@'%' WITH GRANT OPTION;
-
 -- Create MySQL user with same password as system user
 CREATE USER 'ctf-user'@'localhost' IDENTIFIED BY 'starthere';
 GRANT SELECT ON ctf_db.* TO 'ctf-user'@'localhost';
-
--- Create remote MySQL user for target2 application
-CREATE USER 'remoteuser'@'%' IDENTIFIED WITH mysql_native_password BY 'remotep@ss';
-GRANT ALL PRIVILEGES ON ctf_db.* TO 'remoteuser'@'%';
-
 FLUSH PRIVILEGES;
 EOF
 
 echo "Setup SQL executed" >> /tmp/debug.log
 echo "Flag inserted into database" >> /tmp/debug.log
 
-# Setup Redis service with no authentication (vulnerable)
-mkdir -p /var/run/redis
-mkdir -p /var/log/redis
-touch /var/log/redis/redis-server.log
-chown -R redis:redis /var/run/redis /var/log/redis
-# Start Redis with custom config
-redis-server /etc/redis/redis.conf &
-sleep 2
-# Store SSH keys in Redis for lateral movement (intentional vulnerability)
-redis-cli SET ssh_key "$(cat /home/ctf-user/.ssh/id_rsa)"
-echo "Redis started with no authentication" >> /tmp/debug.log
-
-# Setup cron job
-mkdir -p /target1/cron
-service cron start
-echo "Cron service started and job configured" >> /tmp/debug.log
-
 # Start Apache
-a2ensite 000-default
-service apache2 start
+mkdir -p /run/apache2
+mkdir -p /var/www/html
+mkdir -p /var/www/hidden
+# Ensure index.php is in the right place
+if [ ! -f /var/www/html/index.php ]; then
+    cp /index.php /var/www/html/index.php 2>> /tmp/debug.log
+fi
 echo "Apache document root contents:" >> /tmp/debug.log
 ls -la /var/www/html >> /tmp/debug.log
+httpd -D FOREGROUND &
 echo "Apache started" >> /tmp/debug.log
 
 # Start SSH with debug logging to help troubleshoot

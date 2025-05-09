@@ -1,4 +1,4 @@
-# game-containers/base/entrypoint.sh
+# game-containers/test-challenge-base/entrypoint.sh
 #!/bin/bash
 
 # Nastavenie SSH

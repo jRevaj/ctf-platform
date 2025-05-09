@@ -43,13 +43,13 @@ This command tests the matchmaking system by simulating game rounds. It supports
 ### Usage
 
 ```bash
-python manage.py test_matchmaking --system random --rounds 1 --session test --template challenge1 --teams 4
+python manage.py test_matchmaking --system random --rounds 1 --session test --template test-challenge-multi --teams 4
 ```
 
 or inside docker
 
 ```bash
-docker compose exec master python manage.py test-matchmaking --system random --rounds 1 --session test --template challenge1 --teams 4
+docker compose exec master python manage.py test-matchmaking --system random --rounds 1 --session test --template test-challenge-multi --teams 4
 ```
 
 ### Requirements

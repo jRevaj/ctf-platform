@@ -1,4 +1,4 @@
-name: challenge4
+name: test-challenge-multi
 title: Base multi-container challenge
 description: Challenge to test multiple containers in one network and multiple services per container
 
@@ -28,13 +28,13 @@ containers:
         placeholder: "FLAG_PLACEHOLDER_4"
         points: 300
         file: "/target3/entrypoint.sh"
-        hint: "There are 3 containers you can connect to using SSH"
+        hint: ""
         service: "filesystem"
 
 networks:
   internal_networks:
     - name: "corporate_network"
-      containers: [ "target1", "target2", "target3" ]
+      containers: [ "target1", "target2" ]
     - name: "backend_network"
       containers: [ "target2", "target3" ]
   dev_networks:

@@ -1,10 +1,9 @@
-# game-containers/base/entrypoint.sh
 #!/bin/bash
 
 # Debug info
 echo "Starting entrypoint script" > /tmp/debug.log
 
-# Set a password for ctf-user for debugging
+# Set a password for ctf-user
 echo "ctf-user:password" | chpasswd
 echo "Set password for ctf-user" >> /tmp/debug.log
 
@@ -19,15 +18,15 @@ EOL
 
 echo "Added matching public key to authorized_keys" >> /tmp/debug.log
 
-# Set proper permissions
+# Set permissions
 chown -R ctf-user:ctf-user /home/ctf-user/.ssh
 chmod 700 /home/ctf-user/.ssh
 chmod 600 /home/ctf-user/.ssh/authorized_keys
 echo "SSH permissions set" >> /tmp/debug.log
 
-# Create the final flag file
-echo "Congratulations! You've found the final flag: FLAG_PLACEHOLDER_4" > /home/ctf-user/flag.txt
-chmod 644 /home/ctf-user/flag.txt
+# Create the final flag file with obfuscated flag
+echo "FLAG_PLACEHOLDER_4" | base64 | rev > /home/ctf-user/flag.txt
+chmod 600 /home/ctf-user/flag.txt
 chown ctf-user:ctf-user /home/ctf-user/flag.txt
 echo "Created flag file" >> /tmp/debug.log
 
@@ -35,8 +34,19 @@ echo "Created flag file" >> /tmp/debug.log
 ssh-keygen -A
 echo "SSH host keys generated" >> /tmp/debug.log
 
-# Start SSH with debug logging
+# Start SSH in background
 echo "Starting SSH daemon" >> /tmp/debug.log
-/usr/sbin/sshd -D -e
+/usr/sbin/sshd
+echo "SSH daemon started" >> /tmp/debug.log
 
-exec "$@"
+# Start Flask application
+source /app/venv/bin/activate
+python3 /app/app.py &
+echo "Flask application started on port 8080" >> /tmp/debug.log
+
+# Remove access to this entrypoint file
+chmod 700 /entrypoint.sh
+chown root:root /entrypoint.sh
+
+# Keep container running
+tail -f /dev/null

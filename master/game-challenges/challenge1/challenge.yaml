@@ -1,6 +1,6 @@
 name: challenge1
-title: Base multi-container challenge
-description: Challenge to test multiple containers in one network and multiple services per container
+title: Linux security basics
+description: Challenge to introduce basic Linux movement with connecting to different containers. Learn about basics of file system and database security.
 
 containers:
   target1:
@@ -28,13 +28,13 @@ containers:
         placeholder: "FLAG_PLACEHOLDER_4"
         points: 300
         file: "/target3/entrypoint.sh"
-        hint: ""
+        hint: "There are 3 containers you can connect to using SSH"
         service: "filesystem"
 
 networks:
   internal_networks:
     - name: "corporate_network"
-      containers: [ "target1", "target2" ]
+      containers: [ "target1", "target2", "target3" ]
     - name: "backend_network"
       containers: [ "target2", "target3" ]
   dev_networks:

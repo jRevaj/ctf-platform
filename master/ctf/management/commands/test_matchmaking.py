@@ -54,7 +54,7 @@ class Command(BaseCommand):
             "--template",
             type=str,
             help="Challenge template name",
-            default="challenge1",
+            default="test-challenge-multi",
             required=True
         )
         parser.add_argument(

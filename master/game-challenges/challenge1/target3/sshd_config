@@ -5,7 +5,6 @@ AuthorizedKeysFile .ssh/authorized_keys
 PasswordAuthentication no
 PermitEmptyPasswords no
 ChallengeResponseAuthentication no
-# UsePAM yes  # Commented out as Alpine doesn't support PAM the same way
 X11Forwarding yes
 PrintMotd no
 AcceptEnv LANG LC_*

@@ -3,7 +3,7 @@ FROM ubuntu:20.04
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install base dependencies
+# Install test-challenge-base dependencies
 RUN apt-get update && apt-get install -y \
     openssh-server \
     sudo \

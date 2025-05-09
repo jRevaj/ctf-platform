@@ -1,41 +1,35 @@
 services:
-  target1:
-    build: ./target1
+  webserver:
+    build: ./webserver
     ports:
-      - "2201:22"
-      - "8001:80"
-      - "3301:3306"
-      - "6301:6379"
+      - "2231:22"
+      - "8031:80"
+      - "3331:3306"
     networks:
-      - ctf_network
+      - corporate_network
+      - backend_network
 
-  target2:
-    build: ./target2
+  fileserver:
+    build: ./fileserver
     ports:
-      - "2202:22"
-      - "3002:3000"
-      - "27002:27017"
+      - "2232:22"
+      - "8032:80"
+      - "9232:9200"
     networks:
-      - ctf_network
-
-  target3:
-    build: ./target3
+      - corporate_network
+      
+  monitoring:
+    build: ./monitoring
     ports:
-      - "2203:22"
-      - "8803:8080" 
-      - "11003:11211"
+      - "2233:22"
+      - "8033:80"
+      - "3033:3000"
+      - "8090:8090"
     networks:
-      - ctf_network
-
-  target4:
-    build: ./target4
-    ports:
-      - "2204:22"
-      - "2101:21"
-      - "8804:8080"
-    networks:
-      - ctf_network
+      - corporate_network
 
 networks:
-  ctf_network:
+  corporate_network:
+    driver: bridge
+  backend_network:
     driver: bridge
