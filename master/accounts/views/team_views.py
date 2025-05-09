@@ -1,12 +1,14 @@
+import json
+import uuid
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.db import transaction
+from django.db.models import Prefetch
 from django.shortcuts import render, get_object_or_404, redirect
-import json
-import uuid
 from django.utils import timezone
-from datetime import timedelta
 
 from accounts.forms.team_forms import JoinTeamForm, CreateTeamForm
 from accounts.models import Team, TeamScoreHistory, User
@@ -20,27 +22,46 @@ def teams_view(request):
 
 def team_detail_view(request, team_uuid):
     """Display detailed information about a specific team"""
-    team = get_object_or_404(Team, uuid=team_uuid)
-    
-    # Get score history for this team (last 7 days by default)
-    history = TeamScoreHistory.objects.filter(
-        team=team,
-        timestamp__gte=timezone.now() - timedelta(days=7)
-    ).order_by('timestamp')
-    
+    days_param = request.GET.get('days', '7')
+
+    team_query = Team.objects
+
+    history_queryset = TeamScoreHistory.objects.order_by('timestamp')
+
+    if days_param != 'all':
+        try:
+            days = int(days_param)
+            since_date = timezone.now() - timedelta(days=days)
+            history_queryset = history_queryset.filter(timestamp__gte=since_date)
+        except ValueError:
+            since_date = timezone.now() - timedelta(days=7)
+            history_queryset = history_queryset.filter(timestamp__gte=since_date)
+
+    team = get_object_or_404(
+        team_query.prefetch_related(
+            Prefetch(
+                'score_history',
+                queryset=history_queryset,
+                to_attr='filtered_history'
+            )
+        ),
+        uuid=team_uuid
+    )
+
     score_history = {}
-    if history.exists():
+    if team.filtered_history:
         score_history[str(team.uuid)] = {
             'name': team.name,
-            'timestamps': [entry.timestamp.isoformat() for entry in history],
-            'scores': [entry.score for entry in history],
-            'blue_points': [entry.blue_points for entry in history],
-            'red_points': [entry.red_points for entry in history],
+            'timestamps': [entry.timestamp.isoformat() for entry in team.filtered_history],
+            'scores': [entry.score for entry in team.filtered_history],
+            'blue_points': [entry.blue_points for entry in team.filtered_history],
+            'red_points': [entry.red_points for entry in team.filtered_history],
         }
-    
+
     context = {
         "team": team,
-        "score_history_json": json.dumps(score_history)
+        "score_history_json": json.dumps(score_history),
+        "days": days_param
     }
     return render(request, "team_detail.html", context)
 

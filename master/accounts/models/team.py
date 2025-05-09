@@ -34,9 +34,9 @@ class Team(models.Model):
 
     def update_score(self):
         """Update team's score"""
-        from accounts.models import TeamScoreHistory
         self.score = self.blue_points + self.red_points
         self.save()
+        from accounts.models import TeamScoreHistory
         TeamScoreHistory.record_score(self)
 
     def can_join(self):

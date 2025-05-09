@@ -12,18 +12,28 @@
                         <h2 class="h5 mb-3">Score History</h2>
                         <div class="mb-3 d-flex justify-content-between align-items-center">
                             <div class="btn-group" role="group" aria-label="Time period">
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="1">Last 24h
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary{% if days == '1' %} active{% endif %}"
+                                        data-days="1">Last 24h
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-primary active" data-days="7">Last 7
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary{% if days == '7' or days == None %} active{% endif %}"
+                                        data-days="7">Last 7
                                     days
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="14">Last 14
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary{% if days == '14' %} active{% endif %}"
+                                        data-days="14">Last 14
                                     days
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="30">Last 30
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary{% if days == '30' %} active{% endif %}"
+                                        data-days="30">Last 30
                                     days
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="all">All time
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary{% if days == 'all' %} active{% endif %}"
+                                        data-days="all">All time
                                 </button>
                             </div>
 
@@ -90,7 +100,7 @@
     </div>
 
     <!-- Include Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
 
@@ -174,18 +184,17 @@
 
             let scoreChart;
             let scoreData = JSON.parse('{{ score_history_json|escapejs }}');
-            
+
             let teamVisibility = {};
             let selectedDataType = 'total';
-            
-            // Helper function to generate color for a team
+            let currentDays = '{{ days }}';
+
             function getTeamColor(index, alpha = 1) {
-                // Use Chart.js built-in helpers to generate colors
-                return index % 2 === 0 
-                    ? `hsla(${(index * 50) % 360}, 70%, 60%, ${alpha})` 
+                return index % 2 === 0
+                    ? `hsla(${(index * 50) % 360}, 70%, 60%, ${alpha})`
                     : `hsla(${(index * 70 + 20) % 360}, 70%, 45%, ${alpha})`;
             }
-            
+
             function initTeamVisibility() {
                 const teamIds = Object.keys(scoreData);
 
@@ -194,7 +203,7 @@
                     const scoreB = getLatestScore(scoreData[b]);
                     return scoreB - scoreA;
                 });
-                
+
                 const teamsToShow = Math.min(5, teamIds.length);
 
                 teamVisibility = {};
@@ -208,25 +217,25 @@
                 if (!team.scores || team.scores.length === 0) return 0;
                 return team.scores[team.scores.length - 1];
             }
-            
+
             function initChart() {
                 const chartElement = document.getElementById('scoreChart');
                 if (!chartElement) return;
-                
+
                 const ctx = chartElement.getContext('2d');
-                
+
                 const datasets = [];
-                
+
                 Object.keys(scoreData).forEach((teamId, index) => {
                     if (!teamVisibility[teamId]) return;
-                    
+
                     const team = scoreData[teamId];
                     const color = getTeamColor(index);
                     const backgroundColor = getTeamColor(index, 0.2);
-                    
+
                     let dataPoints;
                     let label;
-                    
+
                     switch (selectedDataType) {
                         case 'blue':
                             dataPoints = createDataPoints(team.timestamps, team.blue_points);
@@ -242,7 +251,7 @@
                             label = team.name;
                             break;
                     }
-                    
+
                     datasets.push({
                         label: label,
                         data: dataPoints,
@@ -332,13 +341,14 @@
                     this.classList.add('active');
 
                     const days = this.dataset.days;
+                    currentDays = days;
                     fetchScoreHistory(days);
                 });
             });
 
             function fetchScoreHistory(days) {
                 const url = days === 'all'
-                    ? '/api/team-score-history/'
+                    ? '/api/team-score-history/?days=all'
                     : `/api/team-score-history/?days=${days}`;
 
                 fetch(url)
@@ -376,10 +386,7 @@
                 initTeamVisibility();
                 initChart();
             } else {
-                const chartElement = document.getElementById('scoreChart');
-                if (chartElement) {
-                    chartElement.innerHTML = '<div class="alert alert-info text-center m-5">No score history data available yet.</div>';
-                }
+                fetchScoreHistory(currentDays);
             }
 
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -388,6 +395,8 @@
             });
 
             function getDynamicTimeUnit() {
+                if (currentDays === 'all') return 'day';
+
                 const activeDays = document.querySelector('.btn-group [data-days].active');
                 if (!activeDays) return 'day';
 

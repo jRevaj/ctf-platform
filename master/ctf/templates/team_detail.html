@@ -57,18 +57,32 @@
                         </div>
                     </div>
                 </div>
-                {# TODO: implement score chart#}
 
-                <!-- Score Chart -->
                 <div class="card mb-4">
                     <div class="card-body">
                         <h3 class="h5 mb-3">Score History</h3>
                         <div class="mb-3">
                             <div class="btn-group" role="group" aria-label="Time period">
-                                <button type="button" class="btn btn-sm btn-outline-primary active" data-days="7">Last 7 days</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="14">Last 14 days</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="30">Last 30 days</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-days="all">All time</button>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary{% if days == '1' %} active{% endif %}"
+                                        data-days="1">Last 24h
+                                </button>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary{% if days == '7' or days == None %} active{% endif %}"
+                                        data-days="7">Last 7 days
+                                </button>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary{% if days == '14' %} active{% endif %}"
+                                        data-days="14">Last 14 days
+                                </button>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary{% if days == '30' %} active{% endif %}"
+                                        data-days="30">Last 30 days
+                                </button>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary{% if days == 'all' %} active{% endif %}"
+                                        data-days="all">All time
+                                </button>
                             </div>
                         </div>
                         <div style="height: 300px;">
@@ -119,24 +133,23 @@
     </div>
 
     <!-- Include Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             let teamScoreChart;
             const teamId = '{{ team.uuid }}';
             let scoreData = JSON.parse('{{ score_history_json|escapejs }}');
-            
-            // Initial chart creation
+            let currentDays = '{{ days }}';
+
             function initChart(data) {
                 const chartElement = document.getElementById('teamScoreChart');
                 if (!chartElement) return;
-                
+
                 const ctx = chartElement.getContext('2d');
-                
-                // Format the data for Chart.js
+
                 const datasets = [
                     {
                         label: 'Total Score',
@@ -166,7 +179,7 @@
                         tension: 0.2
                     }
                 ];
-                
+
                 teamScoreChart = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -184,8 +197,9 @@
                             x: {
                                 type: 'time',
                                 time: {
-                                    unit: 'day',
+                                    unit: getDynamicTimeUnit(),
                                     displayFormats: {
+                                        hour: 'HH:mm',
                                         day: 'MMM d'
                                     }
                                 },
@@ -208,7 +222,7 @@
                             },
                             tooltip: {
                                 callbacks: {
-                                    label: function(context) {
+                                    label: function (context) {
                                         return `${context.dataset.label}: ${context.parsed.y} points`;
                                     }
                                 }
@@ -217,8 +231,7 @@
                     }
                 });
             }
-            
-            // Helper to create data points for Chart.js
+
             function createDataPoints(timestamps, values) {
                 return timestamps.map((time, index) => {
                     return {
@@ -227,13 +240,12 @@
                     };
                 });
             }
-            
-            // Fetch score history
+
             function fetchScoreHistory(days) {
-                const url = days === 'all' 
-                    ? `/api/team-score-history/?team_uuid=${teamId}` 
+                const url = days === 'all'
+                    ? `/api/team-score-history/?team_uuid=${teamId}&days=all`
                     : `/api/team-score-history/?team_uuid=${teamId}&days=${days}`;
-                
+
                 fetch(url)
                     .then(response => {
                         if (!response.ok) {
@@ -262,13 +274,12 @@
                         }
                     });
             }
-            
-            // Update chart with new data
+
             function updateChart(data) {
                 if (teamScoreChart) {
                     teamScoreChart.destroy();
                 }
-                
+
                 if (data.timestamps && data.timestamps.length > 0) {
                     initChart(data);
                 } else {
@@ -278,28 +289,30 @@
                     }
                 }
             }
-            
-            // Handle time period buttons
+
+            function getDynamicTimeUnit() {
+                if (currentDays === 'all') return 'day';
+
+                if (currentDays === '1') return 'hour';
+                return 'day';
+            }
+
             const timeButtons = document.querySelectorAll('[data-days]');
             timeButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    // Update active state
+                button.addEventListener('click', function () {
                     timeButtons.forEach(btn => btn.classList.remove('active'));
                     this.classList.add('active');
-                    
-                    // Fetch new data based on time period
+
                     const days = this.dataset.days;
+                    currentDays = days;
                     fetchScoreHistory(days);
                 });
             });
-            
-            // Check if we have team data available
+
             if (Object.keys(scoreData).length > 0 && scoreData[teamId]) {
-                // Initialize with existing data first
                 initChart(scoreData[teamId]);
             } else {
-                // Fallback to API if no data in template
-                fetchScoreHistory('7');
+                fetchScoreHistory(currentDays);
             }
         });
     </script>
