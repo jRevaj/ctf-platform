@@ -110,28 +110,38 @@
                                     <th>Date</th>
                                     <th>Type</th>
                                     <th>Description</th>
+                                    <th>Points</th>
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {% for flag in team.captured_flags.all|slice:":5" %}
+                                {% for event in team.score_history.all|slice:":10" %}
                                     <tr>
-                                        <td>{{ flag.captured_at|date:"F j, Y H:i" }}</td>
-                                        <td><span class="badge bg-danger">Flag Capture</span></td>
-                                        <td>Captured flag worth {{ flag.points }} points</td>
+                                        <td>{{ event.timestamp|date:"F j, Y H:i" }}</td>
+                                        <td>
+                                            {% if event.event_type == 'flag_capture' %}
+                                                <span class="badge bg-danger">Flag Capture</span>
+                                            {% elif event.event_type == 'blue_points' %}
+                                                <span class="badge bg-primary">Blue Points</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Score Update</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ event.description }}</td>
+                                        <td>
+                                            {% if event.event_type == 'flag_capture' %}
+                                                {{ event.red_points|default:0 }}
+                                            {% elif event.event_type == 'blue_points' %}
+                                                {{ event.blue_points|default:0 }}
+                                            {% else %}
+                                                {{ event.score }}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center">No recent activity</td>
                                     </tr>
                                 {% endfor %}
-                                {% for flag in team.owned_flags.all|slice:":5" %}
-                                    <tr>
-                                        <td>{{ flag.created_at|date:"F j, Y H:i" }}</td>
-                                        <td><span class="badge bg-primary">Flag Defense</span></td>
-                                        <td>Secured flag worth {{ flag.points }} points</td>
-                                    </tr>
-                                {% endfor %}
-                                {% if not team.captured_flags.all and not team.owned_flags.all %}
-                                    <tr>
-                                        <td colspan="3" class="text-center">No recent activity</td>
-                                    </tr>
-                                {% endif %}
                                 </tbody>
                             </table>
                         </div>

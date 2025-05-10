@@ -1,6 +1,7 @@
 import logging
 
 from accounts.models.enums import TeamRole
+from accounts.models.team import TeamScoreHistory
 from ctf.models import Flag, GameSession
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ class FlagService:
         flag.capture(captured_by, captured_by_user)
         captured_by.red_points += flag.points
         captured_by.update_score()
+        TeamScoreHistory.record_flag_capture(captured_by, flag)
 
     @staticmethod
     def award_blue_points(flags: list[Flag]) -> None:
@@ -30,6 +32,10 @@ class FlagService:
         total_points = sum(flag.points for flag in flags)
         team.blue_points += total_points
         team.update_score()
+        
+        description = f"Awarded {total_points} blue points for securing {len(flags)} flag(s)"
+        TeamScoreHistory.record_blue_points(team, total_points, description)
+        
         logger.info(f"Awarded {total_points} blue points to team {team.name}")
 
     def distribute_uncaptured_flags_points(self, session: GameSession) -> None:

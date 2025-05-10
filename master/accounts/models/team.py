@@ -157,6 +157,11 @@ def update_team_badges(sender, instance, **kwargs):
 
 
 class TeamScoreHistory(models.Model):
+    class EventType(models.TextChoices):
+        FLAG_CAPTURE = 'flag_capture', 'Flag Capture'
+        BLUE_POINTS = 'blue_points', 'Blue Points Award'
+        SCORE_UPDATE = 'score_update', 'Score Update'
+
     team = models.ForeignKey(
         'accounts.Team',
         related_name='score_history',
@@ -166,11 +171,21 @@ class TeamScoreHistory(models.Model):
     score = models.IntegerField(default=0)
     blue_points = models.IntegerField(default=0)
     red_points = models.IntegerField(default=0)
+    event_type = models.CharField(max_length=20, choices=EventType.choices, default=EventType.SCORE_UPDATE)
+    description = models.TextField(blank=True)
+    flag = models.ForeignKey(
+        'ctf.Flag',
+        related_name='score_history_entries',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
 
     class Meta:
-        ordering = ['team', 'timestamp']
+        ordering = ['-timestamp']
         indexes = [
             models.Index(fields=['team', 'timestamp']),
+            models.Index(fields=['event_type']),
         ]
         verbose_name = "Team Score History"
         verbose_name_plural = "Team Score History"
@@ -179,11 +194,33 @@ class TeamScoreHistory(models.Model):
         return f"{self.team.name} - {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')} - {self.score}"
 
     @classmethod
-    def record_score(cls, team):
+    def record_score(cls, team, event_type=EventType.SCORE_UPDATE, description="", flag=None):
         """Create a new history record for the current team score."""
-        cls.objects.create(
+        return cls.objects.create(
             team=team,
             score=team.score,
             blue_points=team.blue_points,
-            red_points=team.red_points
+            red_points=team.red_points,
+            event_type=event_type,
+            description=description,
+            flag=flag
+        )
+
+    @classmethod
+    def record_flag_capture(cls, team, flag):
+        """Record a flag capture event"""
+        return cls.record_score(
+            team=team,
+            event_type=cls.EventType.FLAG_CAPTURE,
+            description=f"Captured flag worth {flag.points} points",
+            flag=flag
+        )
+
+    @classmethod
+    def record_blue_points(cls, team, points, description):
+        """Record a blue points award event"""
+        return cls.record_score(
+            team=team,
+            event_type=cls.EventType.BLUE_POINTS,
+            description=description
         )
