@@ -68,33 +68,37 @@
                         Score History
                     </h2>
                     <div class="card-body p-4">
-                        <div class="mb-4">
-                            <div class="btn-group" role="group" aria-label="Time period">
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary{% if days == '1' %} active{% endif %}"
-                                        data-days="1">Last 24h
-                                </button>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary{% if days == '7' or days == None %} active{% endif %}"
-                                        data-days="7">Last 7 days
-                                </button>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary{% if days == '14' %} active{% endif %}"
-                                        data-days="14">Last 14 days
-                                </button>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary{% if days == '30' %} active{% endif %}"
-                                        data-days="30">Last 30 days
-                                </button>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-primary{% if days == 'all' %} active{% endif %}"
-                                        data-days="all">All time
-                                </button>
+                        {% if team.score_history.all|length > 0 %}
+                            <div style="height: 300px;">
+                                <canvas id="teamScoreChart"></canvas>
                             </div>
-                        </div>
-                        <div style="height: 300px;">
-                            <canvas id="teamScoreChart"></canvas>
-                        </div>
+                            <div class="mb-4">
+                                <div class="btn-group" role="group" aria-label="Time period">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary{% if days == '1' %} active{% endif %}"
+                                            data-days="1">Last 24h
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary{% if days == '7' or days == None %} active{% endif %}"
+                                            data-days="7">Last 7 days
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary{% if days == '14' %} active{% endif %}"
+                                            data-days="14">Last 14 days
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary{% if days == '30' %} active{% endif %}"
+                                            data-days="30">Last 30 days
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary{% if days == 'all' %} active{% endif %}"
+                                            data-days="all">All time
+                                    </button>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info text-center">No score history available.</div>
+                        {% endif %}
                     </div>
                 </div>
 

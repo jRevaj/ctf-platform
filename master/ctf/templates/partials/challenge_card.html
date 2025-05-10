@@ -6,7 +6,7 @@
                 {% if completed %}
                     <i class="bi bi-check-circle fs-3 me-2 text-success"></i>
                 {% else %}
-                    <i class="bi bi-play-circle fs-3 me-2 text-warning"></i>
+                    <i class="bi bi-play-circle fs-3 me-2 {% if challenge.role == 'red' %}text-danger{% elif challenge.role == 'blue' %}text-primary{% endif %}"></i>
                 {% endif %}
                 <div class="">
                     <h5 class="card-title mb-0">

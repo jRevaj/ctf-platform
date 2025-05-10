@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 @admin.register(Badge)
 class BadgeAdmin(admin.ModelAdmin):
-    pass
+    list_display = ("name", "description", "icon_class", "team")
+    search_fields = ("name", "description")
 
 
 class FlagInline(admin.TabularInline):

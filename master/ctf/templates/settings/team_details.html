@@ -35,6 +35,13 @@
                 <span class="text-muted">Created:</span>
                 <span class="ms-2 fw-medium">{{ user_team.created_at|date:"F j, Y" }}</span>
             </div>
+            <div class="mb-3">
+                <a href="{% url 'team_detail' user_team.uuid %}" target="_blank"
+                    class="link-primary me-3">
+                    View Team Details Page 
+                    <i class="ms-1 bi bi-box-arrow-up-right"></i>
+                </a>
+            </div>
             {% if user_team.created_by == user %}
                 <div class="mb-3">
                     <label class="form-label">Team Join Key</label>
