@@ -10,8 +10,8 @@ urlpatterns = [
         path('login/', login_view, name='login'),
         path('logout/', logout_view, name='logout'),
     ])),
-    path('teams/', teams_view, name='teams'),
-    path('teams/<uuid:team_uuid>/', team_detail_view, name='team_detail'),
+    path('teams/', login_required(teams_view), name='teams'),
+    path('teams/<uuid:team_uuid>/', login_required(team_detail_view), name='team_detail'),
     path('settings/', include([
         path('', login_required(settings_view), name='settings'),
         path('team/details/', login_required(team_management_view), name='team_details'),
