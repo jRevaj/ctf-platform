@@ -11,9 +11,14 @@
                     </ol>
                 </nav>
 
-                <div class="card mb-4">
+                <div class="card mb-4 p-2">
                     <div class="card-body">
-                        <h1 class="h2 mb-4">{{ team.name }}</h1>
+                        <div class="d-flex justify-content-start align-items-center gap-3 mb-5">
+                            <h1 class="h2">{{ team.name }}</h1>
+                            {% for badge in team.badges.all %}
+                                <i class="fs-4 mb-2 bi {{ badge.icon_class }}" title="{{ badge.name }}: {{ badge.description }}"></i>
+                            {% endfor %}
+                        </div>
 
                         <div class="row">
                             <div class="col-md-6">
@@ -59,9 +64,11 @@
                 </div>
 
                 <div class="card mb-4">
-                    <div class="card-body">
-                        <h3 class="h5 mb-3">Score History</h3>
-                        <div class="mb-3">
+                    <h2 class="card-header h4 p-4">
+                        Score History
+                    </h2>
+                    <div class="card-body p-4">
+                        <div class="mb-4">
                             <div class="btn-group" role="group" aria-label="Time period">
                                 <button type="button"
                                         class="btn btn-sm btn-outline-primary{% if days == '1' %} active{% endif %}"
@@ -92,8 +99,10 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-body">
-                        <h3 class="h5 mb-3">Recent Activity</h3>
+                    <h2 class="card-header h4 p-4">
+                        Recent Activity
+                    </h2>
+                    <div class="card-body p-4">
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>

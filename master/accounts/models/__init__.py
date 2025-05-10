@@ -1,9 +1,8 @@
-from .team import Team
+from .team import Team, TeamScoreHistory
 from .user import User
-from .team_history import TeamScoreHistory
 
 __all__ = [
     'Team',
+    'TeamScoreHistory',
     'User',
-    'TeamScoreHistory'
 ]

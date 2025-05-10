@@ -2,6 +2,11 @@ import uuid
 
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.db import models
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
+from django.utils import timezone
+
+from ctf.models import Badge
 
 
 class Team(models.Model):
@@ -36,7 +41,6 @@ class Team(models.Model):
         """Update team's score"""
         self.score = self.blue_points + self.red_points
         self.save()
-        from accounts.models import TeamScoreHistory
         TeamScoreHistory.record_score(self)
 
     def can_join(self):
@@ -92,3 +96,94 @@ class Team(models.Model):
                 raise ValidationError(f"Team cannot have more than {settings.max_team_size} members")
             if self.should_be_in_game():
                 self.is_in_game = True
+
+
+@receiver(pre_save, sender=Team)
+def track_points_changes(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            old_team = Team.objects.get(pk=instance.pk)
+            instance._old_score = old_team.score
+            instance._old_blue_points = old_team.blue_points
+            instance._old_red_points = old_team.red_points
+        except Team.DoesNotExist:
+            instance._old_score = None
+            instance._old_blue_points = None
+            instance._old_red_points = None
+    else:
+        instance._old_score = None
+        instance._old_blue_points = None
+        instance._old_red_points = None
+
+
+@receiver(post_save, sender=Team)
+def update_team_badges(sender, instance, **kwargs):
+    if not instance.is_in_game:
+        return
+
+    old_score = getattr(instance, '_old_score', None)
+    old_blue = getattr(instance, '_old_blue_points', None)
+    old_red = getattr(instance, '_old_red_points', None)
+
+    if (old_score is not None and old_score != instance.score) or \
+            (old_blue is not None and old_blue != instance.blue_points) or \
+            (old_red is not None and old_red != instance.red_points):
+
+        Badge.update_team_badges(instance)
+
+        if old_score is not None and old_score != instance.score:
+            teams_to_check = Team.objects.filter(
+                is_in_game=True,
+                score__gte=min(old_score, instance.score),
+                score__lte=max(old_score, instance.score)
+            ).exclude(id=instance.id)
+        elif old_blue is not None and old_blue != instance.blue_points:
+            teams_to_check = Team.objects.filter(
+                is_in_game=True,
+                blue_points__gte=min(old_blue, instance.blue_points),
+                blue_points__lte=max(old_blue, instance.blue_points)
+            ).exclude(id=instance.id)
+        elif old_red is not None and old_red != instance.red_points:
+            teams_to_check = Team.objects.filter(
+                is_in_game=True,
+                red_points__gte=min(old_red, instance.red_points),
+                red_points__lte=max(old_red, instance.red_points)
+            ).exclude(id=instance.id)
+        else:
+            teams_to_check = Team.objects.none()
+
+        for team in teams_to_check:
+            Badge.update_team_badges(team)
+
+
+class TeamScoreHistory(models.Model):
+    team = models.ForeignKey(
+        'accounts.Team',
+        related_name='score_history',
+        on_delete=models.CASCADE
+    )
+    timestamp = models.DateTimeField(default=timezone.now)
+    score = models.IntegerField(default=0)
+    blue_points = models.IntegerField(default=0)
+    red_points = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['team', 'timestamp']
+        indexes = [
+            models.Index(fields=['team', 'timestamp']),
+        ]
+        verbose_name = "Team Score History"
+        verbose_name_plural = "Team Score History"
+
+    def __str__(self):
+        return f"{self.team.name} - {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')} - {self.score}"
+
+    @classmethod
+    def record_score(cls, team):
+        """Create a new history record for the current team score."""
+        cls.objects.create(
+            team=team,
+            score=team.score,
+            blue_points=team.blue_points,
+            red_points=team.red_points
+        )

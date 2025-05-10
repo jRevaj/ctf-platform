@@ -6,12 +6,17 @@ from django.utils import timezone
 
 from accounts.models import Team
 from ctf.forms.admin_forms import GameSessionForm
-from ctf.models import Flag, GameSession, TeamAssignment, GamePhase
+from ctf.models import Flag, GameSession, TeamAssignment, GamePhase, Badge
 from ctf.models.enums import GameSessionStatus
 from ctf.models.settings import GlobalSettings
 from ctf.services import MatchmakingService
 
 logger = logging.getLogger(__name__)
+
+
+@admin.register(Badge)
+class BadgeAdmin(admin.ModelAdmin):
+    pass
 
 
 class FlagInline(admin.TabularInline):
