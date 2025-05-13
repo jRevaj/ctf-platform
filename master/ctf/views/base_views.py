@@ -1,6 +1,7 @@
 import json
 from datetime import timedelta
 
+from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch
 from django.shortcuts import render
 from django.utils import timezone
@@ -14,6 +15,13 @@ def home(request):
     return render(request, "home.html", context)
 
 
+@login_required
+def rules_view(request):
+    """Display the rules and information page"""
+    return render(request, "rules.html")
+
+
+@login_required
 def scoreboard_view(request):
     """Display the scoreboard with teams sorted by score"""
     days_param = request.GET.get('days', '7')

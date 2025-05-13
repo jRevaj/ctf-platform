@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">Rules & Basic Information</h1>
+                
+                <div class="card mb-3">
+                    <div class="card-header p-0" id="generalRulesHeading">
+                        <button class="btn btn-link text-decoration-none d-flex justify-content-between align-items-center w-100 p-4" type="button" data-bs-toggle="collapse" data-bs-target="#generalRulesCollapse" aria-expanded="true" aria-controls="generalRulesCollapse">
+                            <h2 class="h4 mb-0">General Rules</h2>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div id="generalRulesCollapse" class="collapse show" aria-labelledby="generalRulesHeading">
+                        <div class="card-body p-4">
+                            <ol class="mb-0">
+                                <li class="mb-2">All teams are provided with the same initial conditions - identical configuration of competition systems, the same time limits for both defense and offense, and access to the same information about the environment.</li>
+                                <li class="mb-2">The scoring system, the method of awarding points and any penalties are published in advance and available to all participants. Points are allocated according to the applicable algorithms listed on this page.</li>
+                                <li class="mb-2">It is forbidden to attack the organisational infrastructure of the competition (e.g. platform, evaluation system, monitoring) or other elements outside the assigned target environment. Only attacks and defenses within the assigned systems are allowed.</li>
+                                <li class="mb-2">In the event that a participant discovers an error in the environment or in the competition system, he/she must immediately notify the organisers.</li>
+                                <li class="mb-2">All participants are expected to behave in a professional and ethical manner. Deliberate damage to the competitive environment, sabotage, exploitation of technical defects in the infrastructure or other unfair practices are prohibited.</li>
+                                <li class="mb-2">DDoS attacks that could render the competition infrastructure unavailable are prohibited and will be grounds for immediate disqualification.</li>
+                                <li class="mb-2">Violation of the rules may result in a warning, deduction of points, disqualification of the team (disqualification means FX grade from the course for the whole team) or exclusion from the competition.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header p-0" id="pointsSystemHeading">
+                        <button class="btn btn-link text-decoration-none d-flex justify-content-between align-items-center w-100 p-4" type="button" data-bs-toggle="collapse" data-bs-target="#pointsSystemCollapse" aria-expanded="false" aria-controls="pointsSystemCollapse">
+                            <h2 class="h4 mb-0">Points system</h2>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div id="pointsSystemCollapse" class="collapse" aria-labelledby="pointsSystemHeading">
+                        <div class="card-body p-4">
+                            <h5>Base Points</h5>
+                            <p>Each flag has a base point value determined by its difficulty:</p>
+                            <ul>
+                                <li>Easy: &lt;200 points</li>
+                                <li>Medium: 200-400 points</li>
+                                <li>Hard: 400&gt; points</li>
+                            </ul>
+
+                            <h5>Static Scoring</h5>
+                            <p>Challenges use static scoring, meaning that the points are the same for all teams that solve
+                                the challenge throughout the challenge period.</p>
+
+                            <h5 class="text-primary">Blue Points</h5>
+                            <p>Blue points are awarded at the end of the whole challenge period (both Blue and Red phase) for all flags that you
+                                successfully secured (means that the flag was not submitted by team attacking your deployment).</p>
+
+                            <h5 class="text-danger">Red Points</h5>
+                            <p>Red points are awarded for flags that you submit in the red phase of the challenge.</p>
+
+                            <h5 class="text-success">Team Score</h5>
+                            <p>Team score is the sum of team's blue and red points.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header p-0" id="hintsHeading">
+                        <button class="btn btn-link text-decoration-none d-flex justify-content-between align-items-center w-100 p-4" type="button" data-bs-toggle="collapse" data-bs-target="#hintsCollapse" aria-expanded="false" aria-controls="hintsCollapse">
+                            <h2 class="h4 mb-0">Hints</h2>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div id="hintsCollapse" class="collapse" aria-labelledby="hintsHeading">
+                        <div class="card-body p-4">
+                            <p>Each flag may have a hint available to help you when you're stuck:</p>
+
+                            <h5>Hint Usage</h5>
+                            <ul>
+                                <li>Hints can be requested by clicking the "Get a hint" button.</li>
+                                <li>Once a hint is requested, all team members can view it.</li>
+                                <li>Hints are displayed progressively, starting from the lowest points flags up to the highest.</li>
+                                <li>The point deduction for taking a hint is permanent</li>
+                                <li>If you request a hint in blue phase, it will be displayed in red phase as well.</li>
+                                <li>Every hint deducts 50% of the points from the flag it is for.</li>
+                                <li>If you request a hint in blue phase, you will loose points for the flags in both phases. That means that if you secured the flag you get only 50% of blue points and if you submit the flag in red phase you get only 50% of red points.</li>
+                                <li>If you request a hint in red phase, you will loose points for that flag in red phase only.</li>
+                            </ul>
+
+                            <div class="alert alert-info">
+                                <strong>Strategic Tip:</strong> Consider carefully whether to use hints in blue phase, as it will significantly reduce points you can earn from the whole challenge. Sometimes discussing with teammates or approaching the problem differently
+                                is more beneficial than immediately using hints.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header p-0" id="challengesHeading">
+                        <button class="btn btn-link text-decoration-none d-flex justify-content-between align-items-center w-100 p-4" type="button" data-bs-toggle="collapse" data-bs-target="#challengesCollapse" aria-expanded="false" aria-controls="challengesCollapse">
+                            <h2 class="h4 mb-0">Challenges</h2>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div id="challengesCollapse" class="collapse" aria-labelledby="challengesHeading">
+                        <div class="card-body p-4">
+                            <p>CTF challenges consist of two phases:</p>
+
+                            <ul>
+                                <li>Each challenge has a defined start and end time.</li>
+                                <li>You can request hints in both phases.</li>
+                                <li>You can only submit flags in red phase.</li>
+                                <li>You will see points for correctly submitted flags in red phase immediately.</li>
+                                <li>Points for secured flags in blue phase are visible only after the challenge ends.</li>
+                            </ul>
+
+                            <p>Past and current challenges will be displayed on the <a href="{% url 'home' %}">homepage</a> and <a href="{% url 'challenges' %}">challenges</a> page.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
+            
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const icon = this.querySelector('.bi');
+                    if (icon.classList.contains('bi-chevron-down')) {
+                        icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
+                    } else {
+                        icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
+                    }
+                });
+            });
+            
+            const collapseElements = document.querySelectorAll('.collapse');
+            collapseElements.forEach(collapse => {
+                collapse.addEventListener('hidden.bs.collapse', function() {
+                    const button = document.querySelector(`[data-bs-target="#${this.id}"]`);
+                    const icon = button.querySelector('.bi');
+                    icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
+                });
+                
+                collapse.addEventListener('shown.bs.collapse', function() {
+                    const button = document.querySelector(`[data-bs-target="#${this.id}"]`);
+                    const icon = button.querySelector('.bi');
+                    icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
+                });
+            });
+        });
+    </script>
+{% endblock %} 
