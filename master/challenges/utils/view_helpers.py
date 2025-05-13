@@ -1,5 +1,4 @@
 from accounts.models.enums import TeamRole
-from challenges.services import ContainerService
 from ctf.models import TeamAssignment
 from ctf.models.enums import GamePhaseStatus
 
@@ -13,7 +12,6 @@ def get_user_challenges(user):
     - If both completed = pass the last active phase with appended is_completed = True
     """
     challenges = []
-    container_service = ContainerService()
 
     if user.is_authenticated and user.team:
         assignments = TeamAssignment.objects.filter(
@@ -56,10 +54,7 @@ def get_user_challenges(user):
                 display_assignment = red_assignment
 
             if display_assignment:
-                for container in display_assignment.deployment.containers.all():
-                    if container.is_entrypoint:
-                        container.connection_string = container_service.get_ssh_connection_string(container)
-
+                display_assignment.used_hints = display_assignment.get_used_flag_hints()
                 display_assignment.is_completed = blue_completed and red_completed
                 challenges.append(display_assignment)
 

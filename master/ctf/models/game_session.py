@@ -1,13 +1,15 @@
+import random
 import uuid
 from datetime import timedelta
 
 from django.db import models
+from django.db.models import QuerySet, Q
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 
 from accounts.models.enums import TeamRole
-from ctf.models import GamePhase
+from ctf.models import GamePhase, Flag
 from ctf.models.enums import GameSessionStatus, GamePhaseStatus
 
 
@@ -116,14 +118,32 @@ def handle_completed_session(sender, instance, created, **kwargs):
             ContainerService().stop_session_containers(instance)
 
 
+class TeamAssignmentManager(models.Manager):
+    def create(self, *args, **kwargs):
+        entrypoint_container = kwargs.get('entrypoint_container', None)
+        deployment = kwargs.get('deployment', None)
+        if entrypoint_container is None and deployment is not None:
+            entrypoints = [c for c in deployment.containers.all() if getattr(c, 'is_entrypoint', False)]
+            if entrypoints:
+                kwargs['entrypoint_container'] = random.choice(entrypoints)
+            else:
+                kwargs['entrypoint_container'] = None
+        return super().create(**kwargs)
+
+
 class TeamAssignment(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     session = models.ForeignKey(GameSession, on_delete=models.CASCADE, related_name="team_assignments")
     team = models.ForeignKey("accounts.Team", on_delete=models.CASCADE, related_name="assignments")
-    deployment = models.ForeignKey("challenges.ChallengeDeployment", on_delete=models.CASCADE, related_name="assignments")
+    deployment = models.ForeignKey("challenges.ChallengeDeployment", on_delete=models.CASCADE,
+                                   related_name="assignments")
+    entrypoint_container = models.ForeignKey("challenges.ChallengeContainer", on_delete=models.CASCADE,
+                                             related_name="entrypoint_assignments", null=True)
     role = models.CharField(max_length=8, choices=TeamRole, default=TeamRole.BLUE)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
+
+    objects = TeamAssignmentManager()
 
     class Meta:
         ordering = ["-start_date"]
@@ -138,3 +158,23 @@ class TeamAssignment(models.Model):
         """Check if this assignment is currently active"""
         now = timezone.now()
         return self.start_date <= now <= self.end_date
+
+    def get_used_flag_hints(self) -> QuerySet[Flag]:
+        """Get hints that have been used by the team"""
+        return Flag.objects.filter(
+            hint_usages__team=self.team,
+            hint_usages__session=self.session
+        ).order_by("points")
+
+    def get_next_available_flag_hint(self) -> Flag:
+        """Get the next available hint for this session (lowest points not yet used)"""
+        used_flag_hints = self.get_used_flag_hints()
+        deployment_flag_hints = Flag.objects.filter(container__deployment=self.deployment)
+
+        if used_flag_hints.count() == deployment_flag_hints.count():
+            return None
+
+        for flag in used_flag_hints:
+            deployment_flag_hints = deployment_flag_hints.exclude(Q(hint=flag.hint) | Q(is_captured=True))
+
+        return deployment_flag_hints.order_by("points").first()

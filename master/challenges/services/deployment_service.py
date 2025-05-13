@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from challenges.models.challenge import DeploymentAccess
 from challenges.services import ContainerService, DockerService
+from ctf.models import Flag
 from ctf.models.enums import GameSessionStatus
 
 logger = logging.getLogger(__name__)
@@ -216,3 +217,9 @@ class DeploymentService:
         time_spent = self.get_team_total_access_time_for_deployment(team, deployment)
         remaining = max_time - time_spent
         return max(0, remaining)
+
+    @staticmethod
+    def has_captured_all_flags(deployment, team):
+        """Check if team has captured all flags for this deployment"""
+        flags = Flag.objects.filter(container__in=deployment.containers.all())
+        return all(flag.is_captured and flag.captured_by == team for flag in flags)

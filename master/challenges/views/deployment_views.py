@@ -3,6 +3,8 @@ import time
 from threading import Thread
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
@@ -10,6 +12,7 @@ from django.views.generic import DetailView
 
 from challenges.services import DeploymentService
 from ctf.models import TeamAssignment
+from ctf.utils.view_helpers import create_challenge_data_dict
 from ctf.views.mixins import TeamRequiredMixin, AjaxResponseMixin, TimeRestrictionMixin
 
 logger = logging.getLogger(__name__)
@@ -17,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 class DeploymentStatusView(TeamRequiredMixin, AjaxResponseMixin, DetailView):
     """View for checking deployment status."""
-
     model = TeamAssignment
     slug_field = 'uuid'
     slug_url_kwarg = 'challenge_uuid'
@@ -47,49 +49,16 @@ class DeploymentStatusView(TeamRequiredMixin, AjaxResponseMixin, DetailView):
                     'connection_info': []
                 })
 
-            is_running = assignment.deployment.is_running()
-            connection_info = []
-
-            has_time_restriction = assignment.session.enable_time_restrictions
-            max_time = assignment.session.get_max_time_for_role(assignment.role)
-            time_spent = deployment_service.get_team_total_access_time_for_deployment(
-                assignment.team, assignment.deployment
-            )
-            remaining_time = deployment_service.get_remaining_time_for_deployment(
-                assignment.team, assignment.deployment
-            )
-            time_exceeded = deployment_service.has_exceeded_time_limit(
-                assignment.team, assignment.deployment
-            )
-
-            if is_running and not time_exceeded:
-                for container in assignment.deployment.containers.all():
-                    if container.is_entrypoint:
-                        connection_string = container.get_connection_string()
-                        connection_info.append({
-                            'id': container.id,
-                            'name': container.name,
-                            'connection_string': connection_string,
-                            'is_available': 'not' not in connection_string,
-                            'has_time_restriction': has_time_restriction,
-                            'max_time': max_time,
-                            'time_spent': time_spent,
-                            'remaining_time': remaining_time,
-                            'spent_percentage': round((time_spent / max_time) * 100) if max_time > 0 else 0,
-                            'time_exceeded': time_exceeded
-                        })
-
-            logger.info(f"{has_time_restriction}, {max_time}, {time_spent}, {remaining_time}, {time_exceeded}")
-            return JsonResponse({
-                'is_running': is_running,
-                'connection_info': connection_info,
-                'has_time_restriction': has_time_restriction,
-                'max_time': max_time,
-                'time_spent': time_spent,
-                'spent_percentage': round((time_spent / max_time) * 100) if max_time > 0 else 0,
-                'remaining_time': remaining_time,
-                'time_exceeded': time_exceeded
-            })
+            challenge_data = create_challenge_data_dict(assignment, request.user.team)
+            
+            response_data = {
+                'is_running': challenge_data['is_running'],
+                'connection_info': challenge_data.get('connection_string', ''),
+            }
+            if 'time_restrictions' in challenge_data:
+                response_data.update(challenge_data['time_restrictions'])
+                
+            return JsonResponse(response_data)
         except TeamAssignment.DoesNotExist:
             return JsonResponse({'error': 'Challenge not found'}, status=404)
         except PermissionDenied as e:
@@ -101,7 +70,6 @@ class DeploymentStatusView(TeamRequiredMixin, AjaxResponseMixin, DetailView):
 
 class StartDeploymentView(TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseMixin, DetailView):
     """View for starting a deployment."""
-
     model = TeamAssignment
     slug_field = 'uuid'
     slug_url_kwarg = 'challenge_uuid'
@@ -116,12 +84,10 @@ class StartDeploymentView(TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseM
         try:
             challenge = self.get_object()
 
-            # Check time restrictions
             time_check_result = self.check_time_restrictions(challenge, request.user.team)
             if time_check_result:
                 return time_check_result
 
-            # Start deployment in background thread
             thread = Thread(
                 target=start_deployment_async,
                 args=(challenge.deployment.id, request.user.team.id)
@@ -129,19 +95,23 @@ class StartDeploymentView(TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseM
             thread.daemon = True
             thread.start()
 
-            logger.info(f"start_deployment_view: thread started")
             if self.is_ajax():
-                return JsonResponse({
+                # Create a simplified response
+                response_data = {
                     'success': True,
                     'message': 'Deployment start initiated. Please wait...',
                     'deployment_id': challenge.deployment.id,
                     'challenge_uuid': str(challenge.uuid),
-                    'html': render(request, 'partials/challenge_card_inner.html', {
-                        'challenge': challenge,
-                        'completed': False,
-                        'deployment_starting': True
-                    }).content.decode('utf-8')
-                })
+                }
+                
+                # Add HTML for backward compatibility
+                response_data['html'] = render(request, 'partials/challenge_card_inner.html', {
+                    'challenge': challenge,
+                    'completed': False,
+                    'deployment_starting': True
+                }).content.decode('utf-8')
+                
+                return JsonResponse(response_data)
 
             return redirect('challenges')
 
@@ -162,6 +132,7 @@ class StartDeploymentView(TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseM
             return redirect('challenges')
 
 
+@login_required
 def start_deployment_async(deployment_id, team_id):
     """Background task to start a deployment"""
     try:

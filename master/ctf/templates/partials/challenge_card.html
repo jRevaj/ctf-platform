@@ -28,7 +28,6 @@
     </div>
 </div>
 
-<!-- Modal for challenge -->
 <div class="modal fade" id="challengeModal{{ challenge.id }}" tabindex="-1"
      aria-labelledby="challengeModalLabel{{ challenge.id }}" aria-hidden="true">
     <div class="modal-dialog">
@@ -114,6 +113,7 @@
                 const formData = new FormData(this);
                 const submitButton = this.querySelector('button[type="submit"]');
                 const modalBody = this.closest('.modal-body');
+                const flagInput = this.querySelector('input[name="flag"]');
 
                 submitButton.disabled = true;
 
@@ -137,17 +137,79 @@
 
                         if (successMessage) {
                             modalBody.insertBefore(successMessage.cloneNode(true), this);
+                            
+                            if (flagInput) {
+                                flagInput.value = '';
+                            }
+                            
                             this.reset();
+                            
+                            flagInput.classList.remove('is-invalid');
+                            const feedbackElement = this.querySelector('.invalid-feedback');
+                            if (feedbackElement) {
+                                feedbackElement.style.display = 'none';
+                            }
+                            
+                            console.log('Form reset after successful submission');
                         } else if (errorMessage) {
                             modalBody.insertBefore(errorMessage.cloneNode(true), this);
-                        }
-
-                        if (newForm) {
-                            this.innerHTML = newForm.innerHTML;
+                            
+                            if (newForm) {
+                                const newInvalidInput = newForm.querySelector('.is-invalid');
+                                if (newInvalidInput && flagInput) {
+                                    flagInput.classList.add('is-invalid');
+                                    
+                                    setTimeout(() => {
+                                        flagInput.focus();
+                                    }, 10);
+                                }
+                                
+                                const newFeedback = newForm.querySelector('.invalid-feedback');
+                                let feedbackElement = this.querySelector('.invalid-feedback');
+                                
+                                if (newFeedback) {
+                                    if (!feedbackElement) {
+                                        feedbackElement = document.createElement('div');
+                                        feedbackElement.className = 'invalid-feedback';
+                                        flagInput.parentNode.appendChild(feedbackElement);
+                                    }
+                                    feedbackElement.innerHTML = newFeedback.innerHTML;
+                                    feedbackElement.style.display = 'block';
+                                }
+                            }
+                        } else {
+                            if (newForm) {
+                                const newErrors = newForm.querySelectorAll('.invalid-feedback');
+                                if (newErrors.length > 0) {
+                                    flagInput.classList.add('is-invalid');
+                                    
+                                    newErrors.forEach(newError => {
+                                        const targetField = newError.previousElementSibling;
+                                        if (targetField) {
+                                            const fieldName = targetField.name;
+                                            const currentField = this.querySelector(`[name="${fieldName}"]`);
+                                            if (currentField) {
+                                                let feedback = currentField.nextElementSibling;
+                                                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                                                    feedback = document.createElement('div');
+                                                    feedback.className = 'invalid-feedback';
+                                                    currentField.parentNode.appendChild(feedback);
+                                                }
+                                                feedback.innerHTML = newError.innerHTML;
+                                                feedback.style.display = 'block';
+                                            }
+                                        }
+                                    });
+                                }
+                            } else {
+                                const errorAlert = document.createElement('div');
+                                errorAlert.className = 'alert alert-danger mb-3';
+                                errorAlert.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>An error occurred while processing your request.';
+                                modalBody.insertBefore(errorAlert, this);
+                            }
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
                         const errorAlert = document.createElement('div');
                         errorAlert.className = 'alert alert-danger mb-3';
                         errorAlert.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>An error occurred while submitting the flag.';
@@ -221,15 +283,15 @@
     }
 
     function pollDeploymentStatus(challengeUuid, modalBody, attempt = 1) {
-        const maxAttempts = 15;  // 15 attempts × 2 seconds = 30 seconds maximum wait
-        const pollInterval = 2000;  // 2 seconds between checks
+        const maxAttempts = 15;
+        const pollInterval = 2000;
 
         if (attempt > maxAttempts) {
             showAlert(modalBody, 'warning', 'Deployment is taking longer than expected. Please check back later.');
             return;
         }
 
-        fetch(`/challenges/check_deployment/${challengeUuid}/`, {
+        fetch(`/challenges/${challengeUuid}/check-deployment/`, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
             }
@@ -250,7 +312,7 @@
                 }
 
                 if (data.is_running) {
-                    fetch(`/challenges/?challenge_uuid=${challengeUuid}`, {
+                    fetch(`/challenges/${challengeUuid}/`, {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
                         }
@@ -260,6 +322,9 @@
                             if (refreshData.html) {
                                 modalBody.innerHTML = refreshData.html;
 
+                                // Log the data for debugging
+                                console.log('Challenge data received:', refreshData.challenge_data);
+                                
                                 initFlagSubmitHandlers();
                                 initDeploymentStartHandlers();
                             }
@@ -314,7 +379,7 @@
             const modalElement = modal.closest('.modal');
             modalElement.addEventListener('shown.bs.modal', function () {
                 if (challengeUuid) {
-                    fetch(`/challenges/?challenge_uuid=${challengeUuid}`, {
+                    fetch(`/challenges/${challengeUuid}/`, {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
                         }

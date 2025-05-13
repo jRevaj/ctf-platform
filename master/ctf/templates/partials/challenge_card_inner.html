@@ -9,10 +9,13 @@
         Phase ends: {{ challenge.end_date|date:"d.m.Y" }}
     </p>
 
-    {# TODO: implement hints system #}
+    <hr>
+    {% include "partials/hint_display.html" with time_exceeded=time_exceeded %}
+    <hr>
 
     {% if has_time_restriction %}
         {% include "partials/time_restrictions.html" %}
+        <hr>
     {% endif %}
 
     {% csrf_token %}
@@ -47,41 +50,34 @@
         </div>
     {% else %}
         {% if challenge.deployment.is_running %}
-            {% for container in challenge.deployment.containers.all %}
-                {% if container.is_entrypoint %}
-                    <div class="mb-4">
-                        <label for="connectionString{{ challenge.id }}" class="form-label">Connection
-                            Information</label>
-                        <div class="input-group">
-                            {% with connection_string=container.get_connection_string %}
-                                <input type="text"
-                                       class="form-control {% if 'not' in connection_string %}text-muted{% endif %}"
-                                       value="{{ connection_string }}" readonly/>
-                                {% if 'not' not in connection_string %}
-                                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="tooltip"
-                                            title="Copy to clipboard"
-                                            onclick="copyToClipboard('{{ connection_string }}', 'connectionToast{{ challenge.id }}')">
-                                        <i class="bi bi-clipboard"></i>
-                                    </button>
-                                {% else %}
-                                    <button class="btn btn-outline-secondary" title="Copy to clipboard" type="button"
-                                            disabled>
-                                        <i class="bi bi-clipboard-x"></i>
-                                    </button>
-                                {% endif %}
-                            {% endwith %}
-                        </div>
-                        {% with connection_string=container.get_connection_string %}
-                            {% if 'not' in connection_string %}
-                                <small class="text-muted">
-                                    <i class="bi bi-info-circle"></i>
-                                    The container is currently unavailable.
-                                </small>
-                            {% endif %}
-                        {% endwith %}
-                    </div>
-                {% endif %}
-            {% endfor %}
+            <div class="mb-4">
+                <label for="connectionString{{ challenge.id }}" class="form-label">Connection Information</label>
+                <div class="input-group">
+                    {% with connection_string=challenge.entrypoint_container.get_connection_string %}
+                        <input type="text"
+                               class="form-control {% if 'not' in connection_string %}text-muted{% endif %}"
+                               value="{{ connection_string }}" readonly/>
+                        {% if 'not' not in connection_string %}
+                            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="tooltip"
+                                    title="Copy to clipboard"
+                                    onclick="copyToClipboard('{{ connection_string }}', 'connectionToast{{ challenge.id }}')">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        {% else %}
+                            <button class="btn btn-outline-secondary" title="Copy to clipboard" type="button"
+                                    disabled>
+                                <i class="bi bi-clipboard-x"></i>
+                            </button>
+                        {% endif %}
+                        {% if 'not' in connection_string %}
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i>
+                                The container is currently unavailable.
+                            </small>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
         {% else %}
             {% if not time_exceeded %}
                 <div class="">
@@ -119,9 +115,11 @@
                 <label for="flagValue{{ challenge.id }}" class="form-label">Flag Value</label>
                 <input type="text" class="form-control {% if form and form.flag.errors %}is-invalid{% endif %}"
                        id="flagValue{{ challenge.id }}" name="flag" required
-                       value="{% if form %}{{ form.flag.value }}{% endif %}"/>
+                       value="{% if form %}{{ form.flag.value }}{% endif %}"
+                       placeholder="Insert flag value here"
+                />
                 {% if form and form.flag.errors %}
-                    <div class="invalid-feedback">
+                    <div class="invalid-feedback" style="display:block;">
                         {{ form.flag.errors.0 }}
                     </div>
                 {% endif %}

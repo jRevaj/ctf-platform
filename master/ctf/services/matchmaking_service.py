@@ -110,7 +110,7 @@ class MatchmakingService:
                 available_targets.remove(target_team)
                 target_assignment = team_assignments.get(target_team)
                 if not target_assignment:
-                    raise Exception(f"No week 1 assignment found for target team {target_team.name}")
+                    raise Exception(f"No blue assignment found for target team {target_team.name}")
 
                 logger.info(f"Assigning team {attacking_team.name} to attack {target_team.name}'s deployment")
                 assignment = self._assign_team(session, target_assignment.deployment, attacking_team, start_date,

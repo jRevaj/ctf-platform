@@ -2,7 +2,7 @@ import logging
 
 from accounts.models.enums import TeamRole
 from accounts.models.team import TeamScoreHistory
-from ctf.models import Flag, GameSession
+from ctf.models import Flag, GameSession, FlagHintUsage
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,12 @@ class FlagService:
         """Handle flag capture"""
         captured_by = captured_by_user.team
         flag.capture(captured_by, captured_by_user)
-        captured_by.red_points += flag.points
+
+        if FlagHintUsage.objects.filter(flag__hint=flag.hint, team=captured_by).exists():
+            captured_by.red_points += int(flag.points / 2)
+        else:
+            captured_by.red_points += flag.points
+
         captured_by.update_score()
         TeamScoreHistory.record_flag_capture(captured_by, flag)
 
@@ -29,13 +34,18 @@ class FlagService:
             raise ValueError("All flags must belong to the same team")
 
         team = flags[0].owner
-        total_points = sum(flag.points for flag in flags)
+        hint_usages = FlagHintUsage.objects.filter(
+            flag__in=flags,
+            team=team
+        ).prefetch_related('flag')
+        used_flag_hints = [hint_usage.flag for hint_usage in hint_usages]
+        total_points = sum(int(flag.points / 2) if flag in used_flag_hints else flag.points for flag in flags)
         team.blue_points += total_points
         team.update_score()
-        
+
         description = f"Awarded {total_points} blue points for securing {len(flags)} flag(s)"
         TeamScoreHistory.record_blue_points(team, total_points, description)
-        
+
         logger.info(f"Awarded {total_points} blue points to team {team.name}")
 
     def distribute_uncaptured_flags_points(self, session: GameSession) -> None:
@@ -62,5 +72,3 @@ class FlagService:
 
         for team, flags in flags_by_team.items():
             self.award_blue_points(flags)
-
-    # TODO: implement showing hints of unsubmitted flags + points deduction system

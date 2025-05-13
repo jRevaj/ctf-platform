@@ -38,7 +38,6 @@ class FlagSubmissionView(TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseMi
             messages.error(request, "You can only submit flags in red team phase")
             return redirect('challenges')
 
-        # Check time restrictions
         time_check_result = self.check_time_restrictions(self.challenge, request.user.team)
         if time_check_result:
             return time_check_result

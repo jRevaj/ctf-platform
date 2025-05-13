@@ -104,3 +104,18 @@ class Flag(models.Model):
         self.captured_by_user = None
         self.captured_at = None
         self.save(update_fields=["is_captured", "captured_by", "captured_by_user", "captured_at"])
+
+    def use_hint(self, team, session):
+        """Take hint for this flag"""
+        return FlagHintUsage.objects.create(flag=self, team=team, session=session)
+
+
+class FlagHintUsage(models.Model):
+    flag = models.ForeignKey("ctf.Flag", on_delete=models.CASCADE, related_name="hint_usages")
+    team = models.ForeignKey("accounts.Team", on_delete=models.CASCADE, related_name="flag_hint_usages")
+    session = models.ForeignKey("ctf.GameSession", on_delete=models.CASCADE, related_name="flag_hint_usages")
+    used_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("flag", "team", "session")
+        ordering = ["-used_at"]

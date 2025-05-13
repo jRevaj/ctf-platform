@@ -1,0 +1,30 @@
+<div class="mb-3">
+    <h6 class="mb-2"><i class="bi bi-lightbulb me-2"></i>Hints</h6>
+    <ul class="list-group list-group-flush mb-2" id="hint-list-{{ challenge.uuid }}">
+        {% if used_hints %}
+            {% for hint in used_hints %}
+                <li class="list-group-item py-2 px-3 border-1 border-tertiary text-muted rounded mb-1">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <p class="mb-0">{{ hint.hint }}</p>
+                        <span class="badge bg-danger ms-2">-{{ hint.points }} pts</span>
+                    </div>
+                </li>
+            {% endfor %}
+        {% else %}
+            <li id="no-hints-message"
+                class="list-group-item py-2 px-3 mb-1 text-muted no-hints-message">
+                No hints taken
+            </li>
+        {% endif %}
+    </ul>
+
+    {% if has_next_hint %}
+        <div class="d-flex justify-content-center">
+            <button type="button" id="get-hint-btn-{{ challenge.uuid }}" class="btn btn-primary btn-sm get-hint-btn"
+                    onclick="getHint('{{ challenge.uuid }}')" {% if time_exceeded %}disabled
+                    title="Time limit exceeded"{% endif %}>
+                {% if time_exceeded %}Time limit exceeded{% else %}Get a hint{% endif %}
+            </button>
+        </div>
+    {% endif %}
+</div>
