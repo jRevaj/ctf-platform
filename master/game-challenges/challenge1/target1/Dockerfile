@@ -4,6 +4,7 @@ RUN apk update && apk add --no-cache \
     openssh-server \
     openssh-sftp-server \
     openssh-client \
+    sudo \
     mysql \
     mysql-client \
     apache2 \
@@ -25,8 +26,11 @@ RUN apk update && apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # Create ctf-user
-RUN adduser -D -h /home/ctf-user -s /bin/bash ctf-user
-
+RUN useradd -m -s /bin/bash ctf-user && \
+    echo "ctf-user:password" | chpasswd && \
+    usermod -aG wheel ctf-user && \
+    echo "ctf-user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+    
 # Configure SSH
 RUN mkdir -p /var/run/sshd
 RUN ssh-keygen -A  # Generate host keys
@@ -38,9 +42,12 @@ RUN chmod 644 /etc/ssh/sshd_config
 # Create flags directory
 RUN mkdir -p /flags && \
     chown ctf-user:ctf-user /flags && \
-    chmod 755 /flags
+    chmod 777 /flags
 
 COPY flag.txt /flags/flag.txt
+
+RUN chmod 666 /flags/flag.txt && \
+    chown ctf-user:ctf-user /flags/flag.txt
 
 # Set up .ssh directory
 RUN mkdir -p /home/ctf-user/.ssh && \

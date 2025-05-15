@@ -4,6 +4,7 @@ RUN apk update && apk add --no-cache \
     openssh-server \
     openssh-sftp-server \
     openssh-client \
+    sudo \
     bash \
     vim \
     nano\
@@ -18,7 +19,10 @@ RUN apk update && apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # Create ctf-user
-RUN adduser -D -h /home/ctf-user -s /bin/bash ctf-user
+RUN useradd -m -s /bin/bash ctf-user && \
+    echo "ctf-user:password" | chpasswd && \
+    usermod -aG wheel ctf-user && \
+    echo "ctf-user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Configure SSH
 RUN mkdir -p /var/run/sshd
