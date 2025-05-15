@@ -332,6 +332,8 @@ class ChallengeDeploymentAdmin(admin.ModelAdmin):
         """Override delete_model to ensure proper cleanup of containers"""
         for container in obj.containers.all():
             container.delete()
+        for network in obj.networks.all():
+            network.delete()
         super().delete_model(request, obj)
         self.message_user(request, f"Deployment {obj.pk} and its containers successfully deleted.")
 
@@ -340,6 +342,8 @@ class ChallengeDeploymentAdmin(admin.ModelAdmin):
         for obj in queryset:
             for container in obj.containers.all():
                 container.delete()
+            for network in obj.networks.all():
+                network.delete()
         super().delete_queryset(request, queryset)
         self.message_user(request, f"Successfully deleted {queryset.count()} deployments and their containers.")
 
@@ -595,16 +599,26 @@ class ChallengeNetworkConfigAdmin(admin.ModelAdmin):
 
     clean_network.short_description = "Delete selected Docker networks"
 
-    def delete_queryset(self, request, queryset):
-        """Handle bulk deletions by removing each network individually"""
-        super().delete_queryset(request, queryset)
-        self.message_user(request, f"Successfully deleted {queryset.count()} Docker networks.")
-
     def delete_model(self, request, obj):
-        """Delete the Docker network when the model is deleted"""
-        try:
-            super().delete_model(request, obj)
-            self.message_user(request, f"Docker network for {obj.name} ({obj.subnet}) successfully deleted.")
-        except Exception as e:
-            logger.error(f"Failed to delete Docker network for {obj.name} ({obj.subnet}): {e}")
-            self.message_user(request, f"Failed to delete Docker network: {e}", level="ERROR")
+        """Override delete_model to ensure proper cleanup"""
+        if obj.delete():
+            self.message_user(request, f"Network {obj.name} successfully deleted.")
+        else:
+            self.message_user(request, f"Failed to delete network {obj.name}. Check logs for details.", level="ERROR")
+
+    def delete_queryset(self, request, queryset):
+        """Override delete_queryset to ensure proper cleanup for bulk deletions"""
+        success_count = 0
+        fail_count = 0
+
+        for obj in queryset:
+            if obj.delete():
+                success_count += 1
+            else:
+                fail_count += 1
+
+        if success_count:
+            self.message_user(request, f"Successfully deleted {success_count} networks.")
+        if fail_count:
+            self.message_user(request, f"Failed to delete {fail_count} networks. Check logs for details.",
+                              level="ERROR")

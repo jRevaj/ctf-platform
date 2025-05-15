@@ -122,14 +122,18 @@ class ChallengeNetworkConfig(models.Model):
         return f"Network {self.name or 'Default'} ({self.subnet})"
 
     def delete(self, *args, **kwargs):
-        """Delete the Docker network when the model is deleted."""
+        """Override delete method to ensure proper cleanup"""
+        from challenges.services import DockerService
+
         try:
-            from challenges.services import DockerService
+            pk = self.pk
             docker_service = DockerService()
             docker_network = docker_service.get_network(self.docker_id)
             docker_service.remove_network(docker_network)
+
             super().delete(*args, **kwargs)
-            logger.info(f"Network {self.pk} successfully deleted")
+
+            logger.info(f"Network {pk} successfully deleted")
             return True
         except Exception as e:
             logger.error(f"Failed to delete network {self.pk}: {e}")
