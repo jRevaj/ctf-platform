@@ -51,7 +51,7 @@ curl -X POST "localhost:9200/system-secrets/_doc?pretty" -H "Content-Type: appli
 {
   "id": "flag456",
   "description": "Hidden flag information",
-  "secret_data": "FLAG_PLACEHOLDER_11"
+  "secret_data": "FLAG_PLACEHOLDER_5"
 }'
 
 curl -X POST "localhost:9200/system-secrets/_doc?pretty" -H "Content-Type: application/json" -d'

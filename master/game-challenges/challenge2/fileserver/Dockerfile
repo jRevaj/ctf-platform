@@ -108,9 +108,9 @@ RUN chown -R root:root /srv/data && \
     chmod -R 755 /srv/data/public && \
     chmod -R 700 /srv/data/private && \
     chmod -R 750 /srv/data/configs && \
-    chmod -R 750 /srv/data/backups && \
-    chmod 644 /srv/data/backups/backup_log.txt && \
-    chmod 600 /srv/data/backups/encrypted_config.backup
+    chmod -R 777 /srv/data/backups && \
+    chmod 777 /srv/data/backups/backup_log.txt && \
+    chmod 777 /srv/data/backups/encrypted_config.backup
 
 # Expose ports
 EXPOSE 22 80 9200

@@ -2,7 +2,6 @@ name: challenge2
 title: Corporate infrastructure
 description: Multi-container environment simulating a corporate network with various services. Learn about web application security and correct configuration of services.
 
-# TODO: test deployment through platform
 containers:
   webserver:
     name: webserver
@@ -29,12 +28,12 @@ containers:
     flags:
       - id: internal_config_flag
         placeholder: "FLAG_PLACEHOLDER_4"
-        points: 150
+        points: 200
         file: "/fileserver/Dockerfile"
         hint: "Some backups may contain sensitive information if you can decrypt them"
       - id: elasticsearch_flag
         placeholder: "FLAG_PLACEHOLDER_5"
-        points: 200
+        points: 300
         file: "/fileserver/entrypoint.sh"
         hint: "NoSQL databases like Elasticsearch can contain valuable information if you query them correctly"
   monitoring:
@@ -48,13 +47,12 @@ containers:
         hint: "Some APIs have authorization flaws that can be exploited by manipulating headers"
       - id: monitoring_config_flag
         placeholder: "FLAG_PLACEHOLDER_7"
-        points: 175
+        points: 300
         file: "/monitoring/entrypoint.sh"
         hint: "Monitoring systems often store sensitive data in unexpected places - look deeper than configuration files"
 
 networks:
-  internal_networks:
-    - name: "corporate_network"
-      containers: [ "monitoring", "webserver" ]
-    - name: "backend_network"
-      containers: [ "monitoring", "fileserver" ]
+  corporate_network:
+    containers: [ "monitoring", "webserver" ]
+  backend_network:
+    containers: [ "monitoring", "fileserver" ]

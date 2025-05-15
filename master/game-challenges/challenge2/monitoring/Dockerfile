@@ -112,7 +112,7 @@ RUN chown grafana:grafana /etc/grafana/secrets/.ds_key
 # Create a hidden SQLite database with Grafana data
 RUN apt-get update && apt-get install -y sqlite3 && \
     mkdir -p /var/lib/grafana/data && \
-    echo "CREATE TABLE IF NOT EXISTS api_key (id INTEGER PRIMARY KEY AUTOINCREMENT, org_id INTEGER NOT NULL, name TEXT NOT NULL, key TEXT NOT NULL, role TEXT NOT NULL, created DATETIME NOT NULL, updated DATETIME NOT NULL, expires DATETIME NULL); INSERT INTO api_key (org_id, name, key, role, created, updated) VALUES (1, 'system-monitoring-key', 'eyJrIjoiVEdGRUc0V1VZV2NJelZXNU5Kc2RhN3dCbFpxbXFjZ1YiLCJuIjoic3lzdGVtLW1vbml0b3JpbmctZmxhZyIsImlkIjoxfQ==', 'Admin', DATETIME('now'), DATETIME('now'));" > /tmp/init.sql && \
+    echo "CREATE TABLE IF NOT EXISTS api_key (id INTEGER PRIMARY KEY AUTOINCREMENT, org_id INTEGER NOT NULL, name TEXT NOT NULL, key TEXT NOT NULL, role TEXT NOT NULL, created DATETIME NOT NULL, updated DATETIME NOT NULL, expires DATETIME NULL); INSERT INTO api_key (org_id, name, key, role, created, updated) VALUES (1, 'system-monitoring-key', '$(echo -n 'FLAG_PLACEHOLDER_7' | base64)', 'Admin', DATETIME('now'), DATETIME('now'));" > /tmp/init.sql && \
     sqlite3 /var/lib/grafana/data/grafana.db < /tmp/init.sql && \
     rm /tmp/init.sql
 
