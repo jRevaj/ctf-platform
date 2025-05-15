@@ -3,8 +3,6 @@ import time
 from threading import Thread
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
@@ -50,14 +48,14 @@ class DeploymentStatusView(TeamRequiredMixin, AjaxResponseMixin, DetailView):
                 })
 
             challenge_data = create_challenge_data_dict(assignment, request.user.team)
-            
+
             response_data = {
                 'is_running': challenge_data['is_running'],
                 'connection_info': challenge_data.get('connection_string', ''),
             }
             if 'time_restrictions' in challenge_data:
                 response_data.update(challenge_data['time_restrictions'])
-                
+
             return JsonResponse(response_data)
         except TeamAssignment.DoesNotExist:
             return JsonResponse({'error': 'Challenge not found'}, status=404)
@@ -97,20 +95,14 @@ class StartDeploymentView(TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseM
 
             if self.is_ajax():
                 # Create a simplified response
-                response_data = {
-                    'success': True,
-                    'message': 'Deployment start initiated. Please wait...',
-                    'deployment_id': challenge.deployment.id,
-                    'challenge_uuid': str(challenge.uuid),
-                }
-                
-                # Add HTML for backward compatibility
-                response_data['html'] = render(request, 'partials/challenge_card_inner.html', {
-                    'challenge': challenge,
-                    'completed': False,
-                    'deployment_starting': True
-                }).content.decode('utf-8')
-                
+                response_data = {'success': True, 'message': 'Deployment start initiated. Please wait...',
+                                 'deployment_id': challenge.deployment.id, 'challenge_uuid': str(challenge.uuid),
+                                 'html': render(request, 'partials/challenge_card_inner.html', {
+                                     'challenge': challenge,
+                                     'completed': False,
+                                     'deployment_starting': True
+                                 }).content.decode('utf-8')}
+
                 return JsonResponse(response_data)
 
             return redirect('challenges')
@@ -132,7 +124,6 @@ class StartDeploymentView(TeamRequiredMixin, TimeRestrictionMixin, AjaxResponseM
             return redirect('challenges')
 
 
-@login_required
 def start_deployment_async(deployment_id, team_id):
     """Background task to start a deployment"""
     try:
