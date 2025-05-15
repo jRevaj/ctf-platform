@@ -6,7 +6,7 @@ import docker
 from docker.errors import APIError, NotFound
 from docker.models.containers import Container
 from docker.models.networks import Network
-from docker.types import IPAMPool, IPAMConfig, RestartPolicy
+from docker.types import IPAMPool, IPAMConfig
 
 from challenges.models.constants import DockerConstants
 from challenges.models.enums import ContainerStatus
@@ -182,13 +182,21 @@ class DockerService:
             logger.error(f"Failed to prune images: {e}")
             return None
 
-    def list_networks(self) -> list:
+    def list_networks(self) -> list[Network]:
         """List all Docker networks"""
         try:
             return self.client.networks.list()
         except Exception as e:
             logger.error(f"Failed to list networks: {e}")
             return []
+
+    def get_network(self, network_id: str) -> Optional[Network]:
+        """Get a network by ID"""
+        try:
+            return self.client.networks.get(network_id)
+        except Exception as e:
+            logger.error(f"Failed to get network: {e}")
+            return None
 
     def get_available_subnet(self) -> str:
         """Find an available subnet for new network"""
@@ -226,7 +234,7 @@ class DockerService:
             logger.error(f"Failed to create network: {e}")
             return False
 
-    def clean_networks(self):
+    def prune_networks(self):
         """Remove all docker networks"""
         try:
             logger.info("Removing all docker networks")

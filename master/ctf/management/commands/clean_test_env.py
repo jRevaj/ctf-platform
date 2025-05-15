@@ -53,7 +53,7 @@ class Command(BaseCommand):
             container.delete()
 
         self.docker_service.prune_images()
-        self.docker_service.clean_networks()
+        self.docker_service.prune_networks()
 
         GamePhase.objects.all().delete()
         ChallengeDeployment.objects.all().delete()

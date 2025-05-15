@@ -86,12 +86,12 @@ class ChallengeService:
         except (ContainerOperationError, DockerOperationError, ValueError) as e:
             logger.error(f"Error preparing challenge: {str(e)}")
             if not is_single_container:
-                self.docker_service.clean_networks()
+                self.docker_service.prune_networks()
             raise e
         except Exception as e:
             logger.exception(f"Unexpected error preparing challenge: {str(e)}")
             if not is_single_container:
-                self.docker_service.clean_networks()
+                self.docker_service.prune_networks()
             raise e
         finally:
             remove_temp_folder(temp_challenge_dir)
@@ -166,6 +166,7 @@ class ChallengeService:
                         db_network = ChallengeNetworkConfig.objects.create(
                             name=f"{network_name}-{session_pk}-{deployment_pk}",
                             subnet=subnet.split('/')[0],
+                            docker_id=network.id,
                             template=template,
                             deployment_id=deployment_pk
                         )
@@ -200,6 +201,7 @@ class ChallengeService:
             db_network = ChallengeNetworkConfig.objects.create(
                 name=f"default-{session_pk}-{deployment_pk}",
                 subnet=subnet.split('/')[0],
+                docker_id=challenge_network.id,
                 template=template,
                 deployment_id=deployment_pk
             )

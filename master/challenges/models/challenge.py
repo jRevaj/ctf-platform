@@ -109,6 +109,7 @@ class ChallengeTemplate(models.Model):
 class ChallengeNetworkConfig(models.Model):
     name = models.CharField(max_length=128, default="")
     subnet = models.GenericIPAddressField()
+    docker_id = models.CharField(max_length=128, unique=True)
     template = models.ForeignKey('challenges.ChallengeTemplate', on_delete=models.PROTECT)
     deployment = models.ForeignKey('challenges.ChallengeDeployment', related_name="networks", on_delete=models.CASCADE)
     containers = models.ManyToManyField('challenges.ChallengeContainer', related_name="challenge_network_configs")
@@ -119,6 +120,20 @@ class ChallengeNetworkConfig(models.Model):
 
     def __str__(self):
         return f"Network {self.name or 'Default'} ({self.subnet})"
+
+    def delete(self, *args, **kwargs):
+        """Delete the Docker network when the model is deleted."""
+        try:
+            from challenges.services import DockerService
+            docker_service = DockerService()
+            docker_network = docker_service.get_network(self.docker_id)
+            docker_service.remove_network(docker_network)
+            super().delete(*args, **kwargs)
+            logger.info(f"Network {self.pk} successfully deleted")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete network {self.pk}: {e}")
+            return False
 
 
 class ChallengeDeployment(models.Model):

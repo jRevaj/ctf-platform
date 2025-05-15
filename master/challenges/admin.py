@@ -559,7 +559,7 @@ class ChallengeNetworkConfigAdmin(admin.ModelAdmin):
     def clean_all_networks_view(self, request):
         """View to clean all unused Docker networks"""
         try:
-            self.docker_service.clean_networks()
+            self.docker_service.prune_networks()
             self.message_user(request, "All unused Docker networks cleaned successfully.")
         except Exception as e:
             logger.error(f"Error cleaning Docker networks: {str(e)}")
@@ -573,7 +573,6 @@ class ChallengeNetworkConfigAdmin(admin.ModelAdmin):
 
         for network_config in queryset:
             try:
-                # Find the Docker network by name/subnet
                 docker_networks = self.docker_service.list_networks()
                 for network in docker_networks:
                     if network.attrs.get("IPAM") and network.attrs["IPAM"].get("Config"):
@@ -598,75 +597,14 @@ class ChallengeNetworkConfigAdmin(admin.ModelAdmin):
 
     def delete_queryset(self, request, queryset):
         """Handle bulk deletions by removing each network individually"""
-        networks_deleted = 0
-        networks_failed = 0
-        networks_not_found = 0
-
-        # Get all Docker networks once to avoid repeated API calls
-        docker_networks = self.docker_service.list_networks()
-
-        for obj in queryset:
-            try:
-                network_deleted = False
-
-                for network in docker_networks:
-                    if network.attrs.get("IPAM") and network.attrs["IPAM"].get("Config"):
-                        for config in network.attrs["IPAM"]["Config"]:
-                            if "Subnet" in config and config["Subnet"].startswith(obj.subnet):
-                                if self.docker_service.remove_network(network):
-                                    networks_deleted += 1
-                                    network_deleted = True
-                                else:
-                                    networks_failed += 1
-                                break
-
-                if not network_deleted:
-                    networks_not_found += 1
-            except Exception as e:
-                logger.error(f"Failed to delete Docker network for {obj.name} ({obj.subnet}): {e}")
-                networks_failed += 1
-
-        # Now delete all the Django models
         super().delete_queryset(request, queryset)
-
-        # Report results
-        if networks_deleted > 0:
-            self.message_user(request, f"Successfully deleted {networks_deleted} Docker networks.")
-
-        if networks_failed > 0:
-            self.message_user(request, f"Failed to delete {networks_failed} Docker networks.", level="ERROR")
-
-        if networks_not_found > 0:
-            self.message_user(request, f"{networks_not_found} Docker networks were not found.", level="WARNING")
+        self.message_user(request, f"Successfully deleted {queryset.count()} Docker networks.")
 
     def delete_model(self, request, obj):
         """Delete the Docker network when the model is deleted"""
         try:
-            network_deleted = False
-            docker_networks = self.docker_service.list_networks()
-
-            for network in docker_networks:
-                if network.attrs.get("IPAM") and network.attrs["IPAM"].get("Config"):
-                    for config in network.attrs["IPAM"]["Config"]:
-                        if "Subnet" in config and config["Subnet"].startswith(obj.subnet):
-                            if self.docker_service.remove_network(network):
-                                network_deleted = True
-                                self.message_user(request,
-                                                  f"Docker network for {obj.name} ({obj.subnet}) successfully deleted.")
-                            else:
-                                self.message_user(request,
-                                                  f"Failed to delete Docker network for {obj.name} ({obj.subnet}).",
-                                                  level="WARNING")
-                            break
-
-            if not network_deleted:
-                self.message_user(request, f"No matching Docker network found for {obj.name} ({obj.subnet}).",
-                                  level="WARNING")
-
-            # Delete the Django model
             super().delete_model(request, obj)
+            self.message_user(request, f"Docker network for {obj.name} ({obj.subnet}) successfully deleted.")
         except Exception as e:
             logger.error(f"Failed to delete Docker network for {obj.name} ({obj.subnet}): {e}")
             self.message_user(request, f"Failed to delete Docker network: {e}", level="ERROR")
-            # Still delete the Django model even if Docker network deletion fails
-            super().delete_model(request, obj)
