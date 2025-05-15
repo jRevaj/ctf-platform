@@ -24,11 +24,11 @@ function getHint(challengeUuid) {
             }
             
             const newHintHtml = `<li class="list-group-item py-2 px-3 border-1 border-tertiary text-muted rounded mb-1">
-                <div class="d-flex justify-content-between align-items-center">
-                    <p class="mb-0">${data.new_hint.hint}</p>
-                    <span class="badge bg-danger ms-2">-${data.new_hint.points} pts</span>
-                </div>
-            </li>`;
+                    <div class="d-flex justify-content-between align-items-center">
+                        <p class="mb-0">${data.new_hint.hint}</p>
+                        <span class="badge bg-danger ms-2">-${data.new_hint.points} pts</span>
+                    </div>
+                </li>`;
 
             hintsHtml.insertAdjacentHTML('beforeend', newHintHtml);
             

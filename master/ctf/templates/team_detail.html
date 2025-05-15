@@ -69,9 +69,6 @@
                     </h2>
                     <div class="card-body p-4">
                         {% if team.score_history.all|length > 0 %}
-                            <div style="height: 300px;">
-                                <canvas id="teamScoreChart"></canvas>
-                            </div>
                             <div class="mb-4">
                                 <div class="btn-group" role="group" aria-label="Time period">
                                     <button type="button"
@@ -96,6 +93,9 @@
                                     </button>
                                 </div>
                             </div>
+                            <div style="height: 300px;">
+                                <canvas id="teamScoreChart"></canvas>
+                            </div>
                         {% else %}
                             <div class="alert alert-info text-center">No score history available.</div>
                         {% endif %}
@@ -114,11 +114,11 @@
                                     <th>Date</th>
                                     <th>Type</th>
                                     <th>Description</th>
-                                    <th>Points</th>
+                                    <th>Total score</th>
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {% for event in team.score_history.all|slice:":10" %}
+                                {% for event in recent_activities %}
                                     <tr>
                                         <td>{{ event.timestamp|date:"F j, Y H:i" }}</td>
                                         <td>
@@ -132,13 +132,7 @@
                                         </td>
                                         <td>{{ event.description }}</td>
                                         <td>
-                                            {% if event.event_type == 'flag_capture' %}
-                                                {{ event.red_points|default:0 }}
-                                            {% elif event.event_type == 'blue_points' %}
-                                                {{ event.blue_points|default:0 }}
-                                            {% else %}
-                                                {{ event.score }}
-                                            {% endif %}
+                                            {{ event.score }}
                                         </td>
                                     </tr>
                                 {% empty %}

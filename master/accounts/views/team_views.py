@@ -48,6 +48,10 @@ def team_detail_view(request, team_uuid):
         uuid=team_uuid
     )
 
+    non_score_update_events = team.score_history.exclude(
+        event_type=TeamScoreHistory.EventType.SCORE_UPDATE
+    ).order_by('-timestamp')[:10]
+
     score_history = {}
     if team.filtered_history:
         score_history[str(team.uuid)] = {
@@ -61,7 +65,8 @@ def team_detail_view(request, team_uuid):
     context = {
         "team": team,
         "score_history_json": json.dumps(score_history),
-        "days": days_param
+        "days": days_param,
+        "recent_activities": non_score_update_events
     }
     return render(request, "team_detail.html", context)
 
