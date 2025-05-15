@@ -25,4 +25,4 @@ RUN pip install --upgrade pip && \
 COPY . .
 
 # Default command (can be overridden in docker-compose.yaml)
-CMD ["sh", "-c", "python manage.py migrate && python manage.py init_admin && python manage.py populate_test_users && python manage.py runserver 0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py init_admin && python manage.py runserver 0.0.0.0:8000"]
