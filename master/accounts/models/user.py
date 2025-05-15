@@ -32,7 +32,7 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=128, unique=True)
     email = models.EmailField(unique=True)
-    team = models.ForeignKey("accounts.Team", related_name="users", on_delete=models.CASCADE, null=True, blank=True)
+    team = models.ForeignKey("accounts.Team", related_name="users", on_delete=models.SET_NULL, null=True, blank=True)
     ssh_public_key = models.TextField(default="", blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

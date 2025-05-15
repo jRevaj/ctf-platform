@@ -199,13 +199,12 @@ class ChallengeContainer(models.Model):
         from challenges.services import DockerService
 
         try:
-            pk = self.pk
             docker_service = DockerService()
             docker_service.remove_container(self.docker_id, force=True)
 
             super().delete(*args, **kwargs)
 
-            logger.info(f"Container {pk} successfully deleted")
+            logger.info(f"Container {self.pk} successfully deleted")
             return True
         except Exception as e:
             logger.error(f"Failed to delete container {self.pk}: {e}")

@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.shortcuts import redirect
 
+from accounts.forms.admin_forms import TeamAdminForm
 from accounts.models import User, Team
 
 
@@ -31,6 +32,7 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
+    form = TeamAdminForm
     list_display = ('name', 'user_count', 'score', 'created_at', 'is_in_game')
     readonly_fields = ('join_key', 'created_at')
     search_fields = ('name',)
@@ -82,3 +84,15 @@ class TeamAdmin(admin.ModelAdmin):
         self.message_user(request, f"{updated} teams were successfully set as not in game.")
 
     set_teams_not_in_game.short_description = "Set selected teams as not in game"
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        users = list(form.cleaned_data.get('users', []))
+        if obj.created_by and obj.created_by not in users:
+            users.append(obj.created_by)
+        User.objects.filter(pk__in=[u.pk for u in users]).update(team=obj)
+        User.objects.filter(team=obj).exclude(pk__in=[u.pk for u in users]).update(team=None)
+
+        if obj.should_be_in_game():
+            obj.is_in_game = True
+            obj.save()
