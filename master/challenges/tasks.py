@@ -179,7 +179,6 @@ def monitor_ssh_connections():
                         container = container_session_map.get(session_id)
                         if container:
                             team = container.red_team if container.red_team else container.blue_team
-                            logger.info("exceeded time limit call 1")
                             if team and deployment_service.has_exceeded_time_limit(team, deployment):
                                 logger.info(f"Team {team.name} has exceeded time limit for deployment {deployment.id}")
                                 for dep_container in running_containers:
@@ -187,6 +186,7 @@ def monitor_ssh_connections():
                                 deployment_service.end_deployment_access(deployment, session_id)
                                 continue
                             container.update_activity()
+                        logger.debug(f"Matched docker session {session_id} to existing DB session {db_session}")
                         continue
 
                     session_parts = session_id.split('-')
@@ -204,7 +204,6 @@ def monitor_ssh_connections():
                             container = container_session_map.get(session_id)
                             if container:
                                 team = container.red_team if container.red_team else container.blue_team
-                                logger.info("exceeded time limit call 2")
                                 if team and deployment_service.has_exceeded_time_limit(team, deployment):
                                     logger.info(
                                         f"Team {team.name} has exceeded time limit for deployment {deployment.id}")
@@ -221,7 +220,6 @@ def monitor_ssh_connections():
                         if container:
                             team = container.red_team if container.red_team else container.blue_team
                             if team:
-                                logger.info("exceeded time limit call 3")
                                 if deployment_service.has_exceeded_time_limit(team, deployment):
                                     logger.info(
                                         f"Team {team.name} has exceeded time limit for deployment {deployment.id}")

@@ -52,6 +52,7 @@ class DockerService:
                 name=container_name,
                 detach=True,
                 ports={DockerConstants.SSH_PORT: None} if not port else {DockerConstants.SSH_PORT: port},
+                network="ctf-platform_user_net"
             )
 
             if port:
@@ -239,6 +240,7 @@ class DockerService:
         try:
             logger.info("Removing all docker networks")
             self.client.networks.prune()
+            self.client.networks.create(name="ctf-platform_user_net", driver="bridge")
         except APIError as e:
             logger.error(f"Failed to remove network: {e}")
         except Exception as e:
@@ -271,10 +273,11 @@ class DockerService:
             logger.error(f"Failed to remove network {network.name}: {e}")
             return False
 
-    def get_bridge_network(self) -> Optional[Network]:
+    def get_bridge_network(self, name: str = "bridge") -> Optional[Network]:
         """Get the default bridge network"""
         try:
-            return self.client.networks.get("bridge")
+            logger.info(f"Getting bridge network {name}")
+            return self.client.networks.get(name)
         except Exception as e:
             logger.error(f"Failed to get bridge network: {e}")
             return None
@@ -282,8 +285,9 @@ class DockerService:
     def disconnect_from_bridge(self, container: Container) -> bool:
         """Disconnect a container from the default bridge network"""
         try:
-            bridge = self.get_bridge_network()
+            bridge = self.get_bridge_network(name="ctf-platform_user_net")
             if bridge:
+                logger.info(f"Disconnecting container {container.name} from bridge network")
                 bridge.disconnect(container)
                 logger.info(f"Container {container.name} disconnected from bridge network")
                 return True
