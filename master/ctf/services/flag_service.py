@@ -8,8 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class FlagService:
-    # TODO: think of flag checkers - provide endpoints that containers can connect to?
-
     @staticmethod
     def capture_and_award(flag: Flag, captured_by_user) -> None:
         """Handle flag capture"""

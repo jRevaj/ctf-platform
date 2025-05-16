@@ -25,7 +25,6 @@ class ContainerService:
 
     def create_related_containers(self, template, temp_dir, session, blue_team):
         """Batch create related containers"""
-        # TODO: try to parallelize this?
         try:
             containers = []
             template_path = Path(temp_dir) if temp_dir else template.get_full_template_path()
@@ -99,7 +98,6 @@ class ContainerService:
                 logger.warning(f"Container {container.name} ({container.docker_id}) not found")
                 return False
 
-            # TODO: refactor
             docker_container.exec_run(
                 [
                     "sh",
@@ -243,7 +241,6 @@ class ContainerService:
 
     def stop_session_containers(self, session: GameSession) -> bool:
         """Stop all session containers"""
-        # TODO: refactor out
         try:
             containers = session.get_containers()
             logger.info(f"Stopping {len(containers)} containers for session {session.name}")
