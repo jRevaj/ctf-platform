@@ -1,69 +1,52 @@
-# CTF Platform
+# Platform for custom Red vs Blue team CTF competition
 
-## Overview
+This platform is implementation of my diploma thesis. You can find the implementation in the state when the thesis was submitted in the `submitted` branch.
 
-This project is a CTF platform that allows you to create and manage CTF challenges.
+## Usage of this platform
 
-## Management Commands
+For using this platform you need to have [Docker](https://docs.docker.com/get-docker/) installed. Make sure you have environment variables set based on the `.env.example` file.
 
-This directory contains management commands for the CTF platform.
+### Running the platform
 
-### `setup_environment`
-
-This command can set up either a single-container environment or a multi-container challenge.
-
-### Usage
+First clone the repository:
 
 ```bash
-python manage.py setup_environment template_name
+# master branch
+git clone https://github.com/sk-ctf/ctf-platform.git
+# or submitted branch
+git clone -b submitted https://github.com/sk-ctf/ctf-platform.git
 ```
 
-or inside docker
+Then in the root directory of the repository run the platform using:
 
 ```bash
-docker compose exec master python manage.py setup_environment template_name
+docker compose up
 ```
 
+### Production mode
 
-### Requirements
-
-The command requires the following environment variables to be set:
-
-- `TEST_BLUE_SSH_PUBLIC_KEY`: SSH public key for blue team users
-- `TEST_RED_SSH_PUBLIC_KEY`: SSH public key for red team users
-
-### Output
-
-The command will output connection information for all created containers, including SSH connection strings.
-
-### `test_matchmaking`
-
-This command tests the matchmaking system by simulating game rounds. It supports both random and Swiss-system matchmaking.
-
-### Usage
+For production mode edit the `entrypoint.sh` based on your server environment to ensure that the app is not running as root user and that the app-user has all necessary permissions. Then add SSL certificates to the `certs` directory and edit the `nginx.prod.conf` if needed. After that you can run the platform using:
 
 ```bash
-python manage.py test_matchmaking --system random --rounds 1 --session test --template test-challenge-multi --teams 4
+docker compose -f docker-compose.prod.yaml up
 ```
 
-or inside docker
+## Default credentials
 
-```bash
-docker compose exec master python manage.py test-matchmaking --system random --rounds 1 --session test --template test-challenge-multi --teams 4
-```
+In development mode the app is initialized with admin account and default users. You can find credentials for default users in [test-users.txt](master/test-users.txt).
 
-### Requirements
+Default Django admin credentials are:
 
-The command requires the following environment variables to be set:
+- username: `admin`
+- password: `admin`
 
-- `TEST_SSH_PUBLIC_KEY_{x}`: SSH public keys for users (currently 8 are set for 8 users = 4 teams)
+### Production mode
 
-### Output
+In production mode the app is only initialized with admin account. Credentials for the admin account are the same as in development mode.
 
-The command will output logs for whole game creation and teams rotation based on selected round number.
+## Useful links
 
-## Other Commands
-
-- `clean_test_env`: Cleans up test environments
-- `sync_templates`: Synchronizes challenge templates
-- `init_admin`: Initializes admin user
+- [Django](https://www.djangoproject.com/)
+- [Docker SDK for Python](https://docker-py.readthedocs.io/en/stable/#)
+- [Celery](https://docs.celeryq.dev/en/latest/index.html#)
+- [Bootstrap](https://getbootstrap.com/)
