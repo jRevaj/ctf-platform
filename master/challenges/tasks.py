@@ -186,7 +186,7 @@ def monitor_ssh_connections():
                                 deployment_service.end_deployment_access(deployment, session_id)
                                 continue
                             container.update_activity()
-                        logger.debug(f"Matched docker session {session_id} to existing DB session {db_session}")
+                        logger.debug(f"Matched docker session {session_id} to existing DB session")
                         continue
 
                     session_parts = session_id.split('-')
@@ -212,7 +212,7 @@ def monitor_ssh_connections():
                                     deployment_service.end_deployment_access(deployment, session_id)
                                     continue
                                 container.update_activity()
-                            logger.debug(f"Matched docker session {session_id} to existing DB session {db_session}")
+                            logger.debug(f"Matched docker session {session_id} to existing DB session")
                             break
 
                     if not found_match:
