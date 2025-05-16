@@ -10,7 +10,6 @@ from challenges.forms.admin_forms import ChallengeTemplateForm, ChallengeContain
 from challenges.models import ChallengeTemplate, ChallengeContainer, DeploymentAccess, ChallengeDeployment, \
     ChallengeNetworkConfig
 from challenges.models.enums import ContainerStatus
-from challenges.services import DockerService, ContainerService
 from ctf.admin import FlagInline
 from ctf.utils.admin_utils import handle_action_redirect
 
@@ -98,10 +97,19 @@ class ChallengeContainerAdmin(admin.ModelAdmin):
         }),
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.docker_service = DockerService()
-        self.container_service = ContainerService(self.docker_service)
+    @property
+    def docker_service(self):
+        if not hasattr(self, '_docker_service'):
+            from challenges.services import DockerService
+            self._docker_service = DockerService()
+        return self._docker_service
+
+    @property
+    def container_service(self):
+        if not hasattr(self, '_container_service'):
+            from challenges.services import ContainerService
+            self._container_service = ContainerService(self.docker_service)
+        return self._container_service
 
     @staticmethod
     def container_actions(obj):
@@ -531,9 +539,12 @@ class ChallengeNetworkConfigAdmin(admin.ModelAdmin):
     actions = ['clean_network']
     change_list_template = "admin/challengenetworkconfig/change_list.html"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.docker_service = DockerService()
+    @property
+    def docker_service(self):
+        if not hasattr(self, '_docker_service'):
+            from challenges.services import DockerService
+            self._docker_service = DockerService()
+        return self._docker_service
 
     def containers_count(self, obj):
         return obj.containers.count()

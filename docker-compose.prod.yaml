@@ -1,0 +1,146 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env.production
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h ${POSTGRES_HOST} -p ${POSTGRES_PORT}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - infra_net
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - infra_net
+
+  master:
+    build:
+      context: ./master
+      dockerfile: Dockerfile.prod
+    container_name: master
+    env_file:
+      - .env.production
+    environment:
+      - DJANGO_ENVIRONMENT=production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate && python manage.py init_network && python manage.py init_admin && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --timeout 300"
+    volumes:
+      - static_data:/app/static
+      - media_data:/app/media
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - infra_net
+      - frontend_net
+
+  celery_worker:
+    build:
+      context: ./master
+      dockerfile: Dockerfile.prod
+    container_name: celery_worker
+    command: >
+      sh -c '
+        echo "Waiting for Django to be ready..." &&
+        while ! curl -s http://master:8000/api/health/ > /dev/null; do
+          echo "Django is not ready yet..." &&
+          sleep 5
+        done &&
+        echo "Waiting for Redis to be ready..." &&
+        while ! nc -z redis 6379; do
+          echo "Redis is not ready yet..." &&
+          sleep 5
+        done &&
+        echo "Django and Redis are ready! Starting Celery worker..." &&
+        celery -A core worker --loglevel=info --concurrency=4 -E
+      '
+    env_file:
+      - .env.production
+    environment:
+      - DJANGO_ENVIRONMENT=production
+    depends_on:
+      - master
+      - redis
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - infra_net
+
+  celery_beat:
+    build:
+      context: ./master
+      dockerfile: Dockerfile.prod
+    container_name: celery_beat
+    command: >
+      sh -c '
+        echo "Waiting for Django to be ready..." &&
+        while ! curl -s http://master:8000/api/health/ > /dev/null; do
+          echo "Django is not ready yet..." &&
+          sleep 5
+        done &&
+        echo "Waiting for Redis to be ready..." &&
+        while ! nc -z redis 6379; do
+          echo "Redis is not ready yet..." &&
+          sleep 5
+        done &&
+        echo "Django and Redis are ready! Starting Celery beat..." &&
+        celery -A core beat --loglevel=info
+      '
+    env_file:
+      - .env.production
+    environment:
+      - DJANGO_ENVIRONMENT=production
+    depends_on:
+      - master
+      - redis
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - infra_net
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - master
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_data:/app/static:ro
+      - media_data:/app/media:ro
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - frontend_net
+
+volumes:
+  postgres_data:
+  static_data:
+  media_data:
+
+
+networks:
+  infra_net:
+    driver: bridge
+  frontend_net:
+    driver: bridge

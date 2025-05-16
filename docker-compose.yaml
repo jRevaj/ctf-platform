@@ -42,6 +42,8 @@ services:
     user: root
     env_file:
       - .env
+    environment:
+      - DJANGO_ENVIRONMENT=development
     depends_on:
       db:
         condition: service_healthy
@@ -76,6 +78,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     user: root
+    environment:
+      - DJANGO_ENVIRONMENT=development
     depends_on:
       - master
       - redis
@@ -102,6 +106,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     user: root
+    environment:
+      - DJANGO_ENVIRONMENT=development
     depends_on:
       - master
       - redis
