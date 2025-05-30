@@ -42,7 +42,7 @@ Default Django admin credentials are:
 
 ### Production mode
 
-In production mode the app is only initialized with admin account. Credentials for the admin account are the same as in development mode.
+In production mode the app is only initialized with admin account. Credentials for the admin account are the same as in development mode so change them ASAP.
 
 ## Useful links
 
